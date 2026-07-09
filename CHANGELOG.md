@@ -2,6 +2,16 @@
 
 本文档用于记录项目中值得追踪的版本、功能、修复和重要变更，并与 GitHub Releases（GitHub 发布页面）保持同步。
 
+## v0.5.2 - 2026-07-09 13:04
+
+- 新增: 建立 GitHub Actions 基础 CI，使用 Windows runner 执行 `dotnet restore`、`dotnet build` 和 `dotnet test`。
+- docs: 更新 `README.md`、测试说明和编码实施计划，记录 CI 工作流路径、触发条件和检查项。
+
+## v0.5.1 - 2026-07-09 12:58
+
+- docs: 新增 `docs/development/TESTING.md`，集中记录测试目标、测试类型、当前覆盖范围、运行方式、测试命名规范和后续补测清单。
+- docs: 更新 `README.md` 和编码实施计划，将测试说明收敛为入口说明并指向专门测试文档。
+
 ## v0.5.0 - 2026-07-09 12:44
 
 - 新增: 初始化本地 Git 仓库，并创建 `feature/quality-baseline` 开发分支，恢复正常版本管理基线。
