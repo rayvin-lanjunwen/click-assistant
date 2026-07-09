@@ -2,6 +2,21 @@
 
 本文档用于记录项目中值得追踪的版本、功能、修复和重要变更，并与 GitHub Releases（GitHub 发布页面）保持同步。
 
+## v0.6.1 - 2026-07-09 13:26
+
+- 新增: 添加 `tools/publish-windows.ps1` 发布脚本，支持生成 Windows `win-x64` 发布目录和可执行程序。
+- docs: 新增 `docs/development/RELEASE.md`，记录部署与上线思路、发布前检查、发布目录生成方式、数据迁移说明和后续发布计划。
+- docs: 更新 `README.md`、测试说明和编码实施计划，记录发布脚本、发布文档入口和下一阶段安装包/GitHub Releases 方向。
+
+## v0.6.0 - 2026-07-09 13:15
+
+- 新增: 扩展输入动作类型，新增组合键步骤和文本输入步骤，支持在任务中混合配置鼠标、单键、组合键和文本输入。
+- 新增: Windows 键盘输入服务改用 `SendInput`，支持单键连按、组合键触发和 Unicode 文本输入。
+- 新增: 扩展 WPF 步骤配置表格，支持添加组合键步骤、文本输入步骤，并配置组合键内容和文本内容。
+- 变更: 扩展 SQLite `task_steps` 表结构，新增 `shortcut_keys` 和 `text_content` 字段，并支持旧数据库启动时自动补列。
+- test: 补充领域模型校验、执行引擎键盘动作分发和 SQLite 仓储测试，覆盖组合键与文本输入。
+- docs: 更新 README、需求规格、架构设计、详细设计、原型、UI/UX、测试说明和编码实施计划，记录组合键与文本输入能力。
+
 ## v0.5.2 - 2026-07-09 13:04
 
 - 新增: 建立 GitHub Actions 基础 CI，使用 Windows runner 执行 `dotnet restore`、`dotnet build` 和 `dotnet test`。

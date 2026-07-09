@@ -102,6 +102,8 @@ public sealed class ClickTask
                 KeyName = step.KeyName,
                 KeyPressCount = step.KeyPressCount,
                 KeyIntervalMs = step.KeyIntervalMs,
+                ShortcutKeys = step.ShortcutKeys,
+                TextContent = step.TextContent,
                 BeforeDelayMs = step.BeforeDelayMs,
                 AfterDelayMs = step.AfterDelayMs,
                 Order = step.Order

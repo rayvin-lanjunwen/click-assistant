@@ -31,6 +31,10 @@ public sealed class ClickStep
 
     public int KeyIntervalMs { get; set; } = 100;
 
+    public string ShortcutKeys { get; set; } = "Ctrl+C";
+
+    public string TextContent { get; set; } = string.Empty;
+
     public int BeforeDelayMs { get; set; }
 
     public int AfterDelayMs { get; set; } = 500;
@@ -70,6 +74,16 @@ public sealed class ClickStep
             ValidateKeyboardPress();
         }
 
+        if (ActionType == InputActionType.KeyboardShortcut)
+        {
+            ValidateKeyboardShortcut();
+        }
+
+        if (ActionType == InputActionType.TextInput)
+        {
+            ValidateTextInput();
+        }
+
         if (Order < 0)
         {
             throw new DomainValidationException("步骤顺序不能小于 0。");
@@ -95,5 +109,57 @@ public sealed class ClickStep
         {
             throw new DomainValidationException("键盘连按次数不能超过 10000。");
         }
+    }
+
+    /// <summary>
+    /// 校验组合键配置，至少需要一个修饰键和一个主按键。
+    /// </summary>
+    private void ValidateKeyboardShortcut()
+    {
+        if (string.IsNullOrWhiteSpace(ShortcutKeys))
+        {
+            throw new DomainValidationException("组合键步骤必须填写组合键。");
+        }
+
+        var keyParts = ShortcutKeys
+            .Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (keyParts.Length < 2)
+        {
+            throw new DomainValidationException("组合键至少需要一个修饰键和一个主按键，例如 Ctrl+C。");
+        }
+
+        if (IsModifierKeyName(keyParts[^1]))
+        {
+            throw new DomainValidationException("组合键最后一个按键必须是主按键，不能只是修饰键。");
+        }
+    }
+
+    /// <summary>
+    /// 校验文本输入配置，避免空文本或过长文本导致误输入。
+    /// </summary>
+    private void ValidateTextInput()
+    {
+        if (string.IsNullOrEmpty(TextContent))
+        {
+            throw new DomainValidationException("文本输入步骤必须填写文本内容。");
+        }
+
+        if (TextContent.Length > 10000)
+        {
+            throw new DomainValidationException("文本输入内容不能超过 10000 个字符。");
+        }
+    }
+
+    /// <summary>
+    /// 判断按键名称是否为修饰键。
+    /// </summary>
+    private static bool IsModifierKeyName(string keyName)
+    {
+        return keyName.Trim().ToUpperInvariant() switch
+        {
+            "CTRL" or "CONTROL" or "ALT" or "SHIFT" or "WIN" or "WINDOWS" or "META" => true,
+            _ => false
+        };
     }
 }

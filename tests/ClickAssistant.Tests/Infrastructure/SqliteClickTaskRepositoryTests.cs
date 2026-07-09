@@ -47,6 +47,17 @@ public sealed class SqliteClickTaskRepositoryTests
                     Assert.Equal("Enter", keyboardStep.KeyName);
                     Assert.Equal(3, keyboardStep.KeyPressCount);
                     Assert.Equal(80, keyboardStep.KeyIntervalMs);
+                },
+                shortcutStep =>
+                {
+                    Assert.Equal(InputActionType.KeyboardShortcut, shortcutStep.ActionType);
+                    Assert.Equal("Ctrl+Shift+Esc", shortcutStep.ShortcutKeys);
+                },
+                textStep =>
+                {
+                    Assert.Equal(InputActionType.TextInput, textStep.ActionType);
+                    Assert.Equal("Hello Click Assistant", textStep.TextContent);
+                    Assert.Equal(20, textStep.KeyIntervalMs);
                 });
 
             await repository.DeleteAsync(task.Id);
@@ -100,6 +111,29 @@ public sealed class SqliteClickTaskRepositoryTests
                     BeforeDelayMs = 30,
                     AfterDelayMs = 40,
                     Order = 1
+                },
+                new ClickStep
+                {
+                    Id = Guid.NewGuid(),
+                    TaskId = taskId,
+                    Name = "组合键步骤",
+                    ActionType = InputActionType.KeyboardShortcut,
+                    ShortcutKeys = "Ctrl+Shift+Esc",
+                    BeforeDelayMs = 50,
+                    AfterDelayMs = 60,
+                    Order = 2
+                },
+                new ClickStep
+                {
+                    Id = Guid.NewGuid(),
+                    TaskId = taskId,
+                    Name = "文本步骤",
+                    ActionType = InputActionType.TextInput,
+                    TextContent = "Hello Click Assistant",
+                    KeyIntervalMs = 20,
+                    BeforeDelayMs = 70,
+                    AfterDelayMs = 80,
+                    Order = 3
                 }
             ]
         };

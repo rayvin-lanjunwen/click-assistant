@@ -44,6 +44,8 @@ public sealed class MainWindowViewModel : ObservableObject
         SaveTaskCommand = new AsyncRelayCommand(() => RunSafelyAsync(() => SaveSelectedTaskAsync(true)), CanUseSelectedTask);
         AddStepCommand = new RelayCommand(() => AddStep(InputActionType.MouseClick), CanUseSelectedTask);
         AddKeyboardStepCommand = new RelayCommand(() => AddStep(InputActionType.KeyboardPress), CanUseSelectedTask);
+        AddShortcutStepCommand = new RelayCommand(() => AddStep(InputActionType.KeyboardShortcut), CanUseSelectedTask);
+        AddTextInputStepCommand = new RelayCommand(() => AddStep(InputActionType.TextInput), CanUseSelectedTask);
         RemoveStepCommand = new RelayCommand(RemoveStep, () => CanEdit() && SelectedStep is not null);
         CaptureCoordinateCommand = new RelayCommand(CaptureCoordinate, () => CanEdit() && SelectedStep is not null);
         StartCommand = new AsyncRelayCommand(() => RunSafelyAsync(StartAsync), CanStart);
@@ -74,7 +76,9 @@ public sealed class MainWindowViewModel : ObservableObject
     public IReadOnlyList<InputActionTypeOption> InputActionTypeOptions { get; } =
     [
         new InputActionTypeOption(InputActionType.MouseClick, "鼠标点击"),
-        new InputActionTypeOption(InputActionType.KeyboardPress, "键盘按键")
+        new InputActionTypeOption(InputActionType.KeyboardPress, "键盘按键"),
+        new InputActionTypeOption(InputActionType.KeyboardShortcut, "组合键"),
+        new InputActionTypeOption(InputActionType.TextInput, "文本输入")
     ];
 
     public AsyncRelayCommand CreateTaskCommand { get; }
@@ -88,6 +92,10 @@ public sealed class MainWindowViewModel : ObservableObject
     public RelayCommand AddStepCommand { get; }
 
     public RelayCommand AddKeyboardStepCommand { get; }
+
+    public RelayCommand AddShortcutStepCommand { get; }
+
+    public RelayCommand AddTextInputStepCommand { get; }
 
     public RelayCommand RemoveStepCommand { get; }
 
@@ -357,9 +365,7 @@ public sealed class MainWindowViewModel : ObservableObject
         var step = new ClickStep
         {
             TaskId = SelectedTask.Id,
-            Name = actionType == InputActionType.KeyboardPress
-                ? $"键盘步骤 {CurrentSteps.Count + 1}"
-                : $"鼠标步骤 {CurrentSteps.Count + 1}",
+            Name = CreateStepName(actionType, CurrentSteps.Count + 1),
             ActionType = actionType,
             Order = CurrentSteps.Count,
             AfterDelayMs = 500
@@ -396,7 +402,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
         if (SelectedStep.ActionType != InputActionType.MouseClick)
         {
-            AddRuntimeLog("当前步骤是键盘按键，不需要捕获鼠标坐标。");
+            AddRuntimeLog("当前步骤不是鼠标点击，不需要捕获鼠标坐标。");
             return;
         }
 
@@ -465,12 +471,14 @@ public sealed class MainWindowViewModel : ObservableObject
 
         var enabledSteps = SelectedTask.Steps.Count(step => step.Enabled);
         var mouseSteps = SelectedTask.Steps.Count(step => step.Enabled && step.ActionType == InputActionType.MouseClick);
-        var keyboardSteps = SelectedTask.Steps.Count(step => step.Enabled && step.ActionType == InputActionType.KeyboardPress);
+        var keySteps = SelectedTask.Steps.Count(step => step.Enabled && step.ActionType == InputActionType.KeyboardPress);
+        var shortcutSteps = SelectedTask.Steps.Count(step => step.Enabled && step.ActionType == InputActionType.KeyboardShortcut);
+        var textInputSteps = SelectedTask.Steps.Count(step => step.Enabled && step.ActionType == InputActionType.TextInput);
 
         var result = MessageBox.Show(
             $"即将执行任务“{SelectedTask.Name}”。\n\n" +
             $"重复次数：{SelectedTask.RepeatCount}\n" +
-            $"启用步骤：{enabledSteps} 个（鼠标 {mouseSteps} 个，键盘 {keyboardSteps} 个）\n" +
+            $"启用步骤：{enabledSteps} 个（鼠标 {mouseSteps} 个，按键 {keySteps} 个，组合键 {shortcutSteps} 个，文本 {textInputSteps} 个）\n" +
             $"开始延迟：{SelectedTask.StartDelayMs} 毫秒\n" +
             $"停止方式：点击停止按钮，或使用 {StopHotkeyInput}。\n\n" +
             "执行期间会产生真实鼠标点击或键盘输入，确认启动吗？",
@@ -604,6 +612,8 @@ public sealed class MainWindowViewModel : ObservableObject
         SaveTaskCommand.NotifyCanExecuteChanged();
         AddStepCommand.NotifyCanExecuteChanged();
         AddKeyboardStepCommand.NotifyCanExecuteChanged();
+        AddShortcutStepCommand.NotifyCanExecuteChanged();
+        AddTextInputStepCommand.NotifyCanExecuteChanged();
         RemoveStepCommand.NotifyCanExecuteChanged();
         CaptureCoordinateCommand.NotifyCanExecuteChanged();
         StartCommand.NotifyCanExecuteChanged();
@@ -693,6 +703,21 @@ public sealed class MainWindowViewModel : ObservableObject
             ExecutionStatus.Running => "任务正在执行，配置已锁定，可使用停止按钮或全局快捷键中止。",
             ExecutionStatus.Paused => "任务已暂停，配置仍被锁定，可继续或停止。",
             _ => "启动前请确认坐标、按键、重复次数和开始延迟。"
+        };
+    }
+
+    /// <summary>
+    /// 根据动作类型生成默认步骤名称。
+    /// </summary>
+    private static string CreateStepName(InputActionType actionType, int index)
+    {
+        return actionType switch
+        {
+            InputActionType.MouseClick => $"鼠标步骤 {index}",
+            InputActionType.KeyboardPress => $"按键步骤 {index}",
+            InputActionType.KeyboardShortcut => $"组合键步骤 {index}",
+            InputActionType.TextInput => $"文本步骤 {index}",
+            _ => $"输入步骤 {index}"
         };
     }
 }

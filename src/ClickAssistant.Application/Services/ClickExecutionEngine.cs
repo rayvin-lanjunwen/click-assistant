@@ -200,6 +200,15 @@ public sealed class ClickExecutionEngine : IClickExecutionEngine
                     step.KeyIntervalMs,
                     cancellationToken);
                 break;
+            case InputActionType.KeyboardShortcut:
+                await keyboardInputService.PressShortcutAsync(step.ShortcutKeys, cancellationToken);
+                break;
+            case InputActionType.TextInput:
+                await keyboardInputService.TypeTextAsync(
+                    step.TextContent,
+                    step.KeyIntervalMs,
+                    cancellationToken);
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(step), step.ActionType, "未知输入动作类型。");
         }

@@ -225,6 +225,12 @@
                             <Button Command="{Binding AddKeyboardStepCommand}"
                                     Content="添加键盘步骤"
                                     Style="{StaticResource SecondaryButtonStyle}" />
+                            <Button Command="{Binding AddShortcutStepCommand}"
+                                    Content="添加组合键"
+                                    Style="{StaticResource SecondaryButtonStyle}" />
+                            <Button Command="{Binding AddTextInputStepCommand}"
+                                    Content="添加文本"
+                                    Style="{StaticResource SecondaryButtonStyle}" />
                             <Button Command="{Binding CaptureCoordinateCommand}"
                                     Content="捕获坐标"
                                     Style="{StaticResource SecondaryButtonStyle}" />
@@ -284,6 +290,12 @@
                             <DataGridTextColumn Width="96"
                                                 Header="键间隔"
                                                 Binding="{Binding KeyIntervalMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Width="122"
+                                                Header="组合键"
+                                                Binding="{Binding ShortcutKeys, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Width="180"
+                                                Header="文本内容"
+                                                Binding="{Binding TextContent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <DataGridTextColumn Width="112"
                                                 Header="前等待"
                                                 Binding="{Binding BeforeDelayMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />

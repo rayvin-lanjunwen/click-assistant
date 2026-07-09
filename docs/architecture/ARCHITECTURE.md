@@ -57,7 +57,7 @@ SQLite 用于存储任务、步骤、设置和执行日志。
 首版需要使用 Windows API 实现以下能力：
 
 - 鼠标点击执行。
-- 键盘按键执行。
+- 键盘按键、组合键和文本输入执行。
 - 当前鼠标坐标读取。
 - 全局快捷键注册。
 - 窗口置顶或运行状态提示。
@@ -99,14 +99,14 @@ SQLite 用于存储任务、步骤、设置和执行日志。
 职责：
 
 - 新增、编辑、删除、排序输入步骤。
-- 管理动作类型、坐标、点击类型、键盘按键、连按次数、等待时间和启用状态。
+- 管理动作类型、坐标、点击类型、键盘按键、组合键、文本内容、连按次数、等待时间和启用状态。
 - 校验步骤参数是否完整。
 
 ### 4.3 执行引擎模块
 
 职责：
 
-- 按任务配置执行鼠标点击步骤和键盘按键步骤。
+- 按任务配置执行鼠标点击步骤、键盘按键步骤、组合键步骤和文本输入步骤。
 - 处理启动、暂停、继续、停止状态。
 - 保证立即停止优先级最高。
 - 记录执行结果。
@@ -148,7 +148,7 @@ SQLite 用于存储任务、步骤、设置和执行日志。
 首版数据库建议包含以下表：
 
 - `tasks`：点击任务。
-- `task_steps`：输入步骤，包含鼠标点击和键盘按键配置。
+- `task_steps`：输入步骤，包含鼠标点击、键盘按键、组合键和文本输入配置。
 - `execution_logs`：执行日志。
 - `app_settings`：应用设置。
 - `schema_migrations`：数据库版本迁移记录。
@@ -229,6 +229,8 @@ public interface ICursorPositionService
 public interface IKeyboardInputService
 {
     Task PressKeyAsync(string keyName, int pressCount, int intervalMs, CancellationToken cancellationToken);
+    Task PressShortcutAsync(string shortcutKeys, CancellationToken cancellationToken);
+    Task TypeTextAsync(string text, int intervalMs, CancellationToken cancellationToken);
 }
 ```
 

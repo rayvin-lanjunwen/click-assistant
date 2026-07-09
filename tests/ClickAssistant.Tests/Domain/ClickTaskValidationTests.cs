@@ -55,6 +55,45 @@ public sealed class ClickTaskValidationTests
     }
 
     [Fact]
+    public void Validate_WhenShortcutIsMissingMainKey_ThrowsDomainValidationException()
+    {
+        var step = new ClickStep
+        {
+            Name = "组合键步骤",
+            ActionType = InputActionType.KeyboardShortcut,
+            ShortcutKeys = "Ctrl"
+        };
+
+        Assert.Throws<DomainValidationException>(step.Validate);
+    }
+
+    [Fact]
+    public void Validate_WhenShortcutEndsWithModifier_ThrowsDomainValidationException()
+    {
+        var step = new ClickStep
+        {
+            Name = "组合键步骤",
+            ActionType = InputActionType.KeyboardShortcut,
+            ShortcutKeys = "Ctrl+Shift"
+        };
+
+        Assert.Throws<DomainValidationException>(step.Validate);
+    }
+
+    [Fact]
+    public void Validate_WhenTextInputIsEmpty_ThrowsDomainValidationException()
+    {
+        var step = new ClickStep
+        {
+            Name = "文本步骤",
+            ActionType = InputActionType.TextInput,
+            TextContent = string.Empty
+        };
+
+        Assert.Throws<DomainValidationException>(step.Validate);
+    }
+
+    [Fact]
     public void ValidateForExecution_WhenTaskIsRunnable_DoesNotThrow()
     {
         var task = new ClickTask

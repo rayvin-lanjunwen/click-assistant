@@ -193,11 +193,13 @@ public sealed class SqliteClickTaskRepository : IClickTaskRepository
         command.CommandText = """
             INSERT INTO task_steps (
                 id, task_id, name, enabled, action_type, x, y, click_type,
-                key_name, key_press_count, key_interval_ms, before_delay_ms, after_delay_ms, step_order
+                key_name, key_press_count, key_interval_ms, shortcut_keys, text_content,
+                before_delay_ms, after_delay_ms, step_order
             )
             VALUES (
                 $id, $taskId, $name, $enabled, $actionType, $x, $y, $clickType,
-                $keyName, $keyPressCount, $keyIntervalMs, $beforeDelayMs, $afterDelayMs, $order
+                $keyName, $keyPressCount, $keyIntervalMs, $shortcutKeys, $textContent,
+                $beforeDelayMs, $afterDelayMs, $order
             );
             """;
 
@@ -212,6 +214,8 @@ public sealed class SqliteClickTaskRepository : IClickTaskRepository
         command.Parameters.AddWithValue("$keyName", step.KeyName);
         command.Parameters.AddWithValue("$keyPressCount", step.KeyPressCount);
         command.Parameters.AddWithValue("$keyIntervalMs", step.KeyIntervalMs);
+        command.Parameters.AddWithValue("$shortcutKeys", step.ShortcutKeys);
+        command.Parameters.AddWithValue("$textContent", step.TextContent);
         command.Parameters.AddWithValue("$beforeDelayMs", step.BeforeDelayMs);
         command.Parameters.AddWithValue("$afterDelayMs", step.AfterDelayMs);
         command.Parameters.AddWithValue("$order", step.Order);
@@ -232,7 +236,8 @@ public sealed class SqliteClickTaskRepository : IClickTaskRepository
         command.CommandText = """
             SELECT
                 id, task_id, name, enabled, action_type, x, y, click_type,
-                key_name, key_press_count, key_interval_ms, before_delay_ms, after_delay_ms, step_order
+                key_name, key_press_count, key_interval_ms, shortcut_keys, text_content,
+                before_delay_ms, after_delay_ms, step_order
             FROM task_steps
             WHERE task_id = $taskId
             ORDER BY step_order ASC;
@@ -256,9 +261,11 @@ public sealed class SqliteClickTaskRepository : IClickTaskRepository
                 KeyName = reader.GetString(8),
                 KeyPressCount = reader.GetInt32(9),
                 KeyIntervalMs = reader.GetInt32(10),
-                BeforeDelayMs = reader.GetInt32(11),
-                AfterDelayMs = reader.GetInt32(12),
-                Order = reader.GetInt32(13)
+                ShortcutKeys = reader.GetString(11),
+                TextContent = reader.GetString(12),
+                BeforeDelayMs = reader.GetInt32(13),
+                AfterDelayMs = reader.GetInt32(14),
+                Order = reader.GetInt32(15)
             });
         }
 

@@ -62,6 +62,56 @@ public sealed class ClickExecutionEngineTests
         Assert.Equal(ExecutionStatus.Stopped, log.Status);
     }
 
+    [Fact]
+    public async Task StartAsync_WhenTaskContainsKeyboardActions_ShouldDispatchAllKeyboardActionTypes()
+    {
+        var task = new ClickTask
+        {
+            Id = Guid.NewGuid(),
+            Name = "键盘动作测试任务",
+            RepeatCount = 1,
+            StartDelayMs = 0,
+            Steps =
+            [
+                new ClickStep
+                {
+                    Name = "单键步骤",
+                    ActionType = InputActionType.KeyboardPress,
+                    KeyName = "Enter",
+                    KeyPressCount = 2,
+                    KeyIntervalMs = 0,
+                    Order = 0
+                },
+                new ClickStep
+                {
+                    Name = "组合键步骤",
+                    ActionType = InputActionType.KeyboardShortcut,
+                    ShortcutKeys = "Ctrl+C",
+                    Order = 1
+                },
+                new ClickStep
+                {
+                    Name = "文本步骤",
+                    ActionType = InputActionType.TextInput,
+                    TextContent = "Hello",
+                    KeyIntervalMs = 0,
+                    Order = 2
+                }
+            ]
+        };
+
+        var keyboardInputService = new RecordingKeyboardInputService();
+        var engine = new ClickExecutionEngine(
+            new InMemoryClickTaskRepository(task),
+            new InMemoryExecutionLogRepository(),
+            new NoopMouseClickService(),
+            keyboardInputService);
+
+        await engine.StartAsync(task.Id);
+
+        Assert.Equal(["Key:Enter:2:0", "Shortcut:Ctrl+C", "Text:Hello:0"], keyboardInputService.Actions);
+    }
+
     private sealed class InMemoryClickTaskRepository : IClickTaskRepository
     {
         private readonly Dictionary<Guid, ClickTask> tasks;
@@ -126,6 +176,17 @@ public sealed class ClickExecutionEngineTests
         }
     }
 
+    private sealed class NoopMouseClickService : IMouseClickService
+    {
+        public Task ClickAsync(
+            ScreenPoint point,
+            ClickType clickType,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
     private sealed class NoopKeyboardInputService : IKeyboardInputService
     {
         public Task PressKeyAsync(
@@ -134,6 +195,53 @@ public sealed class ClickExecutionEngineTests
             int intervalMs,
             CancellationToken cancellationToken = default)
         {
+            return Task.CompletedTask;
+        }
+
+        public Task PressShortcutAsync(
+            string shortcutKeys,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task TypeTextAsync(
+            string text,
+            int intervalMs,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class RecordingKeyboardInputService : IKeyboardInputService
+    {
+        public List<string> Actions { get; } = [];
+
+        public Task PressKeyAsync(
+            string keyName,
+            int pressCount,
+            int intervalMs,
+            CancellationToken cancellationToken = default)
+        {
+            Actions.Add($"Key:{keyName}:{pressCount}:{intervalMs}");
+            return Task.CompletedTask;
+        }
+
+        public Task PressShortcutAsync(
+            string shortcutKeys,
+            CancellationToken cancellationToken = default)
+        {
+            Actions.Add($"Shortcut:{shortcutKeys}");
+            return Task.CompletedTask;
+        }
+
+        public Task TypeTextAsync(
+            string text,
+            int intervalMs,
+            CancellationToken cancellationToken = default)
+        {
+            Actions.Add($"Text:{text}:{intervalMs}");
             return Task.CompletedTask;
         }
     }

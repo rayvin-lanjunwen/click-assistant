@@ -34,7 +34,7 @@
 
 ### 1.2 输入步骤
 
-`ClickStep` 表示一次输入动作，可以是鼠标点击，也可以是键盘按键。
+`ClickStep` 表示一次输入动作，可以是鼠标点击、键盘按键、组合键或文本输入。
 
 字段建议：
 
@@ -49,6 +49,8 @@
 - `KeyName`：键盘按键名称。
 - `KeyPressCount`：键盘连按次数。
 - `KeyIntervalMs`：键盘连按间隔。
+- `ShortcutKeys`：组合键内容。
+- `TextContent`：文本输入内容。
 - `BeforeDelayMs`：执行前等待毫秒数。
 - `AfterDelayMs`：执行后间隔毫秒数。
 - `Order`：执行顺序。
@@ -57,6 +59,8 @@
 
 - 鼠标点击步骤的坐标必须为有效整数。
 - 键盘按键步骤必须填写按键名称，连按次数必须大于或等于 1。
+- 组合键步骤必须填写组合键内容，至少包含一个修饰键和一个主按键。
+- 文本输入步骤必须填写文本内容。
 - `BeforeDelayMs` 和 `AfterDelayMs` 不能小于 0。
 - 同一任务下的 `Order` 应保持唯一。
 
@@ -92,7 +96,9 @@ public enum ClickType
 public enum InputActionType
 {
     MouseClick,
-    KeyboardPress
+    KeyboardPress,
+    KeyboardShortcut,
+    TextInput
 }
 ```
 
@@ -142,7 +148,7 @@ Running -> Failed -> Idle
 6. 按步骤顺序执行启用步骤。
 7. 每一步执行前检查停止请求。
 8. 每一步执行前处理暂停状态。
-9. 根据动作类型执行鼠标点击或键盘按键。
+9. 根据动作类型执行鼠标点击、键盘按键、组合键或文本输入。
 10. 写入步骤执行状态。
 11. 任务完成后写入完成日志。
 
@@ -163,6 +169,8 @@ Running -> Failed -> Idle
 - 根据点击类型执行单击、双击或右键单击。
 - 将键盘按键名称解析为 Windows 虚拟键码。
 - 按配置次数执行键盘按下和抬起，多次连按之间按配置间隔等待。
+- 将组合键解析为修饰键和主按键，并按顺序按下和释放。
+- 使用 Unicode 输入事件发送文本内容，避免受键盘布局影响。
 - 输入执行前后均应短暂检查停止状态。
 - 输入执行失败时，应停止任务并记录失败原因。
 
@@ -226,6 +234,8 @@ Running -> Failed -> Idle
 | `key_name` | TEXT | 键盘按键名称 |
 | `key_press_count` | INTEGER | 键盘连按次数 |
 | `key_interval_ms` | INTEGER | 键盘连按间隔 |
+| `shortcut_keys` | TEXT | 组合键内容 |
+| `text_content` | TEXT | 文本输入内容 |
 | `before_delay_ms` | INTEGER | 执行前等待 |
 | `after_delay_ms` | INTEGER | 执行后间隔 |
 | `step_order` | INTEGER | 执行顺序 |
@@ -272,7 +282,7 @@ Running -> Failed -> Idle
 
 职责：
 
-- 编辑步骤名称、动作类型、坐标、点击类型、键盘按键、连按次数和间隔。
+- 编辑步骤名称、动作类型、坐标、点击类型、键盘按键、组合键、文本内容、连按次数和间隔。
 - 调用坐标采集服务。
 - 校验步骤表单。
 

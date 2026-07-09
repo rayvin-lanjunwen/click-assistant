@@ -67,6 +67,8 @@ public sealed class DatabaseInitializer
                 key_name TEXT NOT NULL DEFAULT 'A',
                 key_press_count INTEGER NOT NULL DEFAULT 1,
                 key_interval_ms INTEGER NOT NULL DEFAULT 100,
+                shortcut_keys TEXT NOT NULL DEFAULT 'Ctrl+C',
+                text_content TEXT NOT NULL DEFAULT '',
                 before_delay_ms INTEGER NOT NULL,
                 after_delay_ms INTEGER NOT NULL,
                 step_order INTEGER NOT NULL,
@@ -112,7 +114,9 @@ public sealed class DatabaseInitializer
             ["action_type"] = "ALTER TABLE task_steps ADD COLUMN action_type TEXT NOT NULL DEFAULT 'MouseClick';",
             ["key_name"] = "ALTER TABLE task_steps ADD COLUMN key_name TEXT NOT NULL DEFAULT 'A';",
             ["key_press_count"] = "ALTER TABLE task_steps ADD COLUMN key_press_count INTEGER NOT NULL DEFAULT 1;",
-            ["key_interval_ms"] = "ALTER TABLE task_steps ADD COLUMN key_interval_ms INTEGER NOT NULL DEFAULT 100;"
+            ["key_interval_ms"] = "ALTER TABLE task_steps ADD COLUMN key_interval_ms INTEGER NOT NULL DEFAULT 100;",
+            ["shortcut_keys"] = "ALTER TABLE task_steps ADD COLUMN shortcut_keys TEXT NOT NULL DEFAULT 'Ctrl+C';",
+            ["text_content"] = "ALTER TABLE task_steps ADD COLUMN text_content TEXT NOT NULL DEFAULT '';"
         };
 
         foreach (var (columnName, alterSql) in requiredColumns)
