@@ -2,6 +2,11 @@
 
 本文档用于记录项目中值得追踪的版本、功能、修复和重要变更，并与 GitHub Releases（GitHub 发布页面）保持同步。
 
+## v0.6.2 - 2026-07-09 17:53
+
+- docs: 新增 `docs/planning/MOBILE_EXTENSION_PLAN.md`，记录移动端 Android-first 路线、iOS 边界、Android 原型范围、工程结构建议和安全合规要求。
+- docs: 更新 `README.md`、需求规格和编码实施计划，将下一阶段调整为 Windows 发布完善与 Android 移动端可行性原型双线推进。
+
 ## v0.6.1 - 2026-07-09 13:26
 
 - 新增: 添加 `tools/publish-windows.ps1` 发布脚本，支持生成 Windows `win-x64` 发布目录和可执行程序。

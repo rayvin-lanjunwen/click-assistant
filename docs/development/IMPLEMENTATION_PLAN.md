@@ -3,7 +3,7 @@
 文档版本：v0.2.0
 最后更新：2026-07-09
 维护人：项目负责人
-当前状态：首版实现已完成，已支持鼠标点击、键盘连按、组合键、文本输入、执行前安全确认、快捷键自定义、核心自动化测试、基础 CI 和 Windows 发布目录生成，待补安装包和 GitHub Releases
+当前状态：首版实现已完成，已支持鼠标点击、键盘连按、组合键、文本输入、执行前安全确认、快捷键自定义、核心自动化测试、基础 CI 和 Windows 发布目录生成；已补充移动端延伸规划，待补安装包、GitHub Releases 和 Android 可行性原型
 
 本文档用于记录 Click Assistant 从设计阶段进入编码与实现阶段的实施计划。编码阶段应以“先骨架、再核心、后界面、最后接系统能力”为原则，保证每一步都能验证、能回退、能扩展。
 
@@ -42,8 +42,9 @@
 - 已创建 `tests/ClickAssistant.Tests/` 自动化测试工程，覆盖领域模型校验、执行引擎启动/暂停/继续/停止状态流转、组合键/文本输入分发，以及 SQLite 仓储保存、读取和删除。
 - 已建立 `.github/workflows/ci.yml` 基础 CI，覆盖 `dotnet restore`、`dotnet build` 和 `dotnet test`。
 - 已建立 `tools/publish-windows.ps1` 发布脚本，可以生成 Windows `win-x64` 发布目录。
+- 已建立 `docs/planning/MOBILE_EXTENSION_PLAN.md` 移动端延伸规划，明确 Android-first 路线、iOS 边界和原型验收标准。
 - 已完成 `dotnet build` 验证，当前构建结果为 `0` 个警告、`0` 个错误。
-- 未完成 Windows 安装包、GitHub Releases、更完整的异常提示和 UI 自动化测试。
+- 未完成 Windows 安装包、GitHub Releases、Android 可行性原型、更完整的异常提示和 UI 自动化测试。
 
 ## 3. 前置准备
 
@@ -337,9 +338,11 @@ UI 自动化测试可后置，首版先保证核心逻辑可测。
 
 ## 9. 下一步行动
 
-下一步建议在首版可运行工程基础上继续补齐安装包、发布自动化和异常处理：
+下一步建议在首版可运行工程基础上双线推进 Windows 发布完善和 Android-first 移动端可行性原型：
 
 1. 准备 Windows 安装包流程。
 2. 增加 GitHub Releases 发布流程。
-3. 增加更完整的异常提示和快捷键注册失败降级测试。
-4. 逐步补充 UI 自动化测试。
+3. 补充 Android 端需求草案和低保真原型。
+4. 新建 `mobile/android/` 原型工程，优先验证辅助功能授权、固定坐标点击、停止入口和本地任务保存。
+5. 增加更完整的异常提示和快捷键注册失败降级测试。
+6. 逐步补充 UI 自动化测试。
