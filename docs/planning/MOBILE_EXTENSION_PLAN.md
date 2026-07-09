@@ -14,6 +14,7 @@
 - iOS/iPadOS 暂不承诺跨应用自动点击能力，仅作为后续调研方向。
 - 桌面端现有领域模型可以作为任务、步骤、执行日志和设置模型的参考，但 Windows 输入执行器不能直接复用到移动端。
 - 移动端首版不追求与 Windows 功能完全一致，优先验证核心闭环：创建任务、配置步骤、授权辅助功能、执行任务、停止任务、记录结果。
+- 当前已补充 Android 端需求草案、低保真原型和 `mobile/android/` 轻量原型工程。
 
 ## 2. 平台边界
 
@@ -71,6 +72,8 @@ Android 首版建议定义为“手机端重复操作助手”，而不是 Windo
 - Room 或 SQLite 保存任务、步骤和执行日志。
 - AccessibilityService 承担点击、滑动和基础文本相关动作执行。
 - Foreground Service（前台服务）用于展示运行状态和停止入口。
+
+当前仓库中的 `mobile/android/` 第一版工程为了降低原型验证成本，暂时采用 Java、Android framework View 和 `SharedPreferences`，只验证辅助功能授权、固定坐标点击、停止入口和本地任务保存。待该链路在真机验证通过后，再迁移到 Kotlin、Jetpack Compose 和 Room。
 
 选择原生 Android 的原因：
 
@@ -177,6 +180,8 @@ schemas/
 6. 补充执行前确认和执行日志。
 7. 在 2 到 3 台 Android 真机上做兼容性验证。
 8. 根据验证结果决定是否继续产品化、是否加入任务导入导出和跨端共享格式。
+
+当前进度：第 1 到第 4 步已完成源码层面的初版实现；由于当前机器未安装 Android SDK、Gradle、ADB 或 Android Studio，仍待安装工具链后生成 APK 并进行真机验证。
 
 ## 10. 参考资料
 

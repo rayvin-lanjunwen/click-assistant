@@ -3,7 +3,7 @@
 文档版本：v0.2.0
 最后更新：2026-07-09
 维护人：项目负责人
-当前状态：首版实现已完成，已支持鼠标点击、键盘连按、组合键、文本输入、执行前安全确认、快捷键自定义、核心自动化测试、基础 CI 和 Windows 发布目录生成；已补充移动端延伸规划，待补安装包、GitHub Releases 和 Android 可行性原型
+当前状态：首版实现已完成，已支持鼠标点击、键盘连按、组合键、文本输入、执行前安全确认、快捷键自定义、核心自动化测试、基础 CI 和 Windows 发布目录生成；已补充 Android 端需求草案、低保真原型和 `mobile/android/` 可行性原型工程，待补安装包、GitHub Releases 和 Android 真机构建验证
 
 本文档用于记录 Click Assistant 从设计阶段进入编码与实现阶段的实施计划。编码阶段应以“先骨架、再核心、后界面、最后接系统能力”为原则，保证每一步都能验证、能回退、能扩展。
 
@@ -43,8 +43,10 @@
 - 已建立 `.github/workflows/ci.yml` 基础 CI，覆盖 `dotnet restore`、`dotnet build` 和 `dotnet test`。
 - 已建立 `tools/publish-windows.ps1` 发布脚本，可以生成 Windows `win-x64` 发布目录。
 - 已建立 `docs/planning/MOBILE_EXTENSION_PLAN.md` 移动端延伸规划，明确 Android-first 路线、iOS 边界和原型验收标准。
+- 已建立 `docs/planning/ANDROID_REQUIREMENTS.md` 和 `docs/planning/ANDROID_PROTOTYPE.md`，记录 Android 原型需求和低保真页面流程。
+- 已创建 `mobile/android/` 轻量 Android 原型工程，源码层面覆盖辅助功能授权入口、固定坐标点击、停止入口和 `SharedPreferences` 本地任务保存。
 - 已完成 `dotnet build` 验证，当前构建结果为 `0` 个警告、`0` 个错误。
-- 未完成 Windows 安装包、GitHub Releases、Android 可行性原型、更完整的异常提示和 UI 自动化测试。
+- 未完成 Windows 安装包、GitHub Releases、Android APK 构建与真机验证、更完整的异常提示和 UI 自动化测试。
 
 ## 3. 前置准备
 
@@ -336,13 +338,27 @@ UI 自动化测试可后置，首版先保证核心逻辑可测。
 - 允许用户通过界面按钮继续操作。
 - 后续扩展快捷键自定义。
 
+### 8.4 Android 工具链缺失
+
+风险：当前机器未检测到 Android SDK、Gradle、ADB 或 Android Studio，暂时无法生成 Android APK 或执行真机验证。
+
+应对：
+
+- 安装 Android Studio，并通过 SDK Manager 安装目标 Android SDK。
+- 安装或使用 Android Studio 附带的 JDK。
+- 安装 Gradle，或在工具链就绪后生成 Gradle Wrapper。
+- 工具链就绪后，在 `mobile/android/` 中执行 `gradle :app:assembleDebug`；生成 Gradle Wrapper 后可改用 `.\gradlew.bat :app:assembleDebug`。
+- 使用 Android 真机完成辅助功能授权、固定坐标点击、停止入口和本地保存验证。
+
 ## 9. 下一步行动
 
 下一步建议在首版可运行工程基础上双线推进 Windows 发布完善和 Android-first 移动端可行性原型：
 
 1. 准备 Windows 安装包流程。
 2. 增加 GitHub Releases 发布流程。
-3. 补充 Android 端需求草案和低保真原型。
-4. 新建 `mobile/android/` 原型工程，优先验证辅助功能授权、固定坐标点击、停止入口和本地任务保存。
-5. 增加更完整的异常提示和快捷键注册失败降级测试。
-6. 逐步补充 UI 自动化测试。
+3. 安装 Android SDK、Gradle、ADB 或 Android Studio。
+4. 对 `mobile/android/` 生成 debug APK。
+5. 在 Android 真机上验证辅助功能授权、固定坐标点击、停止入口和本地任务保存。
+6. 根据真机结果决定是否将 Android 原型迁移到 Kotlin、Jetpack Compose 和 Room。
+7. 增加更完整的异常提示和快捷键注册失败降级测试。
+8. 逐步补充 UI 自动化测试。

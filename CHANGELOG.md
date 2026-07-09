@@ -2,6 +2,14 @@
 
 本文档用于记录项目中值得追踪的版本、功能、修复和重要变更，并与 GitHub Releases（GitHub 发布页面）保持同步。
 
+## v0.7.0 - 2026-07-09 18:01
+
+- 新增: 创建 `mobile/android/` Android 可行性原型工程，源码层面覆盖辅助功能授权入口、固定坐标点击、停止入口和本地任务保存。
+- 新增: 补充 `docs/planning/ANDROID_REQUIREMENTS.md`，记录 Android 原型目标、功能需求、安全边界和验收标准。
+- 新增: 补充 `docs/planning/ANDROID_PROTOTYPE.md`，记录 Android 首屏、授权引导、任务保存、执行、停止和最近状态的低保真流程。
+- 变更: 扩展 `.gitignore`，忽略 Android 本地构建缓存、SDK 路径配置和安装包产物。
+- docs: 更新 `README.md`、移动端延伸规划和编码实施计划，记录 Android 原型工程、当前工具链缺口和后续真机验证步骤。
+
 ## v0.6.2 - 2026-07-09 17:53
 
 - docs: 新增 `docs/planning/MOBILE_EXTENSION_PLAN.md`，记录移动端 Android-first 路线、iOS 边界、Android 原型范围、工程结构建议和安全合规要求。
