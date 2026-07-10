@@ -13,6 +13,8 @@ public interface IClickExecutionEngine
 
     event EventHandler<string>? LogReceived;
 
+    event EventHandler<MouseClickVisualEventArgs>? MouseClickVisualRequested;
+
     Task StartAsync(Guid taskId, CancellationToken cancellationToken = default);
 
     Task PauseAsync();

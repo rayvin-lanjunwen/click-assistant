@@ -3,6 +3,7 @@ package com.clickassistant.mobile;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.InputType;
@@ -36,6 +37,7 @@ public final class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        loadSavedTask();
         refreshStatus();
     }
 
@@ -61,11 +63,21 @@ public final class MainActivity extends Activity {
 
         addSectionTitle(root, "任务配置");
         taskNameInput = addTextInput(root, "任务名称", InputType.TYPE_CLASS_TEXT);
-        xInput = addTextInput(root, "点击坐标 X", InputType.TYPE_CLASS_NUMBER);
-        yInput = addTextInput(root, "点击坐标 Y", InputType.TYPE_CLASS_NUMBER);
-        repeatCountInput = addTextInput(root, "重复次数", InputType.TYPE_CLASS_NUMBER);
-        startDelayInput = addTextInput(root, "开始延迟 ms", InputType.TYPE_CLASS_NUMBER);
-        intervalInput = addTextInput(root, "点击间隔 ms", InputType.TYPE_CLASS_NUMBER);
+        addHelperText(root, "先用点选位置抓取坐标，再按需微调数字。坐标以屏幕左上角为 (0,0)。");
+
+        Button pickPositionButton = new Button(this);
+        pickPositionButton.setText("点选点击位置");
+        pickPositionButton.setOnClickListener(view -> pickClickPosition());
+        root.addView(pickPositionButton);
+
+        xInput = addTextInput(root, "X 坐标，向右增大", InputType.TYPE_CLASS_NUMBER);
+        yInput = addTextInput(root, "Y 坐标，向下增大", InputType.TYPE_CLASS_NUMBER);
+        addHelperText(root, "例如 X=500、Y=900 表示从屏幕左上角向右 500、向下 900 的位置。");
+
+        repeatCountInput = addTextInput(root, "点击次数，例如 3", InputType.TYPE_CLASS_NUMBER);
+        startDelayInput = addTextInput(root, "开始延迟，毫秒，1000=1秒", InputType.TYPE_CLASS_NUMBER);
+        intervalInput = addTextInput(root, "点击间隔，毫秒，800=0.8秒", InputType.TYPE_CLASS_NUMBER);
+        addHelperText(root, "开始延迟用于切到目标界面；点击间隔用于控制连续点击速度。");
 
         Button saveButton = new Button(this);
         saveButton.setText("保存任务");
@@ -107,6 +119,15 @@ public final class MainActivity extends Activity {
         title.setTextSize(18);
         title.setPadding(0, 28, 0, 8);
         root.addView(title);
+    }
+
+    private void addHelperText(LinearLayout root, String text) {
+        TextView helper = new TextView(this);
+        helper.setText(text);
+        helper.setTextColor(Color.DKGRAY);
+        helper.setTextSize(14);
+        helper.setPadding(0, 0, 0, 12);
+        root.addView(helper);
     }
 
     private EditText addTextInput(LinearLayout root, String hint, int inputType) {
@@ -163,6 +184,33 @@ public final class MainActivity extends Activity {
         refreshStatus();
     }
 
+    private void pickClickPosition() {
+        if (!isAccessibilityEnabled()) {
+            PrototypeTaskStore.saveLastStatus(this, "取点失败：辅助功能服务未启用");
+            refreshStatus();
+            Toast.makeText(this, "请先开启辅助功能服务，再点选位置", Toast.LENGTH_LONG).show();
+            openAccessibilitySettings();
+            return;
+        }
+
+        PrototypeTask task = buildTaskForCoordinatePicker();
+        if (task == null) {
+            return;
+        }
+
+        PrototypeTaskStore.saveTask(this, task);
+        if (!ClickAssistantAccessibilityService.startCoordinatePick(5000)) {
+            PrototypeTaskStore.saveLastStatus(this, "取点失败：辅助功能服务未连接");
+            refreshStatus();
+            Toast.makeText(this, "辅助功能服务尚未连接，请返回设置确认已启用", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        refreshStatus();
+        Toast.makeText(this, "5 秒内切到目标界面，出现取点层后点一下目标位置", Toast.LENGTH_LONG).show();
+        moveTaskToBack(true);
+    }
+
     private void stopTask() {
         ClickAssistantAccessibilityService.requestStop();
         PrototypeTaskStore.saveLastStatus(this, ExecutionState.STOPPED.getDisplayName());
@@ -199,10 +247,52 @@ public final class MainActivity extends Activity {
         }
     }
 
+    private PrototypeTask buildTaskForCoordinatePicker() {
+        PrototypeTask current = PrototypeTaskStore.loadTask(this);
+        try {
+            String name = taskNameInput.getText().toString().trim();
+            if (name.isEmpty()) {
+                name = current.getName();
+            }
+
+            PrototypeTask task = new PrototypeTask(
+                name,
+                parseOptionalInt(xInput, current.getX(), "点击坐标 X"),
+                parseOptionalInt(yInput, current.getY(), "点击坐标 Y"),
+                parseOptionalInt(repeatCountInput, current.getRepeatCount(), "重复次数"),
+                parseOptionalInt(startDelayInput, current.getStartDelayMs(), "开始延迟"),
+                parseOptionalInt(intervalInput, current.getIntervalMs(), "点击间隔"));
+
+            if (!task.isValid()) {
+                throw new IllegalArgumentException("任务参数无效");
+            }
+
+            return task;
+        } catch (IllegalArgumentException ex) {
+            PrototypeTaskStore.saveLastStatus(this, "取点失败：" + ex.getMessage());
+            refreshStatus();
+            Toast.makeText(this, ex.getMessage(), Toast.LENGTH_LONG).show();
+            return null;
+        }
+    }
+
     private int parseInt(EditText input, String fieldName) {
         String value = input.getText().toString().trim();
         if (value.isEmpty()) {
             throw new IllegalArgumentException(String.format(Locale.ROOT, "%s 不能为空", fieldName));
+        }
+
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException(String.format(Locale.ROOT, "%s 必须是数字", fieldName), ex);
+        }
+    }
+
+    private int parseOptionalInt(EditText input, int defaultValue, String fieldName) {
+        String value = input.getText().toString().trim();
+        if (value.isEmpty()) {
+            return defaultValue;
         }
 
         try {

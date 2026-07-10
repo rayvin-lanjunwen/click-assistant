@@ -5,6 +5,7 @@ using ClickAssistant.Application.Abstractions;
 using ClickAssistant.Application.Services;
 using ClickAssistant.Domain.Entities;
 using ClickAssistant.Domain.Enums;
+using ClickAssistant.Domain.ValueObjects;
 
 namespace ClickAssistant.App.ViewModels;
 
@@ -15,29 +16,57 @@ public sealed class MainWindowViewModel : ObservableObject
 {
     private readonly ClickTaskService taskService;
     private readonly IClickExecutionEngine executionEngine;
-    private readonly ICursorPositionService cursorPositionService;
+    private readonly IMouseClickService mouseClickService;
     private readonly IExecutionLogRepository executionLogRepository;
     private ClickTask? selectedTask;
     private ClickStep? selectedStep;
     private ObservableCollection<ClickStep> currentSteps = [];
     private string statusText = "空闲";
     private string hotkeyStatus = "全局停止快捷键未注册";
+    private string keyboardCaptureStatus = "点击按键框后，按下键盘上的一个键。";
+    private string coordinateCaptureStatus = "点击“选择坐标”后移动鼠标，左键确认位置，Esc 取消。";
     private string stopHotkeyInput = "Ctrl + Alt + S";
     private string executionSafetyText = "启动前请确认坐标、按键、重复次数和开始延迟。";
     private bool isTaskEditorEnabled = true;
+    private int taskLibrarySelectedTabIndex;
+    private Visibility homePageVisibility = Visibility.Visible;
+    private Visibility newTaskTypePageVisibility = Visibility.Collapsed;
+    private Visibility taskLibraryPageVisibility = Visibility.Collapsed;
+    private Visibility executionLogsPageVisibility = Visibility.Collapsed;
+    private Visibility mouseClickEditorPageVisibility = Visibility.Collapsed;
+    private Visibility floatingWindowVisibility = Visibility.Collapsed;
+    private Visibility floatingExpandedVisibility = Visibility.Collapsed;
+    private Visibility floatingCollapsedVisibility = Visibility.Visible;
+    private bool isFloatingWindowExpanded;
+    private bool isCoordinateCapturePending;
     private bool isBusy;
 
     public MainWindowViewModel(
         ClickTaskService taskService,
         IClickExecutionEngine executionEngine,
-        ICursorPositionService cursorPositionService,
+        IMouseClickService mouseClickService,
         IExecutionLogRepository executionLogRepository)
     {
         this.taskService = taskService;
         this.executionEngine = executionEngine;
-        this.cursorPositionService = cursorPositionService;
+        this.mouseClickService = mouseClickService;
         this.executionLogRepository = executionLogRepository;
 
+        ShowHomeCommand = new RelayCommand(ShowHome);
+        ShowNewTaskTypeCommand = new RelayCommand(ShowNewTaskType);
+        ShowTaskLibraryCommand = new RelayCommand(ShowTaskLibrary);
+        ShowExecutionLogsCommand = new AsyncRelayCommand(() => RunSafelyAsync(ShowExecutionLogsAsync));
+        ShowMouseClickEditorCommand = new RelayCommand(ShowMouseClickEditor, CanOpenMouseClickEditor);
+        CreateMouseClickTaskCommand = new AsyncRelayCommand(() => RunSafelyAsync(CreateMouseClickTaskAsync), CanEdit);
+        CreateKeyboardTaskCommand = new AsyncRelayCommand(
+            () => RunSafelyAsync(() => CreateTypedTaskAsync(InputActionType.KeyboardPress)),
+            CanEdit);
+        CreateTextInputTaskCommand = new AsyncRelayCommand(
+            () => RunSafelyAsync(() => CreateTypedTaskAsync(InputActionType.TextInput)),
+            CanEdit);
+        CreateComboTaskCommand = new AsyncRelayCommand(
+            () => RunSafelyAsync(() => CreateTypedTaskAsync(InputActionType.MouseClick, InputActionType.KeyboardPress)),
+            CanEdit);
         CreateTaskCommand = new AsyncRelayCommand(() => RunSafelyAsync(CreateTaskAsync), CanEdit);
         DuplicateTaskCommand = new AsyncRelayCommand(() => RunSafelyAsync(DuplicateTaskAsync), CanUseSelectedTask);
         DeleteTaskCommand = new AsyncRelayCommand(() => RunSafelyAsync(DeleteTaskAsync), CanUseSelectedTask);
@@ -47,18 +76,22 @@ public sealed class MainWindowViewModel : ObservableObject
         AddShortcutStepCommand = new RelayCommand(() => AddStep(InputActionType.KeyboardShortcut), CanUseSelectedTask);
         AddTextInputStepCommand = new RelayCommand(() => AddStep(InputActionType.TextInput), CanUseSelectedTask);
         RemoveStepCommand = new RelayCommand(RemoveStep, () => CanEdit() && SelectedStep is not null);
-        CaptureCoordinateCommand = new RelayCommand(CaptureCoordinate, () => CanEdit() && SelectedStep is not null);
+        CaptureCoordinateCommand = new RelayCommand(RequestCoordinateSelection, CanCaptureCoordinate);
+        TestMouseClickCommand = new AsyncRelayCommand(() => RunSafelyAsync(TestMouseClickOnceAsync), CanUseSelectedMouseStep);
         StartCommand = new AsyncRelayCommand(() => RunSafelyAsync(StartAsync), CanStart);
         PauseCommand = new AsyncRelayCommand(() => RunSafelyAsync(() => executionEngine.PauseAsync()), CanPause);
         ResumeCommand = new AsyncRelayCommand(() => RunSafelyAsync(() => executionEngine.ResumeAsync()), CanResume);
         StopCommand = new AsyncRelayCommand(() => RunSafelyAsync(() => executionEngine.StopAsync()), CanStop);
         SaveStopHotkeyCommand = new AsyncRelayCommand(() => RunSafelyAsync(SaveStopHotkeyAsync), CanEdit);
+        ToggleFloatingWindowCommand = new RelayCommand(ToggleFloatingWindow);
 
         executionEngine.StatusChanged += HandleExecutionStatusChanged;
         executionEngine.LogReceived += HandleExecutionLogReceived;
     }
 
     public event EventHandler<string>? StopHotkeyChangeRequested;
+
+    public event EventHandler? CoordinateSelectionRequested;
 
     public ObservableCollection<ClickTask> Tasks { get; } = [];
 
@@ -81,6 +114,24 @@ public sealed class MainWindowViewModel : ObservableObject
         new InputActionTypeOption(InputActionType.TextInput, "文本输入")
     ];
 
+    public RelayCommand ShowHomeCommand { get; }
+
+    public RelayCommand ShowNewTaskTypeCommand { get; }
+
+    public RelayCommand ShowTaskLibraryCommand { get; }
+
+    public AsyncRelayCommand ShowExecutionLogsCommand { get; }
+
+    public RelayCommand ShowMouseClickEditorCommand { get; }
+
+    public AsyncRelayCommand CreateMouseClickTaskCommand { get; }
+
+    public AsyncRelayCommand CreateKeyboardTaskCommand { get; }
+
+    public AsyncRelayCommand CreateTextInputTaskCommand { get; }
+
+    public AsyncRelayCommand CreateComboTaskCommand { get; }
+
     public AsyncRelayCommand CreateTaskCommand { get; }
 
     public AsyncRelayCommand DuplicateTaskCommand { get; }
@@ -101,6 +152,8 @@ public sealed class MainWindowViewModel : ObservableObject
 
     public RelayCommand CaptureCoordinateCommand { get; }
 
+    public AsyncRelayCommand TestMouseClickCommand { get; }
+
     public AsyncRelayCommand StartCommand { get; }
 
     public AsyncRelayCommand PauseCommand { get; }
@@ -111,6 +164,8 @@ public sealed class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand SaveStopHotkeyCommand { get; }
 
+    public RelayCommand ToggleFloatingWindowCommand { get; }
+
     public ClickTask? SelectedTask
     {
         get => selectedTask;
@@ -119,6 +174,7 @@ public sealed class MainWindowViewModel : ObservableObject
             if (SetProperty(ref selectedTask, value))
             {
                 LoadCurrentSteps(value);
+                NotifyEditorDerivedProperties();
                 NotifyCommandStates();
             }
         }
@@ -131,6 +187,8 @@ public sealed class MainWindowViewModel : ObservableObject
         {
             if (SetProperty(ref selectedStep, value))
             {
+                RefreshKeyboardCaptureStatus();
+                NotifyEditorDerivedProperties();
                 NotifyCommandStates();
             }
         }
@@ -158,6 +216,18 @@ public sealed class MainWindowViewModel : ObservableObject
     {
         get => hotkeyStatus;
         private set => SetProperty(ref hotkeyStatus, value);
+    }
+
+    public string KeyboardCaptureStatus
+    {
+        get => keyboardCaptureStatus;
+        private set => SetProperty(ref keyboardCaptureStatus, value);
+    }
+
+    public string CoordinateCaptureStatus
+    {
+        get => coordinateCaptureStatus;
+        private set => SetProperty(ref coordinateCaptureStatus, value);
     }
 
     public string StopHotkeyInput
@@ -190,6 +260,459 @@ public sealed class MainWindowViewModel : ObservableObject
         }
     }
 
+    public int TaskLibrarySelectedTabIndex
+    {
+        get => taskLibrarySelectedTabIndex;
+        set => SetProperty(ref taskLibrarySelectedTabIndex, value);
+    }
+
+    public Visibility HomePageVisibility
+    {
+        get => homePageVisibility;
+        private set => SetProperty(ref homePageVisibility, value);
+    }
+
+    public Visibility NewTaskTypePageVisibility
+    {
+        get => newTaskTypePageVisibility;
+        private set => SetProperty(ref newTaskTypePageVisibility, value);
+    }
+
+    public Visibility TaskLibraryPageVisibility
+    {
+        get => taskLibraryPageVisibility;
+        private set => SetProperty(ref taskLibraryPageVisibility, value);
+    }
+
+    public Visibility ExecutionLogsPageVisibility
+    {
+        get => executionLogsPageVisibility;
+        private set => SetProperty(ref executionLogsPageVisibility, value);
+    }
+
+    public Visibility MouseClickEditorPageVisibility
+    {
+        get => mouseClickEditorPageVisibility;
+        private set => SetProperty(ref mouseClickEditorPageVisibility, value);
+    }
+
+    public Visibility FloatingWindowVisibility
+    {
+        get => floatingWindowVisibility;
+        private set => SetProperty(ref floatingWindowVisibility, value);
+    }
+
+    public Visibility FloatingExpandedVisibility
+    {
+        get => floatingExpandedVisibility;
+        private set => SetProperty(ref floatingExpandedVisibility, value);
+    }
+
+    public Visibility FloatingCollapsedVisibility
+    {
+        get => floatingCollapsedVisibility;
+        private set => SetProperty(ref floatingCollapsedVisibility, value);
+    }
+
+    public string MouseTaskName
+    {
+        get => SelectedTask?.Name ?? string.Empty;
+        set
+        {
+            if (SelectedTask is null || SelectedTask.Name == value)
+            {
+                return;
+            }
+
+            SelectedTask.Name = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public string MouseTaskDescription
+    {
+        get => SelectedTask?.Description ?? string.Empty;
+        set
+        {
+            if (SelectedTask is null || SelectedTask.Description == value)
+            {
+                return;
+            }
+
+            SelectedTask.Description = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public int MouseRepeatCount
+    {
+        get => SelectedTask?.RepeatCount ?? 1;
+        set
+        {
+            if (SelectedTask is null || SelectedTask.RepeatCount == value)
+            {
+                return;
+            }
+
+            SelectedTask.RepeatCount = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public int MouseStartDelayMs
+    {
+        get => SelectedTask?.StartDelayMs ?? 0;
+        set
+        {
+            if (SelectedTask is null || SelectedTask.StartDelayMs == value)
+            {
+                return;
+            }
+
+            SelectedTask.StartDelayMs = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public int MouseX
+    {
+        get => GetEditableMouseStep()?.X ?? 0;
+        set
+        {
+            var step = GetEditableMouseStep();
+            if (step is null || step.X == value)
+            {
+                return;
+            }
+
+            step.X = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public int MouseY
+    {
+        get => GetEditableMouseStep()?.Y ?? 0;
+        set
+        {
+            var step = GetEditableMouseStep();
+            if (step is null || step.Y == value)
+            {
+                return;
+            }
+
+            step.Y = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public int MouseClickIntervalMs
+    {
+        get => GetEditableMouseStep()?.AfterDelayMs ?? 0;
+        set
+        {
+            var step = GetEditableMouseStep();
+            if (step is null || step.AfterDelayMs == value)
+            {
+                return;
+            }
+
+            step.AfterDelayMs = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public ClickType MouseClickType
+    {
+        get => GetEditableMouseStep()?.ClickType ?? ClickType.LeftSingle;
+        set
+        {
+            var step = GetEditableMouseStep();
+            if (step is null || step.ClickType == value)
+            {
+                return;
+            }
+
+            step.ClickType = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public string MouseClickTypeText
+    {
+        get => GetEditableMouseStep()?.ClickType switch
+        {
+            ClickType.LeftDouble => "左键双击",
+            ClickType.RightSingle => "右键单击",
+            _ => "左键单击"
+        };
+    }
+
+    public string SelectedStepName
+    {
+        get => SelectedStep?.Name ?? string.Empty;
+        set
+        {
+            if (SelectedStep is null || SelectedStep.Name == value)
+            {
+                return;
+            }
+
+            SelectedStep.Name = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public bool SelectedStepEnabled
+    {
+        get => SelectedStep?.Enabled ?? false;
+        set
+        {
+            if (SelectedStep is null || SelectedStep.Enabled == value)
+            {
+                return;
+            }
+
+            SelectedStep.Enabled = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public InputActionType SelectedStepActionType
+    {
+        get => SelectedStep?.ActionType ?? InputActionType.MouseClick;
+        set
+        {
+            if (SelectedStep is null || SelectedStep.ActionType == value)
+            {
+                return;
+            }
+
+            SelectedStep.ActionType = value;
+            ApplyStepDefaults(SelectedStep);
+            RefreshKeyboardCaptureStatus();
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public int SelectedStepBeforeDelayMs
+    {
+        get => SelectedStep?.BeforeDelayMs ?? 0;
+        set
+        {
+            if (SelectedStep is null || SelectedStep.BeforeDelayMs == value)
+            {
+                return;
+            }
+
+            SelectedStep.BeforeDelayMs = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public int SelectedStepAfterDelayMs
+    {
+        get => SelectedStep?.AfterDelayMs ?? 0;
+        set
+        {
+            if (SelectedStep is null || SelectedStep.AfterDelayMs == value)
+            {
+                return;
+            }
+
+            SelectedStep.AfterDelayMs = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public int SelectedStepX
+    {
+        get => SelectedStep?.X ?? 0;
+        set
+        {
+            if (SelectedStep is null || SelectedStep.X == value)
+            {
+                return;
+            }
+
+            SelectedStep.X = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public int SelectedStepY
+    {
+        get => SelectedStep?.Y ?? 0;
+        set
+        {
+            if (SelectedStep is null || SelectedStep.Y == value)
+            {
+                return;
+            }
+
+            SelectedStep.Y = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public ClickType SelectedStepClickType
+    {
+        get => SelectedStep?.ClickType ?? ClickType.LeftSingle;
+        set
+        {
+            if (SelectedStep is null || SelectedStep.ClickType == value)
+            {
+                return;
+            }
+
+            SelectedStep.ClickType = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public string SelectedStepKeyName
+    {
+        get => SelectedStep?.KeyName ?? string.Empty;
+        set
+        {
+            if (SelectedStep is null || SelectedStep.KeyName == value)
+            {
+                return;
+            }
+
+            SelectedStep.KeyName = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public int SelectedStepKeyPressCount
+    {
+        get => SelectedStep?.KeyPressCount ?? 1;
+        set
+        {
+            if (SelectedStep is null || SelectedStep.KeyPressCount == value)
+            {
+                return;
+            }
+
+            SelectedStep.KeyPressCount = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public int SelectedStepKeyIntervalMs
+    {
+        get => SelectedStep?.KeyIntervalMs ?? 0;
+        set
+        {
+            if (SelectedStep is null || SelectedStep.KeyIntervalMs == value)
+            {
+                return;
+            }
+
+            SelectedStep.KeyIntervalMs = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public string SelectedStepShortcutKeys
+    {
+        get => SelectedStep?.ShortcutKeys ?? string.Empty;
+        set
+        {
+            if (SelectedStep is null || SelectedStep.ShortcutKeys == value)
+            {
+                return;
+            }
+
+            SelectedStep.ShortcutKeys = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public string SelectedStepTextContent
+    {
+        get => SelectedStep?.TextContent ?? string.Empty;
+        set
+        {
+            if (SelectedStep is null || SelectedStep.TextContent == value)
+            {
+                return;
+            }
+
+            SelectedStep.TextContent = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public Visibility MouseStepFieldsVisibility => SelectedStep?.ActionType == InputActionType.MouseClick
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+
+    public Visibility KeyboardStepFieldsVisibility => SelectedStep?.ActionType == InputActionType.KeyboardPress
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+
+    public Visibility ShortcutStepFieldsVisibility => SelectedStep?.ActionType == InputActionType.KeyboardShortcut
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+
+    public Visibility TextInputStepFieldsVisibility => SelectedStep?.ActionType == InputActionType.TextInput
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+
+    public string SelectedStepKeyDisplayText => string.IsNullOrWhiteSpace(SelectedStepKeyName)
+        ? "当前按键：未设置"
+        : $"当前按键：{SelectedStepKeyName}";
+
+    public string ExecutionSummary
+    {
+        get
+        {
+            if (SelectedTask is null)
+            {
+                return "选择任务后，这里会展示执行摘要。";
+            }
+
+            var enabledSteps = CurrentSteps.Count(step => step.Enabled);
+            var totalSteps = CurrentSteps.Count;
+            return $"开始后等待 {FormatMilliseconds(SelectedTask.StartDelayMs)}，每轮执行 {enabledSteps}/{totalSteps} 个启用步骤，" +
+                $"重复 {SelectedTask.RepeatCount} 次。";
+        }
+    }
+
+    public string SelectedTaskMetaText
+    {
+        get
+        {
+            if (SelectedTask is null)
+            {
+                return "未选择任务";
+            }
+
+            var stepCount = SelectedTask.Steps.Count;
+            var enabledText = SelectedTask.Enabled ? "已启用" : "已禁用";
+            return $"{enabledText} · {stepCount} 个步骤 · 更新于 {SelectedTask.UpdatedAt:MM-dd HH:mm}";
+        }
+    }
+
+    public string FloatingTaskName => SelectedTask?.Name ?? "未选择任务";
+
+    public string FloatingTaskSummary
+    {
+        get
+        {
+            if (SelectedTask is null)
+            {
+                return "打开主窗口选择任务";
+            }
+
+            return GetEditableMouseStep() is { } step
+                ? $"X={step.X}，Y={step.Y} · {SelectedTask.RepeatCount} 次 · 间隔 {FormatMilliseconds(step.AfterDelayMs)}"
+                : $"{SelectedTask.Steps.Count} 个步骤";
+        }
+    }
+
     /// <summary>
     /// 更新全局快捷键注册状态，供界面展示。
     /// </summary>
@@ -197,6 +720,29 @@ public sealed class MainWindowViewModel : ObservableObject
     {
         HotkeyStatus = message;
         AddRuntimeLog(message);
+    }
+
+    public void BeginKeyboardCapture()
+    {
+        var step = GetEditableKeyboardStep();
+        if (step is null)
+        {
+            KeyboardCaptureStatus = "请先选择一个键盘按键步骤。";
+            return;
+        }
+
+        SelectedStep = step;
+        KeyboardCaptureStatus = "正在监听键盘输入，请按一个键。";
+    }
+
+    public void EndKeyboardCapture()
+    {
+        RefreshKeyboardCaptureStatus();
+    }
+
+    public void RejectKeyboardCapture(string keyName)
+    {
+        KeyboardCaptureStatus = $"暂不支持：{keyName}。请按 A-Z、0-9、F1-F24 或常用功能键。";
     }
 
     /// <summary>
@@ -232,11 +778,7 @@ public sealed class MainWindowViewModel : ObservableObject
     {
         await ReloadTasksAsync();
         await LoadRecentLogsAsync();
-
-        if (Tasks.Count == 0)
-        {
-            await CreateTaskAsync();
-        }
+        ShowHome();
     }
 
     /// <summary>
@@ -267,29 +809,165 @@ public sealed class MainWindowViewModel : ObservableObject
         }
     }
 
+    private void ShowHome()
+    {
+        SetCurrentPage("Home");
+    }
+
+    private void ShowNewTaskType()
+    {
+        SetCurrentPage("NewTaskType");
+    }
+
+    private void ShowTaskLibrary()
+    {
+        SetCurrentPage("TaskLibrary");
+    }
+
+    private async Task ShowExecutionLogsAsync()
+    {
+        await LoadRecentLogsAsync();
+        SetCurrentPage("ExecutionLogs");
+    }
+
+    private void ShowMouseClickEditor()
+    {
+        if (!CanOpenMouseClickEditor())
+        {
+            AddRuntimeLog("当前任务暂未提供专属编辑页，请先选择鼠标点击或组合任务。");
+            ShowTaskLibrary();
+            return;
+        }
+
+        EnsureMouseStepSelected();
+        SetCurrentPage("MouseClickEditor");
+    }
+
+    private void SetCurrentPage(string pageName)
+    {
+        HomePageVisibility = pageName == "Home" ? Visibility.Visible : Visibility.Collapsed;
+        NewTaskTypePageVisibility = pageName == "NewTaskType" ? Visibility.Visible : Visibility.Collapsed;
+        TaskLibraryPageVisibility = pageName == "TaskLibrary" ? Visibility.Visible : Visibility.Collapsed;
+        ExecutionLogsPageVisibility = pageName == "ExecutionLogs" ? Visibility.Visible : Visibility.Collapsed;
+        MouseClickEditorPageVisibility = pageName == "MouseClickEditor" ? Visibility.Visible : Visibility.Collapsed;
+        NotifyCommandStates();
+    }
+
+    private async Task CreateMouseClickTaskAsync()
+    {
+        var task = CreateBaseTask("鼠标点击任务", "用于固定位置点击、重复点击或连点操作。");
+        task.Steps.Add(CreateStep(InputActionType.MouseClick, task.Id, 0));
+
+        await taskService.SaveAsync(task);
+        await ReloadTasksAsync(task.Id);
+        ShowMouseClickEditor();
+        AddRuntimeLog($"已新建任务：{task.Name}。");
+    }
+
+    private async Task CreateTypedTaskAsync(params InputActionType[] actionTypes)
+    {
+        var taskTypeName = actionTypes.Length > 1
+            ? "组合任务"
+            : ToTaskTypeName(actionTypes.FirstOrDefault(InputActionType.MouseClick));
+        var task = CreateBaseTask(taskTypeName, $"用于配置{taskTypeName}。");
+
+        var targetActionTypes = actionTypes.Length == 0
+            ? [InputActionType.MouseClick]
+            : actionTypes;
+        foreach (var actionType in targetActionTypes)
+        {
+            task.Steps.Add(CreateStep(actionType, task.Id, task.Steps.Count));
+        }
+
+        await taskService.SaveAsync(task);
+        await ReloadTasksAsync(task.Id);
+        SelectFirstStepOfType(targetActionTypes.FirstOrDefault(InputActionType.MouseClick));
+        TaskLibrarySelectedTabIndex = 1;
+        ShowTaskLibrary();
+        AddRuntimeLog($"已新建任务：{task.Name}。");
+    }
+
     /// <summary>
     /// 新建任务并写入数据库，确保用户打开后可以直接编辑。
     /// </summary>
     private async Task CreateTaskAsync()
     {
-        var task = new ClickTask
+        await CreateMouseClickTaskAsync();
+    }
+
+    private ClickTask CreateBaseTask(string taskTypeName, string description)
+    {
+        return new ClickTask
         {
-            Name = $"点击任务 {Tasks.Count + 1}",
-            Description = "用于记录一组鼠标点击或键盘连按步骤。",
+            Name = $"{taskTypeName} {Tasks.Count + 1}",
+            Description = description,
             RepeatCount = 1,
-            StartDelayMs = 3000
+            StartDelayMs = 1000
         };
+    }
 
-        task.Steps.Add(new ClickStep
+    /// <summary>
+    /// 从界面按键捕获框写入键盘步骤的按键名称。
+    /// </summary>
+    public void CaptureKeyboardStepKey(string keyName)
+    {
+        var step = GetEditableKeyboardStep();
+        if (step is null)
         {
-            TaskId = task.Id,
-            Name = "步骤 1",
-            Order = 0,
-            AfterDelayMs = 500
-        });
+            AddRuntimeLog("请先选择一个键盘按键步骤。");
+            return;
+        }
 
-        await taskService.SaveAsync(task);
-        await ReloadTasksAsync(task.Id);
+        SelectedStep = step;
+        step.ActionType = InputActionType.KeyboardPress;
+        step.KeyName = keyName;
+        ApplyStepDefaults(step);
+        KeyboardCaptureStatus = $"已捕获：{keyName}。连按时会重复触发这个键。";
+        NotifyEditorDerivedProperties();
+        AddRuntimeLog($"已设置键盘按键：{keyName}。");
+    }
+
+    private static ClickStep CreateStep(InputActionType actionType, Guid taskId, int order)
+    {
+        var step = new ClickStep
+        {
+            TaskId = taskId,
+            Name = CreateStepName(actionType, order + 1),
+            ActionType = actionType,
+            Order = order,
+            AfterDelayMs = actionType == InputActionType.MouseClick ? 800 : 500
+        };
+        ApplyStepDefaults(step);
+        return step;
+    }
+
+    private static void ApplyStepDefaults(ClickStep step)
+    {
+        if (step.ActionType == InputActionType.KeyboardPress && step.KeyPressCount < 1)
+        {
+            step.KeyPressCount = 1;
+        }
+
+        if (step.ActionType == InputActionType.KeyboardShortcut && string.IsNullOrWhiteSpace(step.ShortcutKeys))
+        {
+            step.ShortcutKeys = "Ctrl+C";
+        }
+
+        if (step.ActionType == InputActionType.TextInput && string.IsNullOrEmpty(step.TextContent))
+        {
+            step.TextContent = "示例文本";
+        }
+    }
+
+    private static string ToTaskTypeName(InputActionType actionType)
+    {
+        return actionType switch
+        {
+            InputActionType.KeyboardPress => "键盘按键任务",
+            InputActionType.TextInput => "文本输入任务",
+            InputActionType.KeyboardShortcut => "组合任务",
+            _ => "鼠标点击任务"
+        };
     }
 
     /// <summary>
@@ -305,6 +983,7 @@ public sealed class MainWindowViewModel : ObservableObject
         ApplyCurrentStepsToTask();
         var duplicatedTask = await taskService.DuplicateAsync(SelectedTask);
         await ReloadTasksAsync(duplicatedTask.Id);
+        ShowTaskLibrary();
     }
 
     /// <summary>
@@ -330,6 +1009,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
         await taskService.DeleteAsync(SelectedTask.Id);
         await ReloadTasksAsync();
+        ShowTaskLibrary();
     }
 
     /// <summary>
@@ -370,6 +1050,7 @@ public sealed class MainWindowViewModel : ObservableObject
             Order = CurrentSteps.Count,
             AfterDelayMs = 500
         };
+        ApplyStepDefaults(step);
 
         CurrentSteps.Add(step);
         SelectedStep = step;
@@ -391,32 +1072,81 @@ public sealed class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 捕获当前鼠标位置，写入选中步骤的屏幕绝对坐标。
+    /// 请求窗口层打开坐标选择覆盖层。
     /// </summary>
-    private void CaptureCoordinate()
+    private void RequestCoordinateSelection()
     {
-        if (SelectedStep is null)
+        var step = GetEditableMouseStep();
+        if (step is null)
+        {
+            AddRuntimeLog("请先选择一个鼠标点击步骤。");
+            return;
+        }
+
+        SelectedStep = step;
+        isCoordinateCapturePending = true;
+        CoordinateCaptureStatus = "正在选择坐标：移动鼠标，左键确认，Esc 取消。";
+        NotifyCommandStates();
+        CoordinateSelectionRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// 写入坐标选择覆盖层确认的屏幕绝对坐标。
+    /// </summary>
+    public void ApplySelectedCoordinate(ScreenPoint point)
+    {
+        var step = GetEditableMouseStep();
+        if (step is null)
+        {
+            CancelCoordinateSelection();
+            return;
+        }
+
+        step.X = point.X;
+        step.Y = point.Y;
+        SelectedStep = step;
+        RefreshSelectedStepListItem();
+
+        isCoordinateCapturePending = false;
+        CoordinateCaptureStatus = $"已选择坐标：X={point.X}，Y={point.Y}。";
+        NotifyEditorDerivedProperties();
+        NotifyCommandStates();
+        AddRuntimeLog($"已选择坐标：X={point.X}，Y={point.Y}。");
+    }
+
+    /// <summary>
+    /// 坐标选择取消后恢复界面状态。
+    /// </summary>
+    public void CancelCoordinateSelection()
+    {
+        isCoordinateCapturePending = false;
+        CoordinateCaptureStatus = "已取消坐标选择。点击“选择坐标”可重新选择。";
+        NotifyCommandStates();
+        AddRuntimeLog("已取消坐标选择。");
+    }
+
+    private async Task TestMouseClickOnceAsync()
+    {
+        var step = GetEditableMouseStep();
+        if (step is null)
         {
             return;
         }
 
-        if (SelectedStep.ActionType != InputActionType.MouseClick)
+        var result = MessageBox.Show(
+            $"即将在 X={step.X}、Y={step.Y} 执行一次{MouseClickTypeText}。\n\n确认测试点击吗？",
+            "测试点击一次",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (result != MessageBoxResult.Yes)
         {
-            AddRuntimeLog("当前步骤不是鼠标点击，不需要捕获鼠标坐标。");
+            AddRuntimeLog("已取消测试点击。");
             return;
         }
 
-        var point = cursorPositionService.GetCurrentPosition();
-        SelectedStep.X = point.X;
-        SelectedStep.Y = point.Y;
-
-        var selectedIndex = CurrentSteps.IndexOf(SelectedStep);
-        if (selectedIndex >= 0)
-        {
-            CurrentSteps[selectedIndex] = SelectedStep;
-        }
-
-        AddRuntimeLog($"已捕获坐标：X={point.X}，Y={point.Y}。");
+        await mouseClickService.ClickAsync(step.ToPoint(), step.ClickType);
+        AddRuntimeLog($"已测试点击一次：X={step.X}，Y={step.Y}。");
     }
 
     /// <summary>
@@ -519,6 +1249,118 @@ public sealed class MainWindowViewModel : ObservableObject
             : new ObservableCollection<ClickStep>(task.Steps.OrderBy(step => step.Order));
     }
 
+    private void RefreshKeyboardCaptureStatus()
+    {
+        if (SelectedStep is null)
+        {
+            KeyboardCaptureStatus = "请先选择一个键盘按键步骤。";
+            return;
+        }
+
+        if (SelectedStep.ActionType != InputActionType.KeyboardPress)
+        {
+            KeyboardCaptureStatus = "将动作类型切换为“键盘按键”后，可捕获一个按键。";
+            return;
+        }
+
+        KeyboardCaptureStatus = string.IsNullOrWhiteSpace(SelectedStep.KeyName)
+            ? "点击按键框后，按下键盘上的一个键。"
+            : $"已设置为 {SelectedStep.KeyName}，点击按键框可重新捕获。";
+    }
+
+    private void EnsureMouseStepSelected()
+    {
+        if (SelectedTask is null)
+        {
+            return;
+        }
+
+        var mouseStep = CurrentSteps.FirstOrDefault(step => step.ActionType == InputActionType.MouseClick);
+        if (mouseStep is null)
+        {
+            mouseStep = CreateStep(InputActionType.MouseClick, SelectedTask.Id, CurrentSteps.Count);
+            CurrentSteps.Add(mouseStep);
+        }
+
+        SelectedStep = mouseStep;
+    }
+
+    private void SelectFirstStepOfType(InputActionType actionType)
+    {
+        SelectedStep = CurrentSteps.FirstOrDefault(step => step.ActionType == actionType)
+            ?? CurrentSteps.FirstOrDefault();
+    }
+
+    private ClickStep? GetEditableMouseStep()
+    {
+        if (SelectedStep?.ActionType == InputActionType.MouseClick)
+        {
+            return SelectedStep;
+        }
+
+        return CurrentSteps.FirstOrDefault(step => step.ActionType == InputActionType.MouseClick);
+    }
+
+    private ClickStep? GetEditableKeyboardStep()
+    {
+        if (SelectedStep?.ActionType == InputActionType.KeyboardPress)
+        {
+            return SelectedStep;
+        }
+
+        return CurrentSteps.FirstOrDefault(step => step.ActionType == InputActionType.KeyboardPress);
+    }
+
+    private void RefreshSelectedStepListItem()
+    {
+        if (SelectedStep is null)
+        {
+            return;
+        }
+
+        var selectedIndex = CurrentSteps.IndexOf(SelectedStep);
+        if (selectedIndex >= 0)
+        {
+            CurrentSteps[selectedIndex] = SelectedStep;
+        }
+    }
+
+    private void NotifyEditorDerivedProperties()
+    {
+        OnPropertyChanged(nameof(MouseTaskName));
+        OnPropertyChanged(nameof(MouseTaskDescription));
+        OnPropertyChanged(nameof(MouseRepeatCount));
+        OnPropertyChanged(nameof(MouseStartDelayMs));
+        OnPropertyChanged(nameof(MouseX));
+        OnPropertyChanged(nameof(MouseY));
+        OnPropertyChanged(nameof(MouseClickIntervalMs));
+        OnPropertyChanged(nameof(MouseClickType));
+        OnPropertyChanged(nameof(MouseClickTypeText));
+        OnPropertyChanged(nameof(SelectedStepName));
+        OnPropertyChanged(nameof(SelectedStepEnabled));
+        OnPropertyChanged(nameof(SelectedStepActionType));
+        OnPropertyChanged(nameof(SelectedStepBeforeDelayMs));
+        OnPropertyChanged(nameof(SelectedStepAfterDelayMs));
+        OnPropertyChanged(nameof(SelectedStepX));
+        OnPropertyChanged(nameof(SelectedStepY));
+        OnPropertyChanged(nameof(SelectedStepClickType));
+        OnPropertyChanged(nameof(SelectedStepKeyName));
+        OnPropertyChanged(nameof(SelectedStepKeyDisplayText));
+        OnPropertyChanged(nameof(SelectedStepKeyPressCount));
+        OnPropertyChanged(nameof(SelectedStepKeyIntervalMs));
+        OnPropertyChanged(nameof(SelectedStepShortcutKeys));
+        OnPropertyChanged(nameof(SelectedStepTextContent));
+        OnPropertyChanged(nameof(MouseStepFieldsVisibility));
+        OnPropertyChanged(nameof(KeyboardStepFieldsVisibility));
+        OnPropertyChanged(nameof(ShortcutStepFieldsVisibility));
+        OnPropertyChanged(nameof(TextInputStepFieldsVisibility));
+        OnPropertyChanged(nameof(ExecutionSummary));
+        OnPropertyChanged(nameof(SelectedTaskMetaText));
+        OnPropertyChanged(nameof(FloatingTaskName));
+        OnPropertyChanged(nameof(FloatingTaskSummary));
+        RefreshSelectedStepListItem();
+    }
+
     /// <summary>
     /// 读取最近执行结果，显示在右侧日志区域。
     /// </summary>
@@ -559,6 +1401,7 @@ public sealed class MainWindowViewModel : ObservableObject
         {
             StatusText = ToStatusText(status);
             ExecutionSafetyText = ToExecutionSafetyText(status);
+            UpdateFloatingWindowState(status);
             NotifyCommandStates();
         });
     }
@@ -584,6 +1427,29 @@ public sealed class MainWindowViewModel : ObservableObject
         }
     }
 
+    private void ToggleFloatingWindow()
+    {
+        isFloatingWindowExpanded = !isFloatingWindowExpanded;
+        FloatingExpandedVisibility = isFloatingWindowExpanded ? Visibility.Visible : Visibility.Collapsed;
+        FloatingCollapsedVisibility = isFloatingWindowExpanded ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void UpdateFloatingWindowState(ExecutionStatus status)
+    {
+        FloatingWindowVisibility = status is ExecutionStatus.Starting or ExecutionStatus.Running or ExecutionStatus.Paused
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        if (FloatingWindowVisibility == Visibility.Collapsed)
+        {
+            isFloatingWindowExpanded = false;
+            FloatingExpandedVisibility = Visibility.Collapsed;
+            FloatingCollapsedVisibility = Visibility.Visible;
+        }
+
+        NotifyEditorDerivedProperties();
+    }
+
     /// <summary>
     /// 确保后台执行事件回到 UI 线程后再更新界面集合。
     /// </summary>
@@ -606,6 +1472,11 @@ public sealed class MainWindowViewModel : ObservableObject
     private void NotifyCommandStates()
     {
         IsTaskEditorEnabled = CanEdit();
+        ShowMouseClickEditorCommand.NotifyCanExecuteChanged();
+        CreateMouseClickTaskCommand.NotifyCanExecuteChanged();
+        CreateKeyboardTaskCommand.NotifyCanExecuteChanged();
+        CreateTextInputTaskCommand.NotifyCanExecuteChanged();
+        CreateComboTaskCommand.NotifyCanExecuteChanged();
         CreateTaskCommand.NotifyCanExecuteChanged();
         DuplicateTaskCommand.NotifyCanExecuteChanged();
         DeleteTaskCommand.NotifyCanExecuteChanged();
@@ -616,6 +1487,7 @@ public sealed class MainWindowViewModel : ObservableObject
         AddTextInputStepCommand.NotifyCanExecuteChanged();
         RemoveStepCommand.NotifyCanExecuteChanged();
         CaptureCoordinateCommand.NotifyCanExecuteChanged();
+        TestMouseClickCommand.NotifyCanExecuteChanged();
         StartCommand.NotifyCanExecuteChanged();
         PauseCommand.NotifyCanExecuteChanged();
         ResumeCommand.NotifyCanExecuteChanged();
@@ -628,7 +1500,7 @@ public sealed class MainWindowViewModel : ObservableObject
     /// </summary>
     private bool CanEdit()
     {
-        return !IsBusy && executionEngine.Status is not ExecutionStatus.Running and not ExecutionStatus.Paused and not ExecutionStatus.Starting;
+        return !IsBusy && executionEngine.Status is not ExecutionStatus.Running and not ExecutionStatus.Starting;
     }
 
     /// <summary>
@@ -637,6 +1509,21 @@ public sealed class MainWindowViewModel : ObservableObject
     private bool CanUseSelectedTask()
     {
         return CanEdit() && SelectedTask is not null;
+    }
+
+    private bool CanOpenMouseClickEditor()
+    {
+        return SelectedTask is not null && CurrentSteps.Any(step => step.ActionType == InputActionType.MouseClick);
+    }
+
+    private bool CanUseSelectedMouseStep()
+    {
+        return CanEdit() && SelectedTask is not null && GetEditableMouseStep() is not null;
+    }
+
+    private bool CanCaptureCoordinate()
+    {
+        return CanUseSelectedMouseStep() && !isCoordinateCapturePending;
     }
 
     /// <summary>
@@ -701,9 +1588,16 @@ public sealed class MainWindowViewModel : ObservableObject
         {
             ExecutionStatus.Starting => "任务正在启动，配置已锁定，可使用停止按钮或全局快捷键中止。",
             ExecutionStatus.Running => "任务正在执行，配置已锁定，可使用停止按钮或全局快捷键中止。",
-            ExecutionStatus.Paused => "任务已暂停，配置仍被锁定，可继续或停止。",
+            ExecutionStatus.Paused => "任务已暂停，可以编辑并保存任务；如需新配置生效，请停止后重新执行。",
             _ => "启动前请确认坐标、按键、重复次数和开始延迟。"
         };
+    }
+
+    private static string FormatMilliseconds(int milliseconds)
+    {
+        return milliseconds >= 1000 && milliseconds % 1000 == 0
+            ? $"{milliseconds / 1000} 秒"
+            : $"{milliseconds} 毫秒";
     }
 
     /// <summary>

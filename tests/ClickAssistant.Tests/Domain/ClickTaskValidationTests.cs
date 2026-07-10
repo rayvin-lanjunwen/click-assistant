@@ -55,6 +55,50 @@ public sealed class ClickTaskValidationTests
     }
 
     [Fact]
+    public void ValidateForSave_WhenKeyboardKeyNameIsMissing_DoesNotThrow()
+    {
+        var task = new ClickTask
+        {
+            Name = "键盘草稿",
+            RepeatCount = 1,
+            StartDelayMs = 0,
+            Steps =
+            [
+                new ClickStep
+                {
+                    Name = "键盘步骤",
+                    ActionType = InputActionType.KeyboardPress,
+                    KeyName = string.Empty
+                }
+            ]
+        };
+
+        task.ValidateForSave();
+    }
+
+    [Fact]
+    public void ValidateForExecution_WhenEnabledKeyboardKeyNameIsMissing_ThrowsDomainValidationException()
+    {
+        var task = new ClickTask
+        {
+            Name = "键盘任务",
+            RepeatCount = 1,
+            StartDelayMs = 0,
+            Steps =
+            [
+                new ClickStep
+                {
+                    Name = "键盘步骤",
+                    ActionType = InputActionType.KeyboardPress,
+                    KeyName = string.Empty
+                }
+            ]
+        };
+
+        Assert.Throws<DomainValidationException>(task.ValidateForExecution);
+    }
+
+    [Fact]
     public void Validate_WhenShortcutIsMissingMainKey_ThrowsDomainValidationException()
     {
         var step = new ClickStep

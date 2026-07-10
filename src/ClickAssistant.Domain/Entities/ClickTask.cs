@@ -47,7 +47,7 @@ public sealed class ClickTask
 
         foreach (var step in Steps)
         {
-            step.Validate();
+            step.ValidateForSave();
         }
     }
 
@@ -66,6 +66,11 @@ public sealed class ClickTask
         if (!Steps.Any(step => step.Enabled))
         {
             throw new DomainValidationException("任务至少需要一个启用的输入步骤。");
+        }
+
+        foreach (var step in Steps.Where(step => step.Enabled))
+        {
+            step.Validate();
         }
     }
 

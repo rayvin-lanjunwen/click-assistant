@@ -25,7 +25,7 @@ public sealed class ClickStep
 
     public ClickType ClickType { get; set; } = ClickType.LeftSingle;
 
-    public string KeyName { get; set; } = "A";
+    public string KeyName { get; set; } = string.Empty;
 
     public int KeyPressCount { get; set; } = 1;
 
@@ -50,9 +50,9 @@ public sealed class ClickStep
     }
 
     /// <summary>
-    /// 校验步骤配置，避免执行过程中才发现基础数据错误。
+    /// 校验步骤草稿配置，允许键盘按键名称暂时留空，便于用户稍后从键盘捕获。
     /// </summary>
-    public void Validate()
+    public void ValidateForSave()
     {
         if (string.IsNullOrWhiteSpace(Name))
         {
@@ -71,7 +71,7 @@ public sealed class ClickStep
 
         if (ActionType == InputActionType.KeyboardPress)
         {
-            ValidateKeyboardPress();
+            ValidateKeyboardPress(requireKeyName: false);
         }
 
         if (ActionType == InputActionType.KeyboardShortcut)
@@ -91,11 +91,24 @@ public sealed class ClickStep
     }
 
     /// <summary>
+    /// 校验可执行步骤配置，避免执行过程中才发现基础数据错误。
+    /// </summary>
+    public void Validate()
+    {
+        ValidateForSave();
+
+        if (ActionType == InputActionType.KeyboardPress)
+        {
+            ValidateKeyboardPress(requireKeyName: true);
+        }
+    }
+
+    /// <summary>
     /// 校验键盘步骤配置，避免执行时无法识别按键或产生失控连按。
     /// </summary>
-    private void ValidateKeyboardPress()
+    private void ValidateKeyboardPress(bool requireKeyName)
     {
-        if (string.IsNullOrWhiteSpace(KeyName))
+        if (requireKeyName && string.IsNullOrWhiteSpace(KeyName))
         {
             throw new DomainValidationException("键盘步骤必须填写按键名称。");
         }

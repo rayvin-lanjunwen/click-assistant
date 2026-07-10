@@ -35,6 +35,8 @@ public sealed class ClickExecutionEngine : IClickExecutionEngine
 
     public event EventHandler<string>? LogReceived;
 
+    public event EventHandler<MouseClickVisualEventArgs>? MouseClickVisualRequested;
+
     /// <summary>
     /// 启动任务执行，同一时间只允许一个任务运行。
     /// </summary>
@@ -165,6 +167,11 @@ public sealed class ClickExecutionEngine : IClickExecutionEngine
         }
         catch (OperationCanceledException)
         {
+            if (Status != ExecutionStatus.Stopped)
+            {
+                SetStatus(ExecutionStatus.Stopped);
+            }
+
             executionLog.Status = ExecutionStatus.Stopped;
             executionLog.Message = "任务被用户停止。";
             PublishLog("任务已停止。");
@@ -191,6 +198,7 @@ public sealed class ClickExecutionEngine : IClickExecutionEngine
         switch (step.ActionType)
         {
             case InputActionType.MouseClick:
+                MouseClickVisualRequested?.Invoke(this, new MouseClickVisualEventArgs(step.ToPoint(), step.ClickType));
                 await mouseClickService.ClickAsync(step.ToPoint(), step.ClickType, cancellationToken);
                 break;
             case InputActionType.KeyboardPress:

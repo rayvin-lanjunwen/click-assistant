@@ -112,6 +112,44 @@ public sealed class ClickExecutionEngineTests
         Assert.Equal(["Key:Enter:2:0", "Shortcut:Ctrl+C", "Text:Hello:0"], keyboardInputService.Actions);
     }
 
+    [Fact]
+    public async Task StartAsync_WhenTaskContainsMouseClick_ShouldPublishVisualRequestBeforeClick()
+    {
+        var task = new ClickTask
+        {
+            Id = Guid.NewGuid(),
+            Name = "鼠标点击提示测试任务",
+            RepeatCount = 1,
+            StartDelayMs = 0,
+            Steps =
+            [
+                new ClickStep
+                {
+                    Name = "鼠标步骤",
+                    ActionType = InputActionType.MouseClick,
+                    X = 120,
+                    Y = 260,
+                    ClickType = ClickType.RightSingle,
+                    Order = 0
+                }
+            ]
+        };
+        var engine = new ClickExecutionEngine(
+            new InMemoryClickTaskRepository(task),
+            new InMemoryExecutionLogRepository(),
+            new NoopMouseClickService(),
+            new NoopKeyboardInputService());
+        var visualRequests = new List<MouseClickVisualEventArgs>();
+        engine.MouseClickVisualRequested += (_, args) => visualRequests.Add(args);
+
+        await engine.StartAsync(task.Id);
+
+        var request = Assert.Single(visualRequests);
+        Assert.Equal(120, request.Point.X);
+        Assert.Equal(260, request.Point.Y);
+        Assert.Equal(ClickType.RightSingle, request.ClickType);
+    }
+
     private sealed class InMemoryClickTaskRepository : IClickTaskRepository
     {
         private readonly Dictionary<Guid, ClickTask> tasks;

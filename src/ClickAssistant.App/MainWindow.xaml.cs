@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Interop;
 using ClickAssistant.App.ViewModels;
 using ClickAssistant.Application.Abstractions;
@@ -17,6 +18,10 @@ public partial class MainWindow : Window
     private MainWindowViewModel? viewModel;
     private IGlobalHotkeyService? globalHotkeyService;
     private IAppSettingsRepository? appSettingsRepository;
+    private IClickExecutionEngine? executionEngine;
+    private ICursorPositionService? cursorPositionService;
+    private FloatingControlWindow? floatingWindow;
+    private MouseClickVisualWindow? mouseClickVisualWindow;
     private HwndSource? hwndSource;
 
     public MainWindow()
@@ -47,7 +52,7 @@ public partial class MainWindow : Window
             var cursorPositionService = new WindowsCursorPositionService();
             var hotkeyService = new WindowsGlobalHotkeyService();
             var taskService = new ClickTaskService(taskRepository);
-            var executionEngine = new ClickExecutionEngine(
+            var clickExecutionEngine = new ClickExecutionEngine(
                 taskRepository,
                 executionLogRepository,
                 mouseClickService,
@@ -55,15 +60,28 @@ public partial class MainWindow : Window
 
             viewModel = new MainWindowViewModel(
                 taskService,
-                executionEngine,
-                cursorPositionService,
+                clickExecutionEngine,
+                mouseClickService,
                 executionLogRepository);
+            executionEngine = clickExecutionEngine;
+            this.cursorPositionService = cursorPositionService;
             globalHotkeyService = hotkeyService;
             appSettingsRepository = settingsRepository;
 
             DataContext = viewModel;
+            floatingWindow = new FloatingControlWindow
+            {
+                DataContext = viewModel,
+                Left = Left + Width - 330,
+                Top = Top + 92
+            };
+            floatingWindow.Show();
+            mouseClickVisualWindow = new MouseClickVisualWindow();
+            executionEngine.MouseClickVisualRequested += HandleMouseClickVisualRequested;
+
             await viewModel.InitializeAsync();
             viewModel.StopHotkeyChangeRequested += HandleStopHotkeyChangeRequested;
+            viewModel.CoordinateSelectionRequested += HandleCoordinateSelectionRequested;
 
             var savedStopHotkey = await settingsRepository.GetValueAsync(StopHotkeySettingKey);
             var stopHotkeyText = string.IsNullOrWhiteSpace(savedStopHotkey)
@@ -77,6 +95,77 @@ public partial class MainWindow : Window
             MessageBox.Show(exception.Message, "启动失败", MessageBoxButton.OK, MessageBoxImage.Error);
             Close();
         }
+    }
+
+    private void HandleKeyboardCapturePreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        var capturedKey = e.Key == Key.System
+            ? e.SystemKey
+            : e.Key == Key.ImeProcessed
+                ? e.ImeProcessedKey
+                : e.Key;
+        var keyName = ToSupportedKeyName(capturedKey);
+
+        if (string.IsNullOrWhiteSpace(keyName))
+        {
+            viewModel?.RejectKeyboardCapture(capturedKey.ToString());
+            e.Handled = true;
+            return;
+        }
+
+        viewModel?.CaptureKeyboardStepKey(keyName);
+        e.Handled = true;
+    }
+
+    private void HandleKeyboardCapturePreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not UIElement element || element.IsKeyboardFocusWithin)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        element.Focus();
+    }
+
+    private void HandleKeyboardCaptureGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        viewModel?.BeginKeyboardCapture();
+    }
+
+    private void HandleKeyboardCaptureLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        viewModel?.EndKeyboardCapture();
+    }
+
+    private void HandleMouseClickVisualRequested(object? sender, MouseClickVisualEventArgs e)
+    {
+        Dispatcher.Invoke(() => mouseClickVisualWindow?.ShowAt(e.Point.X, e.Point.Y));
+    }
+
+    private void HandleCoordinateSelectionRequested(object? sender, EventArgs e)
+    {
+        if (viewModel is null || cursorPositionService is null)
+        {
+            return;
+        }
+
+        var pickerWindow = new CoordinatePickerWindow(cursorPositionService)
+        {
+            Owner = this
+        };
+        var result = pickerWindow.ShowDialog();
+
+        if (result == true && pickerWindow.SelectedPoint is { } point)
+        {
+            viewModel.ApplySelectedCoordinate(point);
+        }
+        else
+        {
+            viewModel.CancelCoordinateSelection();
+        }
+
+        Activate();
     }
 
     /// <summary>
@@ -163,6 +252,7 @@ public partial class MainWindow : Window
         if (viewModel is not null)
         {
             viewModel.StopHotkeyChangeRequested -= HandleStopHotkeyChangeRequested;
+            viewModel.CoordinateSelectionRequested -= HandleCoordinateSelectionRequested;
         }
 
         if (globalHotkeyService is not null)
@@ -171,6 +261,64 @@ public partial class MainWindow : Window
             globalHotkeyService.Dispose();
         }
 
+        if (executionEngine is not null)
+        {
+            executionEngine.MouseClickVisualRequested -= HandleMouseClickVisualRequested;
+        }
+
         hwndSource?.RemoveHook(HandleWindowMessage);
+        floatingWindow?.Close();
+        floatingWindow = null;
+        mouseClickVisualWindow?.Close();
+        mouseClickVisualWindow = null;
+        executionEngine = null;
+    }
+
+    private static string? ToSupportedKeyName(Key key)
+    {
+        if (key >= Key.A && key <= Key.Z)
+        {
+            return key.ToString();
+        }
+
+        if (key >= Key.D0 && key <= Key.D9)
+        {
+            return ((int)(key - Key.D0)).ToString();
+        }
+
+        if (key >= Key.NumPad0 && key <= Key.NumPad9)
+        {
+            return $"NumPad{(int)(key - Key.NumPad0)}";
+        }
+
+        if (key >= Key.F1 && key <= Key.F24)
+        {
+            return key.ToString();
+        }
+
+        return key switch
+        {
+            Key.Return => "Enter",
+            Key.Space => "Space",
+            Key.Tab => "Tab",
+            Key.Escape => "Esc",
+            Key.Back => "Backspace",
+            Key.Delete => "Delete",
+            Key.Insert => "Insert",
+            Key.Home => "Home",
+            Key.End => "End",
+            Key.PageUp => "PageUp",
+            Key.PageDown => "PageDown",
+            Key.Left => "Left",
+            Key.Up => "Up",
+            Key.Right => "Right",
+            Key.Down => "Down",
+            Key.LeftCtrl or Key.RightCtrl => "Ctrl",
+            Key.LeftAlt or Key.RightAlt => "Alt",
+            Key.LeftShift or Key.RightShift => "Shift",
+            Key.LWin or Key.RWin => "Win",
+            Key.CapsLock => "CapsLock",
+            _ => null
+        };
     }
 }

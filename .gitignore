@@ -4,6 +4,7 @@ obj/
 
 # Visual Studio 与本地用户配置
 .vs/
+.idea/
 *.user
 *.suo
 *.userosscache
@@ -13,6 +14,9 @@ obj/
 dist/
 build/
 publish/
+
+# 本地工具下载
+tools/downloads/
 
 # Android 本地构建与 SDK 配置
 .gradle/

@@ -1,0 +1,124 @@
+<Window x:Class="ClickAssistant.App.FloatingControlWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Click Assistant 控制"
+        Width="300"
+        SizeToContent="Height"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowActivated="False"
+        ShowInTaskbar="False"
+        Visibility="{Binding FloatingWindowVisibility}">
+    <Window.Resources>
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#172027" />
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#5B6975" />
+        <SolidColorBrush x:Key="AccentBrush" Color="#167C80" />
+        <SolidColorBrush x:Key="AccentDarkBrush" Color="#0E5659" />
+        <SolidColorBrush x:Key="DangerBrush" Color="#B44A45" />
+
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <Style x:Key="FloatingButtonStyle" TargetType="Button">
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="Padding" Value="12,5" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Background" Value="#F8FBFC" />
+            <Setter Property="BorderBrush" Value="#C5D2DB" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+
+        <Style x:Key="PrimaryFloatingButtonStyle" TargetType="Button" BasedOn="{StaticResource FloatingButtonStyle}">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AccentDarkBrush}" />
+        </Style>
+
+        <Style x:Key="DangerFloatingButtonStyle" TargetType="Button" BasedOn="{StaticResource FloatingButtonStyle}">
+            <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+        </Style>
+    </Window.Resources>
+
+    <Grid MouseLeftButtonDown="HandleMouseLeftButtonDown">
+        <Border Padding="12"
+                Background="#FDFEFF"
+                BorderBrush="#B6C6CF"
+                BorderThickness="1"
+                CornerRadius="8"
+                Visibility="{Binding FloatingCollapsedVisibility}">
+            <DockPanel LastChildFill="True">
+                <Button DockPanel.Dock="Right"
+                        Command="{Binding ToggleFloatingWindowCommand}"
+                        Content="展开"
+                        Style="{StaticResource PrimaryFloatingButtonStyle}" />
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock FontSize="12"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               Text="Click Assistant" />
+                    <TextBlock FontSize="16"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource AccentDarkBrush}"
+                               Text="{Binding StatusText}" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <Border Padding="14"
+                Background="#FDFEFF"
+                BorderBrush="#B6C6CF"
+                BorderThickness="1"
+                CornerRadius="8"
+                Visibility="{Binding FloatingExpandedVisibility}">
+            <StackPanel>
+                <DockPanel>
+                    <Button DockPanel.Dock="Right"
+                            Command="{Binding ToggleFloatingWindowCommand}"
+                            Content="收起"
+                            Style="{StaticResource FloatingButtonStyle}" />
+                    <StackPanel>
+                        <TextBlock FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="Click Assistant 控制" />
+                        <TextBlock FontSize="20"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource AccentDarkBrush}"
+                                   Text="{Binding StatusText}" />
+                    </StackPanel>
+                </DockPanel>
+
+                <Border Margin="0,12,0,12"
+                        Padding="12"
+                        Background="#EEF4F5"
+                        BorderBrush="#D4DEE6"
+                        BorderThickness="1"
+                        CornerRadius="8">
+                    <StackPanel>
+                        <TextBlock FontWeight="SemiBold" Text="{Binding FloatingTaskName}" />
+                        <TextBlock Margin="0,5,0,0"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="{Binding FloatingTaskSummary}" />
+                    </StackPanel>
+                </Border>
+
+                <WrapPanel>
+                    <Button Command="{Binding PauseCommand}"
+                            Content="暂停"
+                            Style="{StaticResource FloatingButtonStyle}" />
+                    <Button Command="{Binding ResumeCommand}"
+                            Content="继续"
+                            Style="{StaticResource PrimaryFloatingButtonStyle}" />
+                    <Button Command="{Binding StopCommand}"
+                            Content="停止"
+                            Style="{StaticResource DangerFloatingButtonStyle}" />
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
