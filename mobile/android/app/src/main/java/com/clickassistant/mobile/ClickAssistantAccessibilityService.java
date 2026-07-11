@@ -1,5 +1,7 @@
 package com.clickassistant.mobile;
 
+// CI trigger
+
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
 import android.graphics.Color;
