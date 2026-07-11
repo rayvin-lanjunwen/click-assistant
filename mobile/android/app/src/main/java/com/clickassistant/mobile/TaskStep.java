@@ -31,9 +31,15 @@ public final class TaskStep {
     private String textContent = "";
     private int charIntervalMs = 50;
 
-    // 步骤执行前后等待
+    // 连点间隔和按压时长
+    private int clickIntervalMs = 100;
+    private int pressDurationMs = 0;
+
+    // 输入前是否自动点击目标位置
+    private boolean autoFocusBeforeInput = false;
+
+    // 步骤执行前等待（不再有独立等待步骤，也不再有步骤后等待）
     private int beforeDelayMs = 0;
-    private int afterDelayMs = 300;
 
     public String getId() {
         return id;
@@ -139,20 +145,36 @@ public final class TaskStep {
         this.charIntervalMs = charIntervalMs;
     }
 
+    public int getClickIntervalMs() {
+        return clickIntervalMs;
+    }
+
+    public void setClickIntervalMs(int clickIntervalMs) {
+        this.clickIntervalMs = clickIntervalMs;
+    }
+
+    public int getPressDurationMs() {
+        return pressDurationMs;
+    }
+
+    public void setPressDurationMs(int pressDurationMs) {
+        this.pressDurationMs = pressDurationMs;
+    }
+
+    public boolean isAutoFocusBeforeInput() {
+        return autoFocusBeforeInput;
+    }
+
+    public void setAutoFocusBeforeInput(boolean autoFocusBeforeInput) {
+        this.autoFocusBeforeInput = autoFocusBeforeInput;
+    }
+
     public int getBeforeDelayMs() {
         return beforeDelayMs;
     }
 
     public void setBeforeDelayMs(int beforeDelayMs) {
         this.beforeDelayMs = beforeDelayMs;
-    }
-
-    public int getAfterDelayMs() {
-        return afterDelayMs;
-    }
-
-    public void setAfterDelayMs(int afterDelayMs) {
-        this.afterDelayMs = afterDelayMs;
     }
 
     /// <summary>
@@ -173,8 +195,10 @@ public final class TaskStep {
         object.put("durationMs", durationMs);
         object.put("textContent", textContent);
         object.put("charIntervalMs", charIntervalMs);
+        object.put("clickIntervalMs", clickIntervalMs);
+        object.put("pressDurationMs", pressDurationMs);
+        object.put("autoFocusBeforeInput", autoFocusBeforeInput);
         object.put("beforeDelayMs", beforeDelayMs);
-        object.put("afterDelayMs", afterDelayMs);
         return object;
     }
 
@@ -196,8 +220,10 @@ public final class TaskStep {
         step.durationMs = object.optInt("durationMs", 300);
         step.textContent = object.optString("textContent", "");
         step.charIntervalMs = object.optInt("charIntervalMs", 50);
+        step.clickIntervalMs = object.optInt("clickIntervalMs", 100);
+        step.pressDurationMs = object.optInt("pressDurationMs", 0);
+        step.autoFocusBeforeInput = object.optBoolean("autoFocusBeforeInput", false);
         step.beforeDelayMs = object.optInt("beforeDelayMs", 0);
-        step.afterDelayMs = object.optInt("afterDelayMs", 300);
         return step;
     }
 
@@ -209,12 +235,12 @@ public final class TaskStep {
             throw new IllegalArgumentException("步骤名称不能为空");
         }
 
-        if (beforeDelayMs < 0 || afterDelayMs < 0) {
-            throw new IllegalArgumentException("步骤等待时间不能小于 0");
+        if (beforeDelayMs < 0) {
+            throw new IllegalArgumentException("步骤前等待时间不能小于 0");
         }
 
-        if (durationMs < 0) {
-            throw new IllegalArgumentException("持续时间不能小于 0");
+        if (durationMs < 0 || clickIntervalMs < 0 || pressDurationMs < 0) {
+            throw new IllegalArgumentException("间隔和持续时间不能小于 0");
         }
 
         if (charIntervalMs < 0) {
@@ -244,11 +270,6 @@ public final class TaskStep {
                     throw new IllegalArgumentException("滑动坐标不能为负");
                 }
                 break;
-            case WAIT:
-                if (durationMs < 1) {
-                    throw new IllegalArgumentException("等待时长必须大于 0");
-                }
-                break;
             case TEXT_INPUT:
                 if (textContent == null || textContent.isEmpty()) {
                     throw new IllegalArgumentException("文本输入内容不能为空");
@@ -272,8 +293,6 @@ public final class TaskStep {
                 return String.format(Locale.ROOT, "点击 (%d,%d) ×%d", x, y, tapCount);
             case SWIPE:
                 return String.format(Locale.ROOT, "滑动 (%d,%d)→(%d,%d) %dms", x, y, endX, endY, durationMs);
-            case WAIT:
-                return String.format(Locale.ROOT, "等待 %dms", durationMs);
             case TEXT_INPUT:
                 return String.format(Locale.ROOT, "文本输入 %d 字", textContent.length());
             default:

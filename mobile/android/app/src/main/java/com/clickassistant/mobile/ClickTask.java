@@ -206,8 +206,10 @@ public final class ClickTask {
             target.setDurationMs(source.getDurationMs());
             target.setTextContent(source.getTextContent());
             target.setCharIntervalMs(source.getCharIntervalMs());
+            target.setClickIntervalMs(source.getClickIntervalMs());
+            target.setPressDurationMs(source.getPressDurationMs());
+            target.setAutoFocusBeforeInput(source.isAutoFocusBeforeInput());
             target.setBeforeDelayMs(source.getBeforeDelayMs());
-            target.setAfterDelayMs(source.getAfterDelayMs());
             snapshot.steps.add(target);
         }
 

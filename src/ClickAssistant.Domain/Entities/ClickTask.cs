@@ -105,13 +105,18 @@ public sealed class ClickTask
                 Y = step.Y,
                 ClickType = step.ClickType,
                 MouseClickCount = step.MouseClickCount,
+                ClickIntervalMs = step.ClickIntervalMs,
+                PressDurationMs = step.PressDurationMs,
                 KeyName = step.KeyName,
                 KeyPressCount = step.KeyPressCount,
                 KeyIntervalMs = step.KeyIntervalMs,
                 ShortcutKeys = step.ShortcutKeys,
                 TextContent = step.TextContent,
+                AutoFocusBeforeInput = step.AutoFocusBeforeInput,
+                EndX = step.EndX,
+                EndY = step.EndY,
+                SwipeDurationMs = step.SwipeDurationMs,
                 BeforeDelayMs = step.BeforeDelayMs,
-                AfterDelayMs = step.AfterDelayMs,
                 Order = step.Order
             })
             .ToList();

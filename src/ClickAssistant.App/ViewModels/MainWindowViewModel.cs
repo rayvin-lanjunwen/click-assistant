@@ -76,8 +76,6 @@ public sealed class MainWindowViewModel : ObservableObject
         AddShortcutStepCommand = new RelayCommand(() => AddStep(InputActionType.KeyboardShortcut), CanUseSelectedTask);
         AddTextInputStepCommand = new RelayCommand(() => AddStep(InputActionType.TextInput), CanUseSelectedTask);
         RemoveStepCommand = new RelayCommand(RemoveStep, () => CanEdit() && SelectedStep is not null);
-        MoveStepUpCommand = new RelayCommand(() => MoveSelectedStep(-1), () => CanMoveSelectedStep(-1));
-        MoveStepDownCommand = new RelayCommand(() => MoveSelectedStep(1), () => CanMoveSelectedStep(1));
         CaptureCoordinateCommand = new RelayCommand(RequestCoordinateSelection, CanCaptureCoordinate);
         TestMouseClickCommand = new AsyncRelayCommand(() => RunSafelyAsync(TestMouseClickOnceAsync), CanUseSelectedMouseStep);
         StartCommand = new AsyncRelayCommand(() => RunSafelyAsync(StartAsync), CanStart);
@@ -113,7 +111,8 @@ public sealed class MainWindowViewModel : ObservableObject
         new InputActionTypeOption(InputActionType.MouseClick, "鼠标点击"),
         new InputActionTypeOption(InputActionType.KeyboardPress, "键盘按键"),
         new InputActionTypeOption(InputActionType.KeyboardShortcut, "组合键"),
-        new InputActionTypeOption(InputActionType.TextInput, "文本输入")
+        new InputActionTypeOption(InputActionType.TextInput, "文本输入"),
+        new InputActionTypeOption(InputActionType.Swipe, "滑动")
     ];
 
     public RelayCommand ShowHomeCommand { get; }
@@ -151,10 +150,6 @@ public sealed class MainWindowViewModel : ObservableObject
     public RelayCommand AddTextInputStepCommand { get; }
 
     public RelayCommand RemoveStepCommand { get; }
-
-    public RelayCommand MoveStepUpCommand { get; }
-
-    public RelayCommand MoveStepDownCommand { get; }
 
     public RelayCommand CaptureCoordinateCommand { get; }
 
@@ -418,16 +413,16 @@ public sealed class MainWindowViewModel : ObservableObject
 
     public int MouseClickIntervalMs
     {
-        get => GetEditableMouseStep()?.AfterDelayMs ?? 0;
+        get => GetEditableMouseStep()?.ClickIntervalMs ?? 100;
         set
         {
             var step = GetEditableMouseStep();
-            if (step is null || step.AfterDelayMs == value)
+            if (step is null || step.ClickIntervalMs == value)
             {
                 return;
             }
 
-            step.AfterDelayMs = value;
+            step.ClickIntervalMs = value;
             NotifyEditorDerivedProperties();
         }
     }
@@ -555,17 +550,47 @@ public sealed class MainWindowViewModel : ObservableObject
         }
     }
 
-    public int SelectedStepAfterDelayMs
+    public int SelectedStepClickIntervalMs
     {
-        get => SelectedStep?.AfterDelayMs ?? 0;
+        get => SelectedStep?.ClickIntervalMs ?? 100;
         set
         {
-            if (SelectedStep is null || SelectedStep.AfterDelayMs == value)
+            if (SelectedStep is null || SelectedStep.ClickIntervalMs == value)
             {
                 return;
             }
 
-            SelectedStep.AfterDelayMs = value;
+            SelectedStep.ClickIntervalMs = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public int SelectedStepPressDurationMs
+    {
+        get => SelectedStep?.PressDurationMs ?? 0;
+        set
+        {
+            if (SelectedStep is null || SelectedStep.PressDurationMs == value)
+            {
+                return;
+            }
+
+            SelectedStep.PressDurationMs = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public bool SelectedStepAutoFocusBeforeInput
+    {
+        get => SelectedStep?.AutoFocusBeforeInput ?? false;
+        set
+        {
+            if (SelectedStep is null || SelectedStep.AutoFocusBeforeInput == value)
+            {
+                return;
+            }
+
+            SelectedStep.AutoFocusBeforeInput = value;
             NotifyEditorDerivedProperties();
         }
     }
@@ -709,6 +734,10 @@ public sealed class MainWindowViewModel : ObservableObject
         ? Visibility.Visible
         : Visibility.Collapsed;
 
+    public Visibility SwipeStepFieldsVisibility => SelectedStep?.ActionType == InputActionType.Swipe
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+
     public Visibility KeyboardStepFieldsVisibility => SelectedStep?.ActionType == InputActionType.KeyboardPress
         ? Visibility.Visible
         : Visibility.Collapsed;
@@ -720,6 +749,40 @@ public sealed class MainWindowViewModel : ObservableObject
     public Visibility TextInputStepFieldsVisibility => SelectedStep?.ActionType == InputActionType.TextInput
         ? Visibility.Visible
         : Visibility.Collapsed;
+
+    // Swipe-specific properties
+    public int SelectedStepEndX
+    {
+        get => SelectedStep?.EndX ?? 0;
+        set
+        {
+            if (SelectedStep is null || SelectedStep.EndX == value) return;
+            SelectedStep.EndX = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public int SelectedStepEndY
+    {
+        get => SelectedStep?.EndY ?? 0;
+        set
+        {
+            if (SelectedStep is null || SelectedStep.EndY == value) return;
+            SelectedStep.EndY = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
+    public int SelectedStepSwipeDurationMs
+    {
+        get => SelectedStep?.SwipeDurationMs ?? 300;
+        set
+        {
+            if (SelectedStep is null || SelectedStep.SwipeDurationMs == value) return;
+            SelectedStep.SwipeDurationMs = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
 
     public string SelectedStepKeyDisplayText => string.IsNullOrWhiteSpace(SelectedStepKeyName)
         ? "当前按键：未设置"
@@ -1011,8 +1074,7 @@ public sealed class MainWindowViewModel : ObservableObject
             TaskId = taskId,
             Name = CreateStepName(actionType, order + 1),
             ActionType = actionType,
-            Order = order,
-            AfterDelayMs = actionType == InputActionType.MouseClick ? 800 : 500
+            Order = order
         };
         ApplyStepDefaults(step);
         return step;
@@ -1129,8 +1191,7 @@ public sealed class MainWindowViewModel : ObservableObject
             TaskId = SelectedTask.Id,
             Name = CreateStepName(actionType, CurrentSteps.Count + 1),
             ActionType = actionType,
-            Order = CurrentSteps.Count,
-            AfterDelayMs = actionType == InputActionType.MouseClick ? 800 : 500
+            Order = CurrentSteps.Count
         };
         ApplyStepDefaults(step);
 
@@ -1159,20 +1220,19 @@ public sealed class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 调整当前步骤顺序。鼠标专页中位置顺序即真实执行顺序。
+    /// 拖拽排序：将步骤从源索引移到目标索引，然后自动重新编号。
+    /// 供代码后置层在 ListBox 拖放操作时调用。
     /// </summary>
-    private void MoveSelectedStep(int direction)
+    public void MoveStep(int fromIndex, int toIndex)
     {
-        if (!CanMoveSelectedStep(direction) || SelectedStep is null)
+        if (fromIndex < 0 || fromIndex >= CurrentSteps.Count
+            || toIndex < 0 || toIndex >= CurrentSteps.Count)
         {
             return;
         }
 
-        var currentIndex = CurrentSteps.IndexOf(SelectedStep);
-        var targetIndex = currentIndex + direction;
-        CurrentSteps.Move(currentIndex, targetIndex);
+        CurrentSteps.Move(fromIndex, toIndex);
         ReorderCurrentSteps();
-        SelectedStep = CurrentSteps[targetIndex];
         NotifyEditorDerivedProperties();
         NotifyCommandStates();
     }
@@ -1462,9 +1522,14 @@ public sealed class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedStepEnabled));
         OnPropertyChanged(nameof(SelectedStepActionType));
         OnPropertyChanged(nameof(SelectedStepBeforeDelayMs));
-        OnPropertyChanged(nameof(SelectedStepAfterDelayMs));
+        OnPropertyChanged(nameof(SelectedStepClickIntervalMs));
+        OnPropertyChanged(nameof(SelectedStepPressDurationMs));
+        OnPropertyChanged(nameof(SelectedStepAutoFocusBeforeInput));
         OnPropertyChanged(nameof(SelectedStepX));
         OnPropertyChanged(nameof(SelectedStepY));
+        OnPropertyChanged(nameof(SelectedStepEndX));
+        OnPropertyChanged(nameof(SelectedStepEndY));
+        OnPropertyChanged(nameof(SelectedStepSwipeDurationMs));
         OnPropertyChanged(nameof(SelectedStepClickType));
         OnPropertyChanged(nameof(SelectedStepMouseClickCount));
         OnPropertyChanged(nameof(SelectedStepKeyName));
@@ -1474,6 +1539,7 @@ public sealed class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedStepShortcutKeys));
         OnPropertyChanged(nameof(SelectedStepTextContent));
         OnPropertyChanged(nameof(MouseStepFieldsVisibility));
+        OnPropertyChanged(nameof(SwipeStepFieldsVisibility));
         OnPropertyChanged(nameof(KeyboardStepFieldsVisibility));
         OnPropertyChanged(nameof(ShortcutStepFieldsVisibility));
         OnPropertyChanged(nameof(TextInputStepFieldsVisibility));
@@ -1535,6 +1601,15 @@ public sealed class MainWindowViewModel : ObservableObject
     private void HandleExecutionLogReceived(object? sender, string message)
     {
         RunOnUiThread(() => AddRuntimeLog(message));
+    }
+
+    /// <summary>
+    /// 供坐标选择器关闭后刷新步骤列表等界面数据。
+    /// </summary>
+    public void NotifyEditorDerivedValuesAfterPicker()
+    {
+        NotifyEditorDerivedProperties();
+        AddRuntimeLog("已从目标界面更新步骤坐标。");
     }
 
     /// <summary>
@@ -1609,8 +1684,6 @@ public sealed class MainWindowViewModel : ObservableObject
         AddShortcutStepCommand.NotifyCanExecuteChanged();
         AddTextInputStepCommand.NotifyCanExecuteChanged();
         RemoveStepCommand.NotifyCanExecuteChanged();
-        MoveStepUpCommand.NotifyCanExecuteChanged();
-        MoveStepDownCommand.NotifyCanExecuteChanged();
         CaptureCoordinateCommand.NotifyCanExecuteChanged();
         TestMouseClickCommand.NotifyCanExecuteChanged();
         StartCommand.NotifyCanExecuteChanged();
@@ -1649,18 +1722,6 @@ public sealed class MainWindowViewModel : ObservableObject
     private bool CanCaptureCoordinate()
     {
         return CanUseSelectedMouseStep() && !isCoordinateCapturePending;
-    }
-
-    private bool CanMoveSelectedStep(int direction)
-    {
-        if (!CanEdit() || SelectedStep is null)
-        {
-            return false;
-        }
-
-        var currentIndex = CurrentSteps.IndexOf(SelectedStep);
-        var targetIndex = currentIndex + direction;
-        return currentIndex >= 0 && targetIndex >= 0 && targetIndex < CurrentSteps.Count;
     }
 
     /// <summary>
@@ -1744,7 +1805,8 @@ public sealed class MainWindowViewModel : ObservableObject
     {
         return actionType switch
         {
-            InputActionType.MouseClick => $"鼠标步骤 {index}",
+            InputActionType.MouseClick => $"点击步骤 {index}",
+            InputActionType.Swipe => $"滑动步骤 {index}",
             InputActionType.KeyboardPress => $"按键步骤 {index}",
             InputActionType.KeyboardShortcut => $"组合键步骤 {index}",
             InputActionType.TextInput => $"文本步骤 {index}",

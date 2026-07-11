@@ -1,0 +1,12 @@
+# Click Assistant 项目统一版本号
+
+# 说明：
+# - PROJECT_VERSION：项目级别的发布版本号，对应 CHANGELOG 和 Git Tag。
+# - Windows 和 Android 平台各自有不同的内部版本号（versionCode / AssemblyVersion），
+#   但应在本文件中说明与 PROJECT_VERSION 的对应关系。
+# - 每次发布时，先更新此文件，再同步更新各平台的版本声明。
+
+PROJECT_VERSION=0.12.0
+WINDOWS_INTERNAL_VERSION=0.12.0
+ANDROID_VERSION_NAME=0.5.0
+ANDROID_VERSION_CODE=5

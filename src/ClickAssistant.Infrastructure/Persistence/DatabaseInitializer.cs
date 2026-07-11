@@ -118,7 +118,13 @@ public sealed class DatabaseInitializer
             ["key_press_count"] = "ALTER TABLE task_steps ADD COLUMN key_press_count INTEGER NOT NULL DEFAULT 1;",
             ["key_interval_ms"] = "ALTER TABLE task_steps ADD COLUMN key_interval_ms INTEGER NOT NULL DEFAULT 100;",
             ["shortcut_keys"] = "ALTER TABLE task_steps ADD COLUMN shortcut_keys TEXT NOT NULL DEFAULT 'Ctrl+C';",
-            ["text_content"] = "ALTER TABLE task_steps ADD COLUMN text_content TEXT NOT NULL DEFAULT '';"
+            ["text_content"] = "ALTER TABLE task_steps ADD COLUMN text_content TEXT NOT NULL DEFAULT '';",
+            ["click_interval_ms"] = "ALTER TABLE task_steps ADD COLUMN click_interval_ms INTEGER NOT NULL DEFAULT 100;",
+            ["press_duration_ms"] = "ALTER TABLE task_steps ADD COLUMN press_duration_ms INTEGER NOT NULL DEFAULT 0;",
+            ["auto_focus_before_input"] = "ALTER TABLE task_steps ADD COLUMN auto_focus_before_input INTEGER NOT NULL DEFAULT 0;",
+            ["end_x"] = "ALTER TABLE task_steps ADD COLUMN end_x INTEGER NOT NULL DEFAULT 0;",
+            ["end_y"] = "ALTER TABLE task_steps ADD COLUMN end_y INTEGER NOT NULL DEFAULT 0;",
+            ["swipe_duration_ms"] = "ALTER TABLE task_steps ADD COLUMN swipe_duration_ms INTEGER NOT NULL DEFAULT 300;"
         };
 
         foreach (var (columnName, alterSql) in requiredColumns)

@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.text.InputType;
 import android.view.View;
+import android.view.Gravity;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -437,7 +438,7 @@ public final class MainActivity extends Activity {
             step.setX(500);
             step.setY(900);
             step.setTapCount(1);
-            step.setAfterDelayMs(800);
+            step.setClickIntervalMs(100);
             task.setSteps(new ArrayList<>());
             task.getSteps().add(step);
             TaskStore.upsertTask(this, task);
@@ -548,18 +549,37 @@ public final class MainActivity extends Activity {
         row.setPadding(dp(14), dp(12), dp(14), dp(12));
         row.setBackground(glassBackground(false));
 
+        // 步骤编号 + 名称 + 动作类型
+        LinearLayout headerRow = new LinearLayout(this);
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
+
+        // 序号圆圈
+        TextView numberView = new TextView(this);
+        int circleColor = getStepColor(step.getActionType());
+        GradientDrawable circleBg = new GradientDrawable();
+        circleBg.setShape(GradientDrawable.OVAL);
+        circleBg.setColor(circleColor);
+        circleBg.setSize(dp(28), dp(28));
+        numberView.setBackground(circleBg);
+        numberView.setText(String.valueOf(index + 1));
+        numberView.setTextColor(Color.WHITE);
+        numberView.setTextSize(13);
+        numberView.setGravity(Gravity.CENTER);
+        numberView.setPadding(0, 0, 0, 0);
+        headerRow.addView(numberView);
+
         TextView summary = new TextView(this);
-        summary.setText(String.format(Locale.ROOT, "%d. %s（%s）%s",
-                index + 1,
+        summary.setText(String.format(Locale.ROOT, "  %s（%s）%s",
                 step.getName(),
                 step.getActionType().getDisplayName(),
                 step.isEnabled() ? "" : " [已禁用]"));
         summary.setTextSize(16);
         summary.setTextColor(Color.WHITE);
-        row.addView(summary);
+        headerRow.addView(summary);
+        row.addView(headerRow);
 
         TextView detail = new TextView(this);
-        detail.setText(step.getSummary());
+        detail.setText("  " + step.getSummary());
         detail.setTextColor(Color.LTGRAY);
         row.addView(detail);
 
@@ -568,28 +588,29 @@ public final class MainActivity extends Activity {
         Button editButton = new Button(this);
         editButton.setText("编辑");
         editButton.setOnClickListener(view -> showStepEditorDialog(step));
-        Button upButton = new Button(this);
-        upButton.setText("上移");
-        upButton.setEnabled(index > 0);
-        upButton.setOnClickListener(view -> moveStep(index, -1));
-        Button downButton = new Button(this);
-        downButton.setText("下移");
-        downButton.setEnabled(index < total - 1);
-        downButton.setOnClickListener(view -> moveStep(index, 1));
         Button deleteButton = new Button(this);
         deleteButton.setText("删除");
         deleteButton.setOnClickListener(view -> deleteStep(step));
         styleButton(editButton, true);
-        styleButton(upButton, false);
-        styleButton(downButton, false);
         styleButton(deleteButton, false);
         buttons.addView(editButton, weightParams());
-        buttons.addView(upButton, weightParams());
-        buttons.addView(downButton, weightParams());
         buttons.addView(deleteButton, weightParams());
         row.addView(buttons);
 
         return row;
+    }
+
+    private int getStepColor(TaskActionType actionType) {
+        switch (actionType) {
+            case TAP:
+                return COLOR_PRIMARY; // 蓝色
+            case SWIPE:
+                return Color.rgb(22, 160, 64); // 绿色
+            case TEXT_INPUT:
+                return Color.rgb(193, 127, 34); // 橙色
+            default:
+                return COLOR_PRIMARY;
+        }
     }
 
     private void renderLog() {
@@ -772,7 +793,7 @@ public final class MainActivity extends Activity {
                 step.setX(500);
                 step.setY(900);
                 step.setTapCount(1);
-                step.setAfterDelayMs(800);
+                step.setClickIntervalMs(100);
                 break;
             case SWIPE:
                 step.setName("滑动步骤");
@@ -781,18 +802,11 @@ public final class MainActivity extends Activity {
                 step.setEndX(800);
                 step.setEndY(900);
                 step.setDurationMs(300);
-                step.setAfterDelayMs(300);
-                break;
-            case WAIT:
-                step.setName("等待步骤");
-                step.setDurationMs(1000);
-                step.setAfterDelayMs(0);
                 break;
             case TEXT_INPUT:
                 step.setName("文本输入步骤");
                 step.setTextContent("示例文本");
                 step.setCharIntervalMs(50);
-                step.setAfterDelayMs(300);
                 break;
             default:
                 break;
@@ -859,41 +873,48 @@ public final class MainActivity extends Activity {
         final EditText durationInput;
         final EditText textInput;
         final EditText charIntervalInput;
+        final EditText clickIntervalInput;
+        final EditText pressDurationInput;
+        final CheckBox autoFocusBox;
 
         if (step.getActionType() == TaskActionType.TAP) {
             tapCountInput = addEditorInput(container, "点击次数", InputType.TYPE_CLASS_NUMBER, String.valueOf(step.getTapCount()));
+            clickIntervalInput = addEditorInput(container, "连点间隔，毫秒", InputType.TYPE_CLASS_NUMBER, String.valueOf(step.getClickIntervalMs()));
+            pressDurationInput = addEditorInput(container, "按压时长，毫秒（0=默认）", InputType.TYPE_CLASS_NUMBER, String.valueOf(step.getPressDurationMs()));
             endXInput = null;
             endYInput = null;
             durationInput = null;
             textInput = null;
             charIntervalInput = null;
+            autoFocusBox = null;
             addPickButton(container, step, TaskActionType.TAP);
         } else if (step.getActionType() == TaskActionType.SWIPE) {
             tapCountInput = null;
+            clickIntervalInput = null;
+            pressDurationInput = null;
             endXInput = addEditorInput(container, "终点 X 坐标", InputType.TYPE_CLASS_NUMBER, String.valueOf(step.getEndX()));
             endYInput = addEditorInput(container, "终点 Y 坐标", InputType.TYPE_CLASS_NUMBER, String.valueOf(step.getEndY()));
             durationInput = addEditorInput(container, "滑动持续时间，毫秒", InputType.TYPE_CLASS_NUMBER, String.valueOf(step.getDurationMs()));
             textInput = null;
             charIntervalInput = null;
+            autoFocusBox = null;
             addPickButton(container, step, TaskActionType.SWIPE);
-        } else if (step.getActionType() == TaskActionType.WAIT) {
-            tapCountInput = null;
-            endXInput = null;
-            endYInput = null;
-            durationInput = addEditorInput(container, "等待时长，毫秒", InputType.TYPE_CLASS_NUMBER, String.valueOf(step.getDurationMs()));
-            textInput = null;
-            charIntervalInput = null;
         } else {
             tapCountInput = null;
+            clickIntervalInput = null;
+            pressDurationInput = null;
             endXInput = null;
             endYInput = null;
             durationInput = null;
             textInput = addEditorInput(container, "文本内容", InputType.TYPE_CLASS_TEXT, step.getTextContent());
             charIntervalInput = addEditorInput(container, "逐字间隔，毫秒（0 表示整段写入）", InputType.TYPE_CLASS_NUMBER, String.valueOf(step.getCharIntervalMs()));
+            autoFocusBox = new CheckBox(this);
+            autoFocusBox.setText("输入前自动点击目标位置");
+            autoFocusBox.setChecked(step.isAutoFocusBeforeInput());
+            container.addView(autoFocusBox);
         }
 
         final EditText beforeDelayInput = addEditorInput(container, "步骤前等待，毫秒", InputType.TYPE_CLASS_NUMBER, String.valueOf(step.getBeforeDelayMs()));
-        final EditText afterDelayInput = addEditorInput(container, "步骤后等待，毫秒", InputType.TYPE_CLASS_NUMBER, String.valueOf(step.getAfterDelayMs()));
 
         new AlertDialog.Builder(this)
                 .setTitle("编辑步骤：" + step.getActionType().getDisplayName())
@@ -909,10 +930,17 @@ public final class MainActivity extends Activity {
                             step.setY(parseInt(yInput, "Y 坐标"));
                         }
                         step.setBeforeDelayMs(parseInt(beforeDelayInput, "步骤前等待"));
-                        step.setAfterDelayMs(parseInt(afterDelayInput, "步骤后等待"));
 
-                        if (step.getActionType() == TaskActionType.TAP && tapCountInput != null) {
-                            step.setTapCount(parseInt(tapCountInput, "点击次数"));
+                        if (step.getActionType() == TaskActionType.TAP) {
+                            if (tapCountInput != null) {
+                                step.setTapCount(parseInt(tapCountInput, "点击次数"));
+                            }
+                            if (clickIntervalInput != null) {
+                                step.setClickIntervalMs(parseInt(clickIntervalInput, "连点间隔"));
+                            }
+                            if (pressDurationInput != null) {
+                                step.setPressDurationMs(parseInt(pressDurationInput, "按压时长"));
+                            }
                         } else if (step.getActionType() == TaskActionType.SWIPE) {
                             if (endXInput != null) {
                                 step.setEndX(parseInt(endXInput, "终点 X 坐标"));
@@ -923,14 +951,15 @@ public final class MainActivity extends Activity {
                             if (durationInput != null) {
                                 step.setDurationMs(parseInt(durationInput, "滑动持续时间"));
                             }
-                        } else if (step.getActionType() == TaskActionType.WAIT && durationInput != null) {
-                            step.setDurationMs(parseInt(durationInput, "等待时长"));
                         } else if (step.getActionType() == TaskActionType.TEXT_INPUT) {
                             if (textInput != null) {
                                 step.setTextContent(textInput.getText().toString());
                             }
                             if (charIntervalInput != null) {
                                 step.setCharIntervalMs(parseInt(charIntervalInput, "逐字间隔"));
+                            }
+                            if (autoFocusBox != null) {
+                                step.setAutoFocusBeforeInput(autoFocusBox.isChecked());
                             }
                         }
 

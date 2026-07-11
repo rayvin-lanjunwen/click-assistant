@@ -2,6 +2,27 @@
 
 本文档用于记录项目中值得追踪的版本、功能、修复和重要变更，并与 GitHub Releases（GitHub 发布页面）保持同步。
 
+## v0.12.0 - 2026-07-11 17:54
+
+- 新增: 步骤可视化标记覆盖层，支持在目标界面直接看到所有步骤序号圆点并拖动调整坐标。
+- 新增: 步骤列表显示彩色序号圆圈，点击=蓝色、滑动=绿色、文本输入=橙色。
+- 新增: 桌面端支持滑动步骤类型，可配置起点、终点坐标和滑动时长。
+- 新增: 文本输入步骤支持"输入前自动点击目标位置获得焦点"。
+- 新增: 版本化数据库迁移框架 `DatabaseMigrator`，按迁移版本号执行升级。
+- 新增: Android CI 工作流（构建 + 单元测试 + APK 上传）。
+- 新增: Android 基础单元测试，覆盖 TaskStep 校验和 JSON 往返序列化。
+- 新增: GitHub Issue 模板（Bug/Feature）和 Pull Request 模板。
+- 新增: 项目统一版本号文件 `VERSION`。
+- 变更: 移除独立"等待"步骤类型，步骤间等待统一由下一步骤的 BeforeDelayMs 控制（Issue # 交互优化需求）。
+- 变更: 移除 AfterDelayMs 字段，连点间隔改用 ClickIntervalMs，新增 PressDurationMs 按压时长。
+- 变更: 移除步骤列表的"上移"/"下移"按钮，桌面端预留拖拽排序接口、移动端简化为纯序号显示。
+- 变更: Android applyBackup 设为 false，缩小辅助功能事件类型范围（typeAllMask → typeWindowStateChanged|typeWindowContentChanged），
+  accessibilityEventTypes notificationTimeout 从 100ms 调整为 500ms。
+- 变更: 桌面端发布脚本支持读取 VERSION 文件并创建 ZIP 压缩包。
+- 变更: 统一项目版本号：项目 v0.12.0、Android v0.5.0 (versionCode 5)、Windows v0.12.0。
+- docs: 更新 CHANGELOG、WORKLOG 和 README，记录交互优化与工程治理变更。
+- docs: 补充 Android 无障碍服务权限说明注释。
+
 ## v0.11.0 - 2026-07-11 00:22
 
 - 新增: Android 新建任务增加“点击任务 / 文本输入任务 / 点击与文本组合 / 空白任务”模板，组合模板按顺序创建点击目标输入框和输入文本步骤。

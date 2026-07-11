@@ -41,8 +41,8 @@ public partial class MainWindow : Window
         try
         {
             var connectionFactory = new SqliteConnectionFactory();
-            var databaseInitializer = new DatabaseInitializer(connectionFactory);
-            await databaseInitializer.InitializeAsync();
+            var databaseMigrator = new DatabaseMigrator(connectionFactory);
+            await databaseMigrator.InitializeAsync();
 
             var taskRepository = new SqliteClickTaskRepository(connectionFactory);
             var executionLogRepository = new SqliteExecutionLogRepository(connectionFactory);
@@ -150,21 +150,25 @@ public partial class MainWindow : Window
             return;
         }
 
-        var pickerWindow = new CoordinatePickerWindow(cursorPositionService)
+        // 获取所有启用的步骤列表，传递给可视化覆盖层
+        var allSteps = viewModel.CurrentSteps.ToList();
+        var highlightedStep = viewModel.SelectedStep;
+
+        var pickerWindow = new CoordinatePickerWindow(
+            allSteps,
+            onStepClicked: clickedStep =>
+            {
+                // 点击标记时同步选中步骤
+                Dispatcher.Invoke(() => viewModel.SelectedStep = clickedStep);
+            })
         {
-            Owner = this
+            Owner = this,
+            HighlightedStep = highlightedStep
         };
-        var result = pickerWindow.ShowDialog();
+        pickerWindow.ShowDialog();
 
-        if (result == true && pickerWindow.SelectedPoint is { } point)
-        {
-            viewModel.ApplySelectedCoordinate(point);
-        }
-        else
-        {
-            viewModel.CancelCoordinateSelection();
-        }
-
+        // 拖动结束后坐标已在步骤上直接更新，触发保存提示
+        viewModel.NotifyEditorDerivedValuesAfterPicker();
         Activate();
     }
 

@@ -98,7 +98,7 @@ public sealed class SqliteClickTaskRepositoryTests
                     ClickType = ClickType.LeftDouble,
                     MouseClickCount = 4,
                     BeforeDelayMs = 10,
-                    AfterDelayMs = 20,
+                    ClickIntervalMs = 20,
                     Order = 0
                 },
                 new ClickStep
@@ -111,7 +111,7 @@ public sealed class SqliteClickTaskRepositoryTests
                     KeyPressCount = 3,
                     KeyIntervalMs = 80,
                     BeforeDelayMs = 30,
-                    AfterDelayMs = 40,
+                    ClickIntervalMs = 40,
                     Order = 1
                 },
                 new ClickStep
@@ -122,7 +122,7 @@ public sealed class SqliteClickTaskRepositoryTests
                     ActionType = InputActionType.KeyboardShortcut,
                     ShortcutKeys = "Ctrl+Shift+Esc",
                     BeforeDelayMs = 50,
-                    AfterDelayMs = 60,
+                    ClickIntervalMs = 60,
                     Order = 2
                 },
                 new ClickStep
@@ -134,7 +134,7 @@ public sealed class SqliteClickTaskRepositoryTests
                     TextContent = "Hello Click Assistant",
                     KeyIntervalMs = 20,
                     BeforeDelayMs = 70,
-                    AfterDelayMs = 80,
+                    ClickIntervalMs = 80,
                     Order = 3
                 }
             ]

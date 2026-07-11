@@ -156,7 +156,6 @@ public sealed class ClickExecutionEngine : IClickExecutionEngine
                     PublishLog($"第 {round}/{task.RepeatCount} 轮：执行步骤“{step.Name}”。");
                     await DelayWithPauseAsync(step.BeforeDelayMs, cancellationToken);
                     await ExecuteStepActionAsync(step, cancellationToken);
-                    await DelayWithPauseAsync(step.AfterDelayMs, cancellationToken);
                 }
             }
 
@@ -205,7 +204,7 @@ public sealed class ClickExecutionEngine : IClickExecutionEngine
 
                     if (clickIndex < step.MouseClickCount)
                     {
-                        await DelayWithPauseAsync(step.AfterDelayMs, cancellationToken);
+                        await DelayWithPauseAsync(step.ClickIntervalMs, cancellationToken);
                     }
                 }
 

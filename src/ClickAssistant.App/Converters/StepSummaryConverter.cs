@@ -20,7 +20,8 @@ public sealed class StepSummaryConverter : IValueConverter
         var enabledPrefix = step.Enabled ? string.Empty : "已停用 · ";
         return enabledPrefix + (step.ActionType switch
         {
-            InputActionType.MouseClick => $"鼠标点击：X={step.X}，Y={step.Y} · {ToClickTypeText(step.ClickType)} · {step.MouseClickCount} 次 · 间隔 {FormatMilliseconds(step.AfterDelayMs)}",
+            InputActionType.MouseClick => $"鼠标点击：X={step.X}，Y={step.Y} · {ToClickTypeText(step.ClickType)} · {step.MouseClickCount} 次 · 连点间隔 {FormatMilliseconds(step.ClickIntervalMs)}",
+            InputActionType.Swipe => $"滑动：(X={step.X},Y={step.Y})→(X={step.EndX},Y={step.EndY}) · {FormatMilliseconds(step.SwipeDurationMs)}",
             InputActionType.KeyboardPress => $"键盘按键：{ToKeyText(step.KeyName)} · 连按 {Math.Max(1, step.KeyPressCount)} 次 · 间隔 {FormatMilliseconds(step.KeyIntervalMs)}",
             InputActionType.KeyboardShortcut => $"组合键：{ToKeyText(step.ShortcutKeys)}",
             InputActionType.TextInput => $"文本输入：{ToTextPreview(step.TextContent)} · 字符间隔 {FormatMilliseconds(step.KeyIntervalMs)}",

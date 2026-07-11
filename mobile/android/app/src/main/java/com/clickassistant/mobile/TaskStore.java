@@ -140,7 +140,7 @@ public final class TaskStore {
         step.setX(legacy.getInt("task_x", 500));
         step.setY(legacy.getInt("task_y", 900));
         step.setTapCount(Math.max(1, legacy.getInt("task_repeat_count", 3)));
-        step.setAfterDelayMs(legacy.getInt("task_interval_ms", 800));
+        step.setClickIntervalMs(legacy.getInt("task_interval_ms", 800));
         task.setStartDelayMs(legacy.getInt("task_start_delay_ms", 1000));
         task.setRepeatCount(1);
         task.setSteps(new ArrayList<>());

@@ -293,9 +293,6 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
         logAndStatus(ExecutionState.RUNNING.getDisplayName(), "执行步骤：" + step.getSummary());
 
         switch (step.getActionType()) {
-            case WAIT:
-                handler.postDelayed(() -> finishStep(step), Math.max(1, step.getDurationMs()));
-                break;
             case TAP:
                 dispatchTapSequence(step, 0);
                 break;
@@ -312,7 +309,7 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
     }
 
     /// <summary>
-    /// 点击序列：按 tapCount 重复点击同一坐标，步间使用 afterDelayMs 间隔。
+    /// 点击序列：按 tapCount 重复点击同一坐标，步间使用 clickIntervalMs 间隔。
     /// </summary>
     private void dispatchTapSequence(TaskStep step, int tapIndex) {
         if (stopRequested || !running) {
@@ -345,7 +342,7 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
                 } else {
                     handler.postDelayed(
                             () -> dispatchTapSequence(step, next),
-                            Math.max(0, step.getAfterDelayMs()));
+                            Math.max(0, step.getClickIntervalMs()));
                 }
             }
 
@@ -393,9 +390,38 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
     }
 
     /// <summary>
-    /// 文本输入：向当前聚焦的输入框写入文本；charIntervalMs 大于 0 时逐字输入。
+    /// 文本输入：可自动点击目标位置获得焦点后，向输入框写入文本。
     /// </summary>
     private void dispatchText(TaskStep step) {
+        if (step.isAutoFocusBeforeInput()) {
+            // 先点击目标位置获得焦点
+            Path clickPath = new Path();
+            clickPath.moveTo(step.getX(), step.getY());
+            GestureDescription.StrokeDescription clickStroke =
+                    new GestureDescription.StrokeDescription(clickPath, 0, 80);
+            GestureDescription clickGesture = new GestureDescription.Builder().addStroke(clickStroke).build();
+
+            boolean accepted = dispatchGesture(clickGesture, new GestureResultCallback() {
+                @Override
+                public void onCompleted(GestureDescription gestureDescription) {
+                    handler.postDelayed(() -> doDispatchText(step), 300);
+                }
+
+                @Override
+                public void onCancelled(GestureDescription gestureDescription) {
+                    doDispatchText(step);
+                }
+            }, null);
+
+            if (!accepted) {
+                doDispatchText(step);
+            }
+        } else {
+            doDispatchText(step);
+        }
+    }
+
+    private void doDispatchText(TaskStep step) {
         String text = step.getTextContent();
         if (text == null || text.isEmpty()) {
             finishStep(step);
@@ -408,7 +434,6 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
             try {
                 focus = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
             } catch (Exception ignored) {
-                // 某些界面无法获取聚焦节点，忽略异常。
             }
         }
 
@@ -472,7 +497,7 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
     }
 
     /// <summary>
-    /// 步骤完成：推进步骤指针，并按 afterDelayMs 进入下一步。
+    /// 步骤完成：推进步骤指针进入下一步。步骤间等待由下一步的 beforeDelayMs 控制。
     /// </summary>
     private void finishStep(TaskStep step) {
         if (stopRequested || !running) {
@@ -481,7 +506,7 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
         }
 
         stepIndex++;
-        handler.postDelayed(this::runLoop, Math.max(0, step.getAfterDelayMs()));
+        handler.post(this::runLoop);
     }
 
     /// <summary>
@@ -735,6 +760,10 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
 
         int cursorSize = dp(72);
         pickerCursorView = new PickerCursorView(this);
+        // 显示目标步骤的序号
+        if (targetStep != null) {
+            pickerCursorView.setStepNumber(String.valueOf(targetStep.getOrder() + 1));
+        }
         FrameLayout.LayoutParams cursorParams = new FrameLayout.LayoutParams(cursorSize, cursorSize);
         overlay.addView(pickerCursorView, cursorParams);
 
@@ -779,12 +808,24 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                 PixelFormat.TRANSLUCENT);
         params.gravity = Gravity.TOP | Gravity.START;
 
-        coordinatePickerOverlay = overlay;
-        windowManager.addView(overlay, params);
+        try {
+            coordinatePickerOverlay = overlay;
+            windowManager.addView(overlay, params);
+        } catch (RuntimeException ex) {
+            coordinatePickerOverlay = null;
+            pickerGuideText = null;
+            pickerCursorView = null;
+            pickerConfirmButton = null;
+            TaskStore.saveLastStatus(this,
+                    "取点失败：无法显示取点层（" + ex.getClass().getSimpleName() + "）");
+            openMainActivity();
+            return;
+        }
         overlay.post(() -> updatePickerCursor(pickerX, pickerY));
         TaskStore.saveLastStatus(this, "取点中：拖动光标后确认位置");
     }
@@ -927,17 +968,28 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
     }
 
     /// <summary>
-    /// 蓝色十字光标，用于在取点覆盖层中清楚标出最终保存的位置。
+    /// 可视化取点光标，圆圈中央显示步骤序号，便于直接识别当前编辑的步骤。
     /// </summary>
-    private static final class PickerCursorView extends View {
-        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final class PickerCursorView extends View {
+        private final Paint circlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private String stepNumber = "";
 
         PickerCursorView(android.content.Context context) {
             super(context);
-            paint.setColor(Color.rgb(54, 184, 255));
-            paint.setStrokeWidth(5f);
-            paint.setStyle(Paint.Style.STROKE);
+            circlePaint.setColor(Color.rgb(54, 184, 255));
+            circlePaint.setStrokeWidth(5f);
+            circlePaint.setStyle(Paint.Style.STROKE);
+            textPaint.setColor(Color.rgb(54, 184, 255));
+            textPaint.setTextSize(dp(22));
+            textPaint.setTextAlign(Paint.Align.CENTER);
+            textPaint.setFakeBoldText(true);
             setClickable(false);
+        }
+
+        void setStepNumber(String number) {
+            stepNumber = number;
+            invalidate();
         }
 
         @Override
@@ -946,13 +998,18 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
             float centerX = getWidth() / 2f;
             float centerY = getHeight() / 2f;
             float radius = Math.min(getWidth(), getHeight()) * 0.28f;
-            canvas.drawCircle(centerX, centerY, radius, paint);
-            canvas.drawLine(centerX, 0, centerX, getHeight(), paint);
-            canvas.drawLine(0, centerY, getWidth(), centerY, paint);
+            canvas.drawCircle(centerX, centerY, radius, circlePaint);
+            canvas.drawLine(centerX, 0, centerX, getHeight(), circlePaint);
+            canvas.drawLine(0, centerY, getWidth(), centerY, circlePaint);
 
-            paint.setStyle(Paint.Style.FILL);
-            canvas.drawCircle(centerX, centerY, 7f, paint);
-            paint.setStyle(Paint.Style.STROKE);
+            circlePaint.setStyle(Paint.Style.FILL);
+            canvas.drawCircle(centerX, centerY, 7f, circlePaint);
+            circlePaint.setStyle(Paint.Style.STROKE);
+
+            if (!stepNumber.isEmpty()) {
+                float textOffset = (textPaint.descent() + textPaint.ascent()) / 2f;
+                canvas.drawText(stepNumber, centerX, centerY - textOffset + dp(10), textPaint);
+            }
         }
     }
 

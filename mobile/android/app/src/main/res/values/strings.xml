@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Click Assistant 移动端</string>
-    <string name="accessibility_service_description">用于执行你主动配置并主动启动的点击、滑动和文本输入任务，并提供随时可见的暂停与停止入口。</string>
+    <string name="accessibility_service_description">仅在你主动启动任务后执行已配置的点击、滑动和文本输入操作。本服务不会自动触发、不会读取屏幕内容、不会记录用户输入，并提供随时可见的暂停与停止入口。</string>
 </resources>

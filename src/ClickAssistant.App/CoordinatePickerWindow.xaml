@@ -4,63 +4,15 @@
         WindowStyle="None"
         ResizeMode="NoResize"
         AllowsTransparency="True"
-        Background="#24000000"
+        Background="#12000000"
         Topmost="True"
         ShowInTaskbar="False"
-        Cursor="None"
         KeyDown="HandleKeyDown"
         Loaded="HandleLoaded"
         MouseLeftButtonDown="HandleMouseLeftButtonDown"
-        MouseMove="HandleMouseMove">
+        MouseMove="HandleMouseMove"
+        MouseLeftButtonUp="HandleMouseLeftButtonUp">
     <Canvas x:Name="OverlayCanvas">
-        <Line x:Name="VerticalGuide"
-              Stroke="#88FFFFFF"
-              StrokeThickness="1" />
-        <Line x:Name="HorizontalGuide"
-              Stroke="#88FFFFFF"
-              StrokeThickness="1" />
-
-        <Ellipse x:Name="TargetRing"
-                 Width="34"
-                 Height="34"
-                 Stroke="#167C80"
-                 StrokeThickness="3"
-                 Fill="#22FFFFFF" />
-
-        <Path x:Name="CursorShape"
-              Data="M 8 4 L 8 54 L 21 41 L 30 65 L 40 61 L 31 38 L 49 38 Z"
-              Fill="#FFFFFF"
-              Stroke="#172027"
-              StrokeThickness="2">
-            <Path.Effect>
-                <DropShadowEffect BlurRadius="8"
-                                  Direction="315"
-                                  Opacity="0.35"
-                                  ShadowDepth="2"
-                                  Color="#172027" />
-            </Path.Effect>
-        </Path>
-
-        <Border x:Name="InfoPanel"
-                Width="280"
-                Padding="14"
-                Background="#F7FCFE"
-                BorderBrush="#167C80"
-                BorderThickness="1"
-                CornerRadius="8">
-            <StackPanel>
-                <TextBlock FontSize="16"
-                           FontWeight="SemiBold"
-                           Text="选择坐标" />
-                <TextBlock Margin="0,6,0,0"
-                           Foreground="#5B6975"
-                           Text="移动鼠标到目标位置，左键确认，Esc 取消。" />
-                <TextBlock x:Name="CoordinateText"
-                           Margin="0,10,0,0"
-                           FontSize="18"
-                           FontWeight="SemiBold"
-                           Foreground="#0E5659" />
-            </StackPanel>
-        </Border>
+        <!-- Step markers are added dynamically in code-behind -->
     </Canvas>
 </Window>

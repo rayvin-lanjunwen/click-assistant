@@ -5,7 +5,8 @@ using ClickAssistant.Domain.ValueObjects;
 namespace ClickAssistant.Domain.Entities;
 
 /// <summary>
-/// 输入步骤，表示任务中的一次鼠标或键盘动作。
+/// 输入步骤，表示任务中的一次鼠标/键盘/文本/滑动动作。
+/// 等待时间统一为步骤前等待（BeforeDelayMs），不再有独立的等待步骤类型。
 /// </summary>
 public sealed class ClickStep
 {
@@ -19,6 +20,7 @@ public sealed class ClickStep
 
     public InputActionType ActionType { get; set; } = InputActionType.MouseClick;
 
+    // 鼠标点击坐标
     public int X { get; set; }
 
     public int Y { get; set; }
@@ -27,6 +29,17 @@ public sealed class ClickStep
 
     public int MouseClickCount { get; set; } = 1;
 
+    /// <summary>
+    /// 连续点击之间的间隔（毫秒），替代原 AfterDelayMs 在连点场景的作用。
+    /// </summary>
+    public int ClickIntervalMs { get; set; } = 100;
+
+    /// <summary>
+    /// 单次按压时长（毫秒），0 表示系统默认按压时长。
+    /// </summary>
+    public int PressDurationMs { get; set; }
+
+    // 键盘按键
     public string KeyName { get; set; } = string.Empty;
 
     public int KeyPressCount { get; set; } = 1;
@@ -35,11 +48,27 @@ public sealed class ClickStep
 
     public string ShortcutKeys { get; set; } = "Ctrl+C";
 
+    // 文本输入
     public string TextContent { get; set; } = string.Empty;
 
-    public int BeforeDelayMs { get; set; }
+    /// <summary>
+    /// 输入文本前是否自动点击目标位置获得焦点。
+    /// </summary>
+    public bool AutoFocusBeforeInput { get; set; }
 
-    public int AfterDelayMs { get; set; } = 500;
+    // 滑动（桌面端也支持滑动）
+    public int EndX { get; set; }
+
+    public int EndY { get; set; }
+
+    public int SwipeDurationMs { get; set; } = 300;
+
+    // 通用延迟
+    /// <summary>
+    /// 执行当前步骤前的等待时间（毫秒）。对于第一步即任务启动后的初始等待。
+    /// 步骤间等待由下一步骤的 BeforeDelayMs 表示，不再使用 AfterDelayMs。
+    /// </summary>
+    public int BeforeDelayMs { get; set; }
 
     public int Order { get; set; }
 
@@ -61,19 +90,24 @@ public sealed class ClickStep
             throw new DomainValidationException("步骤名称不能为空。");
         }
 
-        if (BeforeDelayMs < 0 || AfterDelayMs < 0)
+        if (BeforeDelayMs < 0)
         {
-            throw new DomainValidationException("步骤等待时间不能小于 0。");
+            throw new DomainValidationException("步骤前等待时间不能小于 0。");
         }
 
-        if (KeyIntervalMs < 0)
+        if (KeyIntervalMs < 0 || ClickIntervalMs < 0 || PressDurationMs < 0 || SwipeDurationMs < 0)
         {
-            throw new DomainValidationException("键盘连按间隔不能小于 0。");
+            throw new DomainValidationException("间隔和持续时间不能小于 0。");
         }
 
         if (ActionType == InputActionType.MouseClick)
         {
             ValidateMouseClick();
+        }
+
+        if (ActionType == InputActionType.Swipe)
+        {
+            ValidateSwipe();
         }
 
         if (ActionType == InputActionType.KeyboardPress)
@@ -123,6 +157,22 @@ public sealed class ClickStep
         if (MouseClickCount > 10000)
         {
             throw new DomainValidationException("鼠标点击次数不能超过 10000。");
+        }
+    }
+
+    /// <summary>
+    /// 校验滑动步骤配置，起点和终点不能相同，持续时间必须大于 0。
+    /// </summary>
+    private void ValidateSwipe()
+    {
+        if (SwipeDurationMs < 1)
+        {
+            throw new DomainValidationException("滑动持续时间必须大于 0。");
+        }
+
+        if (X == EndX && Y == EndY)
+        {
+            throw new DomainValidationException("滑动起点和终点不能相同。");
         }
     }
 

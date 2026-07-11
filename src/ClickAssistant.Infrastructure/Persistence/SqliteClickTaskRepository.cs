@@ -193,12 +193,18 @@ public sealed class SqliteClickTaskRepository : IClickTaskRepository
         command.CommandText = """
             INSERT INTO task_steps (
                 id, task_id, name, enabled, action_type, x, y, click_type, mouse_click_count,
+                click_interval_ms, press_duration_ms,
                 key_name, key_press_count, key_interval_ms, shortcut_keys, text_content,
+                auto_focus_before_input,
+                end_x, end_y, swipe_duration_ms,
                 before_delay_ms, after_delay_ms, step_order
             )
             VALUES (
                 $id, $taskId, $name, $enabled, $actionType, $x, $y, $clickType, $mouseClickCount,
+                $clickIntervalMs, $pressDurationMs,
                 $keyName, $keyPressCount, $keyIntervalMs, $shortcutKeys, $textContent,
+                $autoFocusBeforeInput,
+                $endX, $endY, $swipeDurationMs,
                 $beforeDelayMs, $afterDelayMs, $order
             );
             """;
@@ -212,13 +218,19 @@ public sealed class SqliteClickTaskRepository : IClickTaskRepository
         command.Parameters.AddWithValue("$y", step.Y);
         command.Parameters.AddWithValue("$clickType", step.ClickType.ToString());
         command.Parameters.AddWithValue("$mouseClickCount", step.MouseClickCount);
+        command.Parameters.AddWithValue("$clickIntervalMs", step.ClickIntervalMs);
+        command.Parameters.AddWithValue("$pressDurationMs", step.PressDurationMs);
         command.Parameters.AddWithValue("$keyName", step.KeyName);
         command.Parameters.AddWithValue("$keyPressCount", step.KeyPressCount);
         command.Parameters.AddWithValue("$keyIntervalMs", step.KeyIntervalMs);
         command.Parameters.AddWithValue("$shortcutKeys", step.ShortcutKeys);
         command.Parameters.AddWithValue("$textContent", step.TextContent);
+        command.Parameters.AddWithValue("$autoFocusBeforeInput", step.AutoFocusBeforeInput ? 1 : 0);
+        command.Parameters.AddWithValue("$endX", step.EndX);
+        command.Parameters.AddWithValue("$endY", step.EndY);
+        command.Parameters.AddWithValue("$swipeDurationMs", step.SwipeDurationMs);
         command.Parameters.AddWithValue("$beforeDelayMs", step.BeforeDelayMs);
-        command.Parameters.AddWithValue("$afterDelayMs", step.AfterDelayMs);
+        command.Parameters.AddWithValue("$afterDelayMs", 0);
         command.Parameters.AddWithValue("$order", step.Order);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
@@ -237,7 +249,13 @@ public sealed class SqliteClickTaskRepository : IClickTaskRepository
         command.CommandText = """
             SELECT
                 id, task_id, name, enabled, action_type, x, y, click_type, mouse_click_count,
+                COALESCE(click_interval_ms, 100) AS click_interval_ms,
+                COALESCE(press_duration_ms, 0) AS press_duration_ms,
                 key_name, key_press_count, key_interval_ms, shortcut_keys, text_content,
+                COALESCE(auto_focus_before_input, 0) AS auto_focus_before_input,
+                COALESCE(end_x, 0) AS end_x,
+                COALESCE(end_y, 0) AS end_y,
+                COALESCE(swipe_duration_ms, 300) AS swipe_duration_ms,
                 before_delay_ms, after_delay_ms, step_order
             FROM task_steps
             WHERE task_id = $taskId
@@ -260,14 +278,19 @@ public sealed class SqliteClickTaskRepository : IClickTaskRepository
                 Y = reader.GetInt32(6),
                 ClickType = ParseEnumOrDefault(reader.GetString(7), ClickType.LeftSingle),
                 MouseClickCount = reader.GetInt32(8),
-                KeyName = reader.GetString(9),
-                KeyPressCount = reader.GetInt32(10),
-                KeyIntervalMs = reader.GetInt32(11),
-                ShortcutKeys = reader.GetString(12),
-                TextContent = reader.GetString(13),
-                BeforeDelayMs = reader.GetInt32(14),
-                AfterDelayMs = reader.GetInt32(15),
-                Order = reader.GetInt32(16)
+                ClickIntervalMs = reader.GetInt32(9),
+                PressDurationMs = reader.GetInt32(10),
+                KeyName = reader.GetString(11),
+                KeyPressCount = reader.GetInt32(12),
+                KeyIntervalMs = reader.GetInt32(13),
+                ShortcutKeys = reader.GetString(14),
+                TextContent = reader.GetString(15),
+                AutoFocusBeforeInput = reader.GetInt32(16) == 1,
+                EndX = reader.GetInt32(17),
+                EndY = reader.GetInt32(18),
+                SwipeDurationMs = reader.GetInt32(19),
+                BeforeDelayMs = reader.GetInt32(20),
+                Order = reader.GetInt32(22)
             });
         }
 

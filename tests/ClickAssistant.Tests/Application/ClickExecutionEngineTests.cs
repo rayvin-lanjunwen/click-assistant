@@ -27,7 +27,7 @@ public sealed class ClickExecutionEngineTests
                     X = 10,
                     Y = 20,
                     BeforeDelayMs = 0,
-                    AfterDelayMs = 0,
+                    ClickIntervalMs = 0,
                     Order = 0
                 }
             ]
@@ -169,7 +169,7 @@ public sealed class ClickExecutionEngineTests
                     Y = 260,
                     ClickType = ClickType.RightSingle,
                     MouseClickCount = 3,
-                    AfterDelayMs = 0,
+                    ClickIntervalMs = 0,
                     Order = 0
                 }
             ]

@@ -12,6 +12,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <Version>0.12.0</Version>
+    <AssemblyName>ClickAssistantApp</AssemblyName>
+    <Title>Click Assistant</Title>
+    <Description>点击与输入助手 - 桌面端</Description>
   </PropertyGroup>
 
 </Project>
