@@ -26,7 +26,7 @@ public sealed class MainWindowViewModel : ObservableObject
     private string keyboardCaptureStatus = "点击按键框后，按下键盘上的一个键。";
     private string coordinateCaptureStatus = "点击“选择坐标”后移动鼠标，左键确认位置，Esc 取消。";
     private string stopHotkeyInput = "Ctrl + Alt + S";
-    private string executionSafetyText = "启动前请确认坐标、按键、重复次数和开始延迟。";
+    private string executionSafetyText = "启动前请确认坐标、按键、执行轮数、点击次数和开始延迟。";
     private bool isTaskEditorEnabled = true;
     private int taskLibrarySelectedTabIndex;
     private Visibility homePageVisibility = Visibility.Visible;
@@ -76,6 +76,8 @@ public sealed class MainWindowViewModel : ObservableObject
         AddShortcutStepCommand = new RelayCommand(() => AddStep(InputActionType.KeyboardShortcut), CanUseSelectedTask);
         AddTextInputStepCommand = new RelayCommand(() => AddStep(InputActionType.TextInput), CanUseSelectedTask);
         RemoveStepCommand = new RelayCommand(RemoveStep, () => CanEdit() && SelectedStep is not null);
+        MoveStepUpCommand = new RelayCommand(() => MoveSelectedStep(-1), () => CanMoveSelectedStep(-1));
+        MoveStepDownCommand = new RelayCommand(() => MoveSelectedStep(1), () => CanMoveSelectedStep(1));
         CaptureCoordinateCommand = new RelayCommand(RequestCoordinateSelection, CanCaptureCoordinate);
         TestMouseClickCommand = new AsyncRelayCommand(() => RunSafelyAsync(TestMouseClickOnceAsync), CanUseSelectedMouseStep);
         StartCommand = new AsyncRelayCommand(() => RunSafelyAsync(StartAsync), CanStart);
@@ -150,6 +152,10 @@ public sealed class MainWindowViewModel : ObservableObject
 
     public RelayCommand RemoveStepCommand { get; }
 
+    public RelayCommand MoveStepUpCommand { get; }
+
+    public RelayCommand MoveStepDownCommand { get; }
+
     public RelayCommand CaptureCoordinateCommand { get; }
 
     public AsyncRelayCommand TestMouseClickCommand { get; }
@@ -205,6 +211,10 @@ public sealed class MainWindowViewModel : ObservableObject
             }
         }
     }
+
+    public IEnumerable<ClickStep> MouseSteps => CurrentSteps
+        .Where(step => step.ActionType == InputActionType.MouseClick)
+        .OrderBy(step => step.Order);
 
     public string StatusText
     {
@@ -422,6 +432,22 @@ public sealed class MainWindowViewModel : ObservableObject
         }
     }
 
+    public int MouseClickCount
+    {
+        get => GetEditableMouseStep()?.MouseClickCount ?? 1;
+        set
+        {
+            var step = GetEditableMouseStep();
+            if (step is null || step.MouseClickCount == value)
+            {
+                return;
+            }
+
+            step.MouseClickCount = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
     public ClickType MouseClickType
     {
         get => GetEditableMouseStep()?.ClickType ?? ClickType.LeftSingle;
@@ -446,6 +472,25 @@ public sealed class MainWindowViewModel : ObservableObject
             ClickType.RightSingle => "右键单击",
             _ => "左键单击"
         };
+    }
+
+    public string MousePositionSummary
+    {
+        get
+        {
+            if (SelectedTask is null)
+            {
+                return "选择鼠标点击任务后，这里会展示位置执行摘要。";
+            }
+
+            var mouseSteps = MouseSteps.ToList();
+            var enabledMouseSteps = mouseSteps.Where(step => step.Enabled).ToList();
+            var clicksPerRound = enabledMouseSteps.Sum(step => step.MouseClickCount);
+            var totalClicks = clicksPerRound * SelectedTask.RepeatCount;
+
+            return $"每轮按顺序点击 {enabledMouseSteps.Count}/{mouseSteps.Count} 个位置，共 {clicksPerRound} 次；" +
+                $"执行 {SelectedTask.RepeatCount} 轮，总计 {totalClicks} 次鼠标点击。";
+        }
     }
 
     public string SelectedStepName
@@ -570,6 +615,21 @@ public sealed class MainWindowViewModel : ObservableObject
         }
     }
 
+    public int SelectedStepMouseClickCount
+    {
+        get => SelectedStep?.MouseClickCount ?? 1;
+        set
+        {
+            if (SelectedStep is null || SelectedStep.MouseClickCount == value)
+            {
+                return;
+            }
+
+            SelectedStep.MouseClickCount = value;
+            NotifyEditorDerivedProperties();
+        }
+    }
+
     public string SelectedStepKeyName
     {
         get => SelectedStep?.KeyName ?? string.Empty;
@@ -676,8 +736,14 @@ public sealed class MainWindowViewModel : ObservableObject
 
             var enabledSteps = CurrentSteps.Count(step => step.Enabled);
             var totalSteps = CurrentSteps.Count;
-            return $"开始后等待 {FormatMilliseconds(SelectedTask.StartDelayMs)}，每轮执行 {enabledSteps}/{totalSteps} 个启用步骤，" +
-                $"重复 {SelectedTask.RepeatCount} 次。";
+            var mouseSteps = CurrentSteps.Where(step => step.ActionType == InputActionType.MouseClick).ToList();
+            var enabledMouseSteps = mouseSteps.Where(step => step.Enabled).ToList();
+            var clicksPerRound = enabledMouseSteps.Sum(step => step.MouseClickCount);
+            var totalMouseClicks = clicksPerRound * SelectedTask.RepeatCount;
+
+            return $"开始后等待 {FormatMilliseconds(SelectedTask.StartDelayMs)}，每轮按顺序执行 {enabledSteps}/{totalSteps} 个启用步骤，" +
+                $"其中鼠标位置 {enabledMouseSteps.Count}/{mouseSteps.Count} 个、点击 {clicksPerRound} 次；" +
+                $"执行 {SelectedTask.RepeatCount} 轮，总鼠标点击 {totalMouseClicks} 次。";
         }
     }
 
@@ -707,9 +773,20 @@ public sealed class MainWindowViewModel : ObservableObject
                 return "打开主窗口选择任务";
             }
 
-            return GetEditableMouseStep() is { } step
-                ? $"X={step.X}，Y={step.Y} · {SelectedTask.RepeatCount} 次 · 间隔 {FormatMilliseconds(step.AfterDelayMs)}"
-                : $"{SelectedTask.Steps.Count} 个步骤";
+            var mouseSteps = CurrentSteps
+                .Where(step => step.ActionType == InputActionType.MouseClick)
+                .ToList();
+
+            if (mouseSteps.Count == 0)
+            {
+                return $"{SelectedTask.Steps.Count} 个步骤";
+            }
+
+            var clicksPerRound = mouseSteps
+                .Where(step => step.Enabled)
+                .Sum(step => step.MouseClickCount);
+
+            return $"{mouseSteps.Count} 个位置 · 每轮 {clicksPerRound} 次点击 · {SelectedTask.RepeatCount} 轮";
         }
     }
 
@@ -943,6 +1020,11 @@ public sealed class MainWindowViewModel : ObservableObject
 
     private static void ApplyStepDefaults(ClickStep step)
     {
+        if (step.ActionType == InputActionType.MouseClick && step.MouseClickCount < 1)
+        {
+            step.MouseClickCount = 1;
+        }
+
         if (step.ActionType == InputActionType.KeyboardPress && step.KeyPressCount < 1)
         {
             step.KeyPressCount = 1;
@@ -1048,12 +1130,14 @@ public sealed class MainWindowViewModel : ObservableObject
             Name = CreateStepName(actionType, CurrentSteps.Count + 1),
             ActionType = actionType,
             Order = CurrentSteps.Count,
-            AfterDelayMs = 500
+            AfterDelayMs = actionType == InputActionType.MouseClick ? 800 : 500
         };
         ApplyStepDefaults(step);
 
         CurrentSteps.Add(step);
         SelectedStep = step;
+        NotifyEditorDerivedProperties();
+        NotifyCommandStates();
     }
 
     /// <summary>
@@ -1068,7 +1152,29 @@ public sealed class MainWindowViewModel : ObservableObject
 
         var nextIndex = Math.Max(0, CurrentSteps.IndexOf(SelectedStep) - 1);
         CurrentSteps.Remove(SelectedStep);
+        ReorderCurrentSteps();
         SelectedStep = CurrentSteps.ElementAtOrDefault(nextIndex);
+        NotifyEditorDerivedProperties();
+        NotifyCommandStates();
+    }
+
+    /// <summary>
+    /// 调整当前步骤顺序。鼠标专页中位置顺序即真实执行顺序。
+    /// </summary>
+    private void MoveSelectedStep(int direction)
+    {
+        if (!CanMoveSelectedStep(direction) || SelectedStep is null)
+        {
+            return;
+        }
+
+        var currentIndex = CurrentSteps.IndexOf(SelectedStep);
+        var targetIndex = currentIndex + direction;
+        CurrentSteps.Move(currentIndex, targetIndex);
+        ReorderCurrentSteps();
+        SelectedStep = CurrentSteps[targetIndex];
+        NotifyEditorDerivedProperties();
+        NotifyCommandStates();
     }
 
     /// <summary>
@@ -1200,15 +1306,20 @@ public sealed class MainWindowViewModel : ObservableObject
         }
 
         var enabledSteps = SelectedTask.Steps.Count(step => step.Enabled);
-        var mouseSteps = SelectedTask.Steps.Count(step => step.Enabled && step.ActionType == InputActionType.MouseClick);
+        var enabledMouseSteps = SelectedTask.Steps
+            .Where(step => step.Enabled && step.ActionType == InputActionType.MouseClick)
+            .ToList();
+        var mouseClicksPerRound = enabledMouseSteps.Sum(step => step.MouseClickCount);
+        var totalMouseClicks = mouseClicksPerRound * SelectedTask.RepeatCount;
         var keySteps = SelectedTask.Steps.Count(step => step.Enabled && step.ActionType == InputActionType.KeyboardPress);
         var shortcutSteps = SelectedTask.Steps.Count(step => step.Enabled && step.ActionType == InputActionType.KeyboardShortcut);
         var textInputSteps = SelectedTask.Steps.Count(step => step.Enabled && step.ActionType == InputActionType.TextInput);
 
         var result = MessageBox.Show(
             $"即将执行任务“{SelectedTask.Name}”。\n\n" +
-            $"重复次数：{SelectedTask.RepeatCount}\n" +
-            $"启用步骤：{enabledSteps} 个（鼠标 {mouseSteps} 个，按键 {keySteps} 个，组合键 {shortcutSteps} 个，文本 {textInputSteps} 个）\n" +
+            $"执行轮数：{SelectedTask.RepeatCount}\n" +
+            $"启用步骤：{enabledSteps} 个（鼠标位置 {enabledMouseSteps.Count} 个，按键 {keySteps} 个，组合键 {shortcutSteps} 个，文本 {textInputSteps} 个）\n" +
+            $"鼠标点击：每轮 {mouseClicksPerRound} 次，总计 {totalMouseClicks} 次\n" +
             $"开始延迟：{SelectedTask.StartDelayMs} 毫秒\n" +
             $"停止方式：点击停止按钮，或使用 {StopHotkeyInput}。\n\n" +
             "执行期间会产生真实鼠标点击或键盘输入，确认启动吗？",
@@ -1237,6 +1348,14 @@ public sealed class MainWindowViewModel : ObservableObject
                 return step;
             })
             .ToList();
+    }
+
+    private void ReorderCurrentSteps()
+    {
+        for (var index = 0; index < CurrentSteps.Count; index++)
+        {
+            CurrentSteps[index].Order = index;
+        }
     }
 
     /// <summary>
@@ -1331,11 +1450,14 @@ public sealed class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(MouseTaskDescription));
         OnPropertyChanged(nameof(MouseRepeatCount));
         OnPropertyChanged(nameof(MouseStartDelayMs));
+        OnPropertyChanged(nameof(MouseSteps));
         OnPropertyChanged(nameof(MouseX));
         OnPropertyChanged(nameof(MouseY));
         OnPropertyChanged(nameof(MouseClickIntervalMs));
+        OnPropertyChanged(nameof(MouseClickCount));
         OnPropertyChanged(nameof(MouseClickType));
         OnPropertyChanged(nameof(MouseClickTypeText));
+        OnPropertyChanged(nameof(MousePositionSummary));
         OnPropertyChanged(nameof(SelectedStepName));
         OnPropertyChanged(nameof(SelectedStepEnabled));
         OnPropertyChanged(nameof(SelectedStepActionType));
@@ -1344,6 +1466,7 @@ public sealed class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedStepX));
         OnPropertyChanged(nameof(SelectedStepY));
         OnPropertyChanged(nameof(SelectedStepClickType));
+        OnPropertyChanged(nameof(SelectedStepMouseClickCount));
         OnPropertyChanged(nameof(SelectedStepKeyName));
         OnPropertyChanged(nameof(SelectedStepKeyDisplayText));
         OnPropertyChanged(nameof(SelectedStepKeyPressCount));
@@ -1486,6 +1609,8 @@ public sealed class MainWindowViewModel : ObservableObject
         AddShortcutStepCommand.NotifyCanExecuteChanged();
         AddTextInputStepCommand.NotifyCanExecuteChanged();
         RemoveStepCommand.NotifyCanExecuteChanged();
+        MoveStepUpCommand.NotifyCanExecuteChanged();
+        MoveStepDownCommand.NotifyCanExecuteChanged();
         CaptureCoordinateCommand.NotifyCanExecuteChanged();
         TestMouseClickCommand.NotifyCanExecuteChanged();
         StartCommand.NotifyCanExecuteChanged();
@@ -1524,6 +1649,18 @@ public sealed class MainWindowViewModel : ObservableObject
     private bool CanCaptureCoordinate()
     {
         return CanUseSelectedMouseStep() && !isCoordinateCapturePending;
+    }
+
+    private bool CanMoveSelectedStep(int direction)
+    {
+        if (!CanEdit() || SelectedStep is null)
+        {
+            return false;
+        }
+
+        var currentIndex = CurrentSteps.IndexOf(SelectedStep);
+        var targetIndex = currentIndex + direction;
+        return currentIndex >= 0 && targetIndex >= 0 && targetIndex < CurrentSteps.Count;
     }
 
     /// <summary>
@@ -1589,7 +1726,7 @@ public sealed class MainWindowViewModel : ObservableObject
             ExecutionStatus.Starting => "任务正在启动，配置已锁定，可使用停止按钮或全局快捷键中止。",
             ExecutionStatus.Running => "任务正在执行，配置已锁定，可使用停止按钮或全局快捷键中止。",
             ExecutionStatus.Paused => "任务已暂停，可以编辑并保存任务；如需新配置生效，请停止后重新执行。",
-            _ => "启动前请确认坐标、按键、重复次数和开始延迟。"
+            _ => "启动前请确认坐标、按键、执行轮数、点击次数和开始延迟。"
         };
     }
 

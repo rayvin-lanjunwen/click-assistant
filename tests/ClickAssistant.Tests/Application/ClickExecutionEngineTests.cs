@@ -150,6 +150,44 @@ public sealed class ClickExecutionEngineTests
         Assert.Equal(ClickType.RightSingle, request.ClickType);
     }
 
+    [Fact]
+    public async Task StartAsync_WhenMouseStepHasClickCount_ShouldClickSamePositionMultipleTimes()
+    {
+        var task = new ClickTask
+        {
+            Id = Guid.NewGuid(),
+            Name = "鼠标多次点击测试任务",
+            RepeatCount = 1,
+            StartDelayMs = 0,
+            Steps =
+            [
+                new ClickStep
+                {
+                    Name = "鼠标步骤",
+                    ActionType = InputActionType.MouseClick,
+                    X = 120,
+                    Y = 260,
+                    ClickType = ClickType.RightSingle,
+                    MouseClickCount = 3,
+                    AfterDelayMs = 0,
+                    Order = 0
+                }
+            ]
+        };
+        var mouseClickService = new RecordingMouseClickService();
+        var engine = new ClickExecutionEngine(
+            new InMemoryClickTaskRepository(task),
+            new InMemoryExecutionLogRepository(),
+            mouseClickService,
+            new NoopKeyboardInputService());
+
+        await engine.StartAsync(task.Id);
+
+        Assert.Equal(
+            ["120:260:RightSingle", "120:260:RightSingle", "120:260:RightSingle"],
+            mouseClickService.Clicks);
+    }
+
     private sealed class InMemoryClickTaskRepository : IClickTaskRepository
     {
         private readonly Dictionary<Guid, ClickTask> tasks;
@@ -221,6 +259,20 @@ public sealed class ClickExecutionEngineTests
             ClickType clickType,
             CancellationToken cancellationToken = default)
         {
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class RecordingMouseClickService : IMouseClickService
+    {
+        public List<string> Clicks { get; } = [];
+
+        public Task ClickAsync(
+            ScreenPoint point,
+            ClickType clickType,
+            CancellationToken cancellationToken = default)
+        {
+            Clicks.Add($"{point.X}:{point.Y}:{clickType}");
             return Task.CompletedTask;
         }
     }

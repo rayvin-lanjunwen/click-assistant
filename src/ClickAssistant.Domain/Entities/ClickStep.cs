@@ -25,6 +25,8 @@ public sealed class ClickStep
 
     public ClickType ClickType { get; set; } = ClickType.LeftSingle;
 
+    public int MouseClickCount { get; set; } = 1;
+
     public string KeyName { get; set; } = string.Empty;
 
     public int KeyPressCount { get; set; } = 1;
@@ -69,6 +71,11 @@ public sealed class ClickStep
             throw new DomainValidationException("键盘连按间隔不能小于 0。");
         }
 
+        if (ActionType == InputActionType.MouseClick)
+        {
+            ValidateMouseClick();
+        }
+
         if (ActionType == InputActionType.KeyboardPress)
         {
             ValidateKeyboardPress(requireKeyName: false);
@@ -100,6 +107,22 @@ public sealed class ClickStep
         if (ActionType == InputActionType.KeyboardPress)
         {
             ValidateKeyboardPress(requireKeyName: true);
+        }
+    }
+
+    /// <summary>
+    /// 校验鼠标点击步骤配置，避免单个位置误配置为 0 次或过大的连点次数。
+    /// </summary>
+    private void ValidateMouseClick()
+    {
+        if (MouseClickCount < 1)
+        {
+            throw new DomainValidationException("鼠标点击次数必须大于或等于 1。");
+        }
+
+        if (MouseClickCount > 10000)
+        {
+            throw new DomainValidationException("鼠标点击次数不能超过 10000。");
         }
     }
 

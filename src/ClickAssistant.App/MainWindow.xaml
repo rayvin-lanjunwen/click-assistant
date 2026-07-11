@@ -519,10 +519,12 @@
 
                                             <Grid Grid.Row="4" Visibility="{Binding MouseStepFieldsVisibility}">
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="120" />
-                                                    <ColumnDefinition Width="14" />
-                                                    <ColumnDefinition Width="120" />
-                                                    <ColumnDefinition Width="14" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="12" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="12" />
+                                                    <ColumnDefinition Width="110" />
+                                                    <ColumnDefinition Width="12" />
                                                     <ColumnDefinition Width="150" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
@@ -533,7 +535,8 @@
 
                                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="X 坐标" />
                                                 <TextBlock Grid.Row="0" Grid.Column="2" Text="Y 坐标" />
-                                                <TextBlock Grid.Row="0" Grid.Column="4" Text="点击方式" />
+                                                <TextBlock Grid.Row="0" Grid.Column="4" Text="点击次数" />
+                                                <TextBlock Grid.Row="0" Grid.Column="6" Text="点击方式" />
                                                 <TextBox Grid.Row="1"
                                                          Grid.Column="0"
                                                          Margin="0,6,0,0"
@@ -542,8 +545,12 @@
                                                          Grid.Column="2"
                                                          Margin="0,6,0,0"
                                                          Text="{Binding SelectedStepY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                <TextBox Grid.Row="1"
+                                                         Grid.Column="4"
+                                                         Margin="0,6,0,0"
+                                                         Text="{Binding SelectedStepMouseClickCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                                 <ComboBox Grid.Row="1"
-                                                          Grid.Column="4"
+                                                          Grid.Column="6"
                                                           Margin="0,6,0,0"
                                                           MinHeight="34"
                                                           ItemsSource="{Binding ClickTypeOptions}"
@@ -551,7 +558,7 @@
                                                           SelectedValuePath="Value"
                                                           SelectedValue="{Binding SelectedStepClickType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                                 <WrapPanel Grid.Row="1"
-                                                           Grid.Column="5"
+                                                           Grid.Column="7"
                                                            Margin="14,6,0,0">
                                                     <Button Command="{Binding CaptureCoordinateCommand}"
                                                             Content="选择坐标"
@@ -786,12 +793,54 @@
                     <Border Grid.Row="2" Style="{StaticResource PanelStyle}">
                         <Grid IsEnabled="{Binding IsTaskEditorEnabled}">
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="300" />
+                                <ColumnDefinition Width="18" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="18" />
                                 <ColumnDefinition Width="260" />
                             </Grid.ColumnDefinitions>
 
-                            <Grid Grid.Column="0">
+                            <StackPanel Grid.Column="0">
+                                <TextBlock FontSize="16" FontWeight="SemiBold" Text="点击位置（按顺序执行）" />
+                                <TextBlock Margin="0,6,0,0"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding MousePositionSummary}" />
+
+                                <ListBox Margin="0,12,0,0"
+                                         MinHeight="230"
+                                         ItemsSource="{Binding MouseSteps}"
+                                         SelectedItem="{Binding SelectedStep, Mode=TwoWay}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="4">
+                                                <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
+                                                <TextBlock Margin="0,4,0,0"
+                                                           FontSize="12"
+                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                           Text="{Binding Converter={StaticResource StepSummaryConverter}}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+
+                                <WrapPanel Margin="0,12,0,0">
+                                    <Button Command="{Binding AddStepCommand}"
+                                            Content="添加位置"
+                                            Style="{StaticResource PrimaryButtonStyle}" />
+                                    <Button Command="{Binding MoveStepUpCommand}"
+                                            Content="上移"
+                                            Style="{StaticResource SecondaryButtonStyle}" />
+                                    <Button Command="{Binding MoveStepDownCommand}"
+                                            Content="下移"
+                                            Style="{StaticResource SecondaryButtonStyle}" />
+                                    <Button Command="{Binding RemoveStepCommand}"
+                                            Content="删除位置"
+                                            Style="{StaticResource DangerButtonStyle}" />
+                                </WrapPanel>
+                            </StackPanel>
+
+                            <Grid Grid.Column="2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="16" />
@@ -808,10 +857,13 @@
                                     <RowDefinition Height="18" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="18" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="任务名称" />
-                                <TextBlock Grid.Row="0" Grid.Column="2" Text="重复次数" />
+                                <TextBlock Grid.Row="0" Grid.Column="2" Text="执行轮数" />
                                 <TextBlock Grid.Row="0" Grid.Column="4" Text="开始延迟（毫秒）" />
 
                                 <TextBox Grid.Row="1"
@@ -837,41 +889,62 @@
                                          TextWrapping="Wrap"
                                          Text="{Binding MouseTaskDescription, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
-                                <Grid Grid.Row="7" Grid.ColumnSpan="5">
+                                <TextBlock Grid.Row="6"
+                                           Grid.ColumnSpan="5"
+                                           FontSize="16"
+                                           FontWeight="SemiBold"
+                                           Text="当前选中位置" />
+
+                                <Grid Grid.Row="7" Grid.ColumnSpan="5" Margin="0,8,0,0">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="120" />
-                                        <ColumnDefinition Width="12" />
-                                        <ColumnDefinition Width="120" />
-                                        <ColumnDefinition Width="12" />
-                                        <ColumnDefinition Width="150" />
-                                        <ColumnDefinition Width="12" />
-                                        <ColumnDefinition Width="135" />
                                         <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="110" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="110" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="120" />
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="12" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
 
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="X 坐标" />
-                                    <TextBlock Grid.Row="0" Grid.Column="2" Text="Y 坐标" />
-                                    <TextBlock Grid.Row="0" Grid.Column="4" Text="点击间隔（毫秒）" />
-                                    <TextBlock Grid.Row="0" Grid.Column="6" Text="点击方式" />
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="位置名称" />
+                                    <TextBlock Grid.Row="0" Grid.Column="2" Text="X 坐标" />
+                                    <TextBlock Grid.Row="0" Grid.Column="4" Text="Y 坐标" />
+                                    <TextBlock Grid.Row="0" Grid.Column="6" Text="点击次数" />
 
                                     <TextBox Grid.Row="1"
                                              Grid.Column="0"
                                              Margin="0,6,0,0"
-                                             Text="{Binding MouseX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                             Text="{Binding SelectedStepName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     <TextBox Grid.Row="1"
                                              Grid.Column="2"
                                              Margin="0,6,0,0"
-                                             Text="{Binding MouseY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                             Text="{Binding MouseX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     <TextBox Grid.Row="1"
                                              Grid.Column="4"
                                              Margin="0,6,0,0"
-                                             Text="{Binding MouseClickIntervalMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <ComboBox Grid.Row="1"
+                                             Text="{Binding MouseY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBox Grid.Row="1"
                                               Grid.Column="6"
+                                              Margin="0,6,0,0"
+                                             Text="{Binding MouseClickCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="点击间隔（毫秒）" />
+                                    <TextBlock Grid.Row="3" Grid.Column="2" Text="点击方式" />
+
+                                    <TextBox Grid.Row="4"
+                                             Grid.Column="0"
+                                             Margin="0,6,0,0"
+                                             Text="{Binding MouseClickIntervalMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <ComboBox Grid.Row="4"
+                                              Grid.Column="2"
+                                              Grid.ColumnSpan="3"
                                               Margin="0,6,0,0"
                                               MinHeight="34"
                                               ItemsSource="{Binding ClickTypeOptions}"
@@ -881,7 +954,7 @@
                                 </Grid>
                             </Grid>
 
-                            <Border Grid.Column="2"
+                            <Border Grid.Column="4"
                                     Background="{StaticResource MutedBrush}"
                                     BorderBrush="{StaticResource PanelBorderBrush}"
                                     BorderThickness="1"

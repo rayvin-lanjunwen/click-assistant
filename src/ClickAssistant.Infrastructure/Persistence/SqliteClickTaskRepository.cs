@@ -192,12 +192,12 @@ public sealed class SqliteClickTaskRepository : IClickTaskRepository
         command.Transaction = transaction;
         command.CommandText = """
             INSERT INTO task_steps (
-                id, task_id, name, enabled, action_type, x, y, click_type,
+                id, task_id, name, enabled, action_type, x, y, click_type, mouse_click_count,
                 key_name, key_press_count, key_interval_ms, shortcut_keys, text_content,
                 before_delay_ms, after_delay_ms, step_order
             )
             VALUES (
-                $id, $taskId, $name, $enabled, $actionType, $x, $y, $clickType,
+                $id, $taskId, $name, $enabled, $actionType, $x, $y, $clickType, $mouseClickCount,
                 $keyName, $keyPressCount, $keyIntervalMs, $shortcutKeys, $textContent,
                 $beforeDelayMs, $afterDelayMs, $order
             );
@@ -211,6 +211,7 @@ public sealed class SqliteClickTaskRepository : IClickTaskRepository
         command.Parameters.AddWithValue("$x", step.X);
         command.Parameters.AddWithValue("$y", step.Y);
         command.Parameters.AddWithValue("$clickType", step.ClickType.ToString());
+        command.Parameters.AddWithValue("$mouseClickCount", step.MouseClickCount);
         command.Parameters.AddWithValue("$keyName", step.KeyName);
         command.Parameters.AddWithValue("$keyPressCount", step.KeyPressCount);
         command.Parameters.AddWithValue("$keyIntervalMs", step.KeyIntervalMs);
@@ -235,7 +236,7 @@ public sealed class SqliteClickTaskRepository : IClickTaskRepository
         await using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT
-                id, task_id, name, enabled, action_type, x, y, click_type,
+                id, task_id, name, enabled, action_type, x, y, click_type, mouse_click_count,
                 key_name, key_press_count, key_interval_ms, shortcut_keys, text_content,
                 before_delay_ms, after_delay_ms, step_order
             FROM task_steps
@@ -258,14 +259,15 @@ public sealed class SqliteClickTaskRepository : IClickTaskRepository
                 X = reader.GetInt32(5),
                 Y = reader.GetInt32(6),
                 ClickType = ParseEnumOrDefault(reader.GetString(7), ClickType.LeftSingle),
-                KeyName = reader.GetString(8),
-                KeyPressCount = reader.GetInt32(9),
-                KeyIntervalMs = reader.GetInt32(10),
-                ShortcutKeys = reader.GetString(11),
-                TextContent = reader.GetString(12),
-                BeforeDelayMs = reader.GetInt32(13),
-                AfterDelayMs = reader.GetInt32(14),
-                Order = reader.GetInt32(15)
+                MouseClickCount = reader.GetInt32(8),
+                KeyName = reader.GetString(9),
+                KeyPressCount = reader.GetInt32(10),
+                KeyIntervalMs = reader.GetInt32(11),
+                ShortcutKeys = reader.GetString(12),
+                TextContent = reader.GetString(13),
+                BeforeDelayMs = reader.GetInt32(14),
+                AfterDelayMs = reader.GetInt32(15),
+                Order = reader.GetInt32(16)
             });
         }
 

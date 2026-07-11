@@ -104,6 +104,7 @@ public sealed class ClickTask
                 X = step.X,
                 Y = step.Y,
                 ClickType = step.ClickType,
+                MouseClickCount = step.MouseClickCount,
                 KeyName = step.KeyName,
                 KeyPressCount = step.KeyPressCount,
                 KeyIntervalMs = step.KeyIntervalMs,

@@ -64,6 +64,7 @@ public sealed class DatabaseInitializer
                 x INTEGER NOT NULL,
                 y INTEGER NOT NULL,
                 click_type TEXT NOT NULL,
+                mouse_click_count INTEGER NOT NULL DEFAULT 1,
                 key_name TEXT NOT NULL DEFAULT '',
                 key_press_count INTEGER NOT NULL DEFAULT 1,
                 key_interval_ms INTEGER NOT NULL DEFAULT 100,
@@ -112,6 +113,7 @@ public sealed class DatabaseInitializer
         var requiredColumns = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["action_type"] = "ALTER TABLE task_steps ADD COLUMN action_type TEXT NOT NULL DEFAULT 'MouseClick';",
+            ["mouse_click_count"] = "ALTER TABLE task_steps ADD COLUMN mouse_click_count INTEGER NOT NULL DEFAULT 1;",
             ["key_name"] = "ALTER TABLE task_steps ADD COLUMN key_name TEXT NOT NULL DEFAULT '';",
             ["key_press_count"] = "ALTER TABLE task_steps ADD COLUMN key_press_count INTEGER NOT NULL DEFAULT 1;",
             ["key_interval_ms"] = "ALTER TABLE task_steps ADD COLUMN key_interval_ms INTEGER NOT NULL DEFAULT 100;",

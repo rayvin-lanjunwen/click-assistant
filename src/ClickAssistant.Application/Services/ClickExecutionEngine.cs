@@ -198,8 +198,17 @@ public sealed class ClickExecutionEngine : IClickExecutionEngine
         switch (step.ActionType)
         {
             case InputActionType.MouseClick:
-                MouseClickVisualRequested?.Invoke(this, new MouseClickVisualEventArgs(step.ToPoint(), step.ClickType));
-                await mouseClickService.ClickAsync(step.ToPoint(), step.ClickType, cancellationToken);
+                for (var clickIndex = 1; clickIndex <= step.MouseClickCount; clickIndex++)
+                {
+                    MouseClickVisualRequested?.Invoke(this, new MouseClickVisualEventArgs(step.ToPoint(), step.ClickType));
+                    await mouseClickService.ClickAsync(step.ToPoint(), step.ClickType, cancellationToken);
+
+                    if (clickIndex < step.MouseClickCount)
+                    {
+                        await DelayWithPauseAsync(step.AfterDelayMs, cancellationToken);
+                    }
+                }
+
                 break;
             case InputActionType.KeyboardPress:
                 await keyboardInputService.PressKeyAsync(

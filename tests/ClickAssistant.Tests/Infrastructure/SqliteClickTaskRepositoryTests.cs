@@ -40,6 +40,7 @@ public sealed class SqliteClickTaskRepositoryTests
                     Assert.Equal(120, mouseStep.X);
                     Assert.Equal(240, mouseStep.Y);
                     Assert.Equal(ClickType.LeftDouble, mouseStep.ClickType);
+                    Assert.Equal(4, mouseStep.MouseClickCount);
                 },
                 keyboardStep =>
                 {
@@ -95,6 +96,7 @@ public sealed class SqliteClickTaskRepositoryTests
                     X = 120,
                     Y = 240,
                     ClickType = ClickType.LeftDouble,
+                    MouseClickCount = 4,
                     BeforeDelayMs = 10,
                     AfterDelayMs = 20,
                     Order = 0

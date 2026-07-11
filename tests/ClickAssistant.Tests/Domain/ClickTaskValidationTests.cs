@@ -55,6 +55,19 @@ public sealed class ClickTaskValidationTests
     }
 
     [Fact]
+    public void Validate_WhenMouseClickCountIsInvalid_ThrowsDomainValidationException()
+    {
+        var step = new ClickStep
+        {
+            Name = "鼠标步骤",
+            ActionType = InputActionType.MouseClick,
+            MouseClickCount = 0
+        };
+
+        Assert.Throws<DomainValidationException>(step.Validate);
+    }
+
+    [Fact]
     public void ValidateForSave_WhenKeyboardKeyNameIsMissing_DoesNotThrow()
     {
         var task = new ClickTask
