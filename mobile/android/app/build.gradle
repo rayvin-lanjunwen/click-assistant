@@ -32,6 +32,9 @@ dependencies {
     // JUnit 4 用于本地单元测试（不依赖 Android 框架）
     testImplementation "junit:junit:4.13.2"
 
+    // 提供 org.json 的真实实现（Android 桩在 JVM 测试中会抛 RuntimeException）
+    testImplementation "org.json:json:20240303"
+
     // AndroidX 测试（用于 Instrumentation 测试，后续可按需使用）
     androidTestImplementation "androidx.test.ext:junit:1.2.1"
     androidTestImplementation "androidx.test.espresso:espresso-core:3.6.1"
