@@ -145,7 +145,6 @@ public sealed class DatabaseMigratorTests
                 shortcut_keys TEXT NOT NULL DEFAULT 'Ctrl+C',
                 text_content TEXT NOT NULL DEFAULT '',
                 before_delay_ms INTEGER NOT NULL,
-                after_delay_ms INTEGER NOT NULL DEFAULT 0,
                 step_order INTEGER NOT NULL,
                 FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
             );

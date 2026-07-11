@@ -4,6 +4,18 @@
 
 ## 2026-07-12
 
+### 运行时错误
+
+#### 12. SQLite Error 19 — task_steps.after_delay_ms NOT NULL constraint failed
+- **现象**：桌面端"操作失败"对话框，详情 `SQLite Error 19: 'NOT NULL constraint failed: task_steps.after_delay_ms'`，在新建/复制/修改任务时弹出。
+- **根本原因**：`DatabaseMigrator.cs` v1.0.0 初始建表 SQL 仍定义 `after_delay_ms INTEGER NOT NULL DEFAULT 0`。v1.2.0 迁移在注释里写"取消 AfterDelayMs"但**实际没有 DROP COLUMN**。仓库层 `SqliteClickTaskRepository.InsertStepAsync` 早已不写 `after_delay_ms` 字段，但老用户数据库中这列仍是 NOT NULL，因此任何不带 `after_delay_ms` 的 INSERT 都会触发约束失败。
+- **修复**：
+  1. v1.0.0 初始建表 SQL 移除 `after_delay_ms` 列。
+  2. 新增 v1.3.0 迁移：`ALTER TABLE task_steps DROP COLUMN after_delay_ms;`，对老用户数据库执行。
+  3. `DatabaseMigrator.ApplyMissingMigrationsAsync` 增加 `TryParseAlterTableDropColumn` 解析：列已不存在则跳过（兼容新建库）。
+  4. 同步清理测试 fixture `CreateLegacySchemaAsync`。
+- **测试验证**：25/25 测试全部通过。
+
 ### 编译错误
 
 #### 10. CS0234 — ClickAssistant.Application 命名空间与 System.Windows.Application 冲突

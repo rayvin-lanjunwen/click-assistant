@@ -4,6 +4,7 @@
 
 ## v0.16.0 - 2026-07-12 01:30
 
+- 修复: 桌面端 SQLite Error 19 — `task_steps.after_delay_ms` NOT NULL 约束失败。新增 v1.3.0 数据库迁移移除废弃列；`DatabaseMigrator` 增加 `TryParseAlterTableDropColumn` 实现 DROP COLUMN 幂等（兼容新建库和老用户库）；25/25 测试通过。
 - 新增: 全套 AI 生成图片素材（14 张 PNG），包括应用 Logo、5 个任务类型图标、4 个导航图标、4 个状态图标，统一蓝紫渐变玻璃质感几何风格，分别部署到 WPF `Resources/Images/` 和 Android `res/drawable/` 目录。
 - 新增: WPF 端深色主题支持：App.xaml 增加 DarkTheme 资源字典（深色背景渐变、深色玻璃材质、深色文字色共 25+ Brush），MainWindow.xaml.cs 实现主题切换逻辑并持久化到 `app_settings` 表。
 - 新增: Android 端深色主题支持：新建 `res/values/colors.xml`（35+ 颜色资源）和 `res/values-night/colors.xml`（自动跟随系统切换），新建 `themes.xml` 和 `values-night/themes.xml`，MainActivity.java 新增 `getThemeColor()` 动态颜色获取方法。

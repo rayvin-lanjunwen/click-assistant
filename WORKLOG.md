@@ -4,6 +4,7 @@
 
 ## 2026-07-12
 
+- 2026-07-12 02:15 修复桌面端 SQLite Error 19：DatabaseMigrator v1.3.0 迁移 DROP COLUMN after_delay_ms；v1.0.0 初始建表移除该列；新增 TryParseAlterTableDropColumn 实现 DROP COLUMN 幂等（已存在则跳过）；25/25 测试通过；同步清理 DatabaseMigratorTests 测试 fixture；记录到 ERRORLOG.md #12。
 - 2026-07-12 02:00 项目文件审查与清理：修复 CHANGELOG.md v0.15.0 与 v0.14.0 重复条目（移除 14 条重复记录）；更新 .gitignore 排除 .workbuddy/、generated-images/、test-results/、**/build-log.txt；更新 STYLEGUIDE.md 最后更新日期至 2026-07-12；README.md 补充 ERRORLOG.md 和 ASSETS_SPECIFICATION.md 引用、修正 Android 版本号 0.6.0→0.6.1；WORKLOG.md 补充本次清理记录。
 - 2026-07-12 01:40 双端编译打包：WPF 发布为自包含 .exe（dist/ClickAssistant-win-x64/ + ZIP 包 77 MB）、Android 构建 release APK（dist/ClickAssistant-android-0.6.1.apk 17 MB，未签名）。修复编译错误：MainWindow.xaml.cs 中 ClickAssistant.Application 命名空间与 System.Windows.Application 冲突（改用全限定名称）、Android styles.xml 与 themes.xml 重复 AppTheme。
 - 2026-07-12 01:30 液态玻璃美术升级 v2.0.0：AI 生成 14 张 PNG 图片素材（Logo/任务类型/导航/状态图标）并部署到双端；WPF 端新增深色主题（DarkTheme ResourceDictionary + 运行时切换 + 持久化）；Android 端新增深色主题（colors.xml + values-night + 动态颜色获取）；设计规范升级至 v2.0.0（色彩体系/字体排版/响应式断点/组件五态）；创建素材规格说明文档；WPF emoji 全面替换为 PNG 图标；版本提升至 v0.16.0。

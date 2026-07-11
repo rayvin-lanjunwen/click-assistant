@@ -41,6 +41,15 @@ public sealed class DatabaseMigrator
             "ALTER TABLE task_steps ADD COLUMN end_x INTEGER NOT NULL DEFAULT 0;",
             "ALTER TABLE task_steps ADD COLUMN end_y INTEGER NOT NULL DEFAULT 0;",
             "ALTER TABLE task_steps ADD COLUMN swipe_duration_ms INTEGER NOT NULL DEFAULT 300;"
+        }),
+
+        // v1.3.0 - 真正落实"取消 AfterDelayMs"：移除 task_steps.after_delay_ms 列
+        // v1.0.0 初始建表时定义了 after_delay_ms INTEGER NOT NULL DEFAULT 0；
+        // 仓库层 INSERT 早已不写该字段，老用户数据库的 NOT NULL 约束会在新建/复制任务时报错。
+        // SQLite ≥ 3.35 原生支持 DROP COLUMN。
+        new("1.3.0", "Remove deprecated after_delay_ms column", new[]
+        {
+            "ALTER TABLE task_steps DROP COLUMN after_delay_ms;"
         })
     };
 
@@ -170,7 +179,7 @@ public sealed class DatabaseMigrator
 
     /// <summary>
     /// 按版本号升序执行所有未应用的迁移，每个迁移在独立事务中执行。
-    /// 若迁移语句为 ALTER TABLE ADD COLUMN 且目标列已存在，则自动跳过该语句。
+    /// 若迁移语句为 ALTER TABLE ADD COLUMN 且目标列已存在，或为 DROP COLUMN 且目标列已不存在，则自动跳过该语句。
     /// </summary>
     private static async Task ApplyMissingMigrationsAsync(
         SqliteConnection connection,
@@ -194,6 +203,14 @@ public sealed class DatabaseMigrator
                     if (TryParseAlterTableAddColumn(sql, out var tableName, out var columnName)
                         && await HasColumnAsync(connection, tableName, columnName, cancellationToken, transaction))
                     {
+                        // ADD COLUMN：目标列已存在则跳过（兼容已升级过的库）
+                        continue;
+                    }
+
+                    if (TryParseAlterTableDropColumn(sql, out var dropTable, out var dropColumn)
+                        && !await HasColumnAsync(connection, dropTable, dropColumn, cancellationToken, transaction))
+                    {
+                        // DROP COLUMN：目标列已不存在则跳过（兼容新建库或已清理的库）
                         continue;
                     }
 
@@ -238,6 +255,32 @@ public sealed class DatabaseMigrator
         var match = Regex.Match(
             sql,
             @"ALTER\s+TABLE\s+(?<table>\w+)\s+ADD\s+COLUMN\s+(?<column>\w+)",
+            RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
+
+        if (!match.Success)
+        {
+            return false;
+        }
+
+        tableName = match.Groups["table"].Value;
+        columnName = match.Groups["column"].Value;
+        return true;
+    }
+
+    /// <summary>
+    /// 尝试解析 ALTER TABLE ... DROP COLUMN 语句，返回表名与列名。
+    /// </summary>
+    private static bool TryParseAlterTableDropColumn(
+        string sql,
+        out string tableName,
+        out string columnName)
+    {
+        tableName = string.Empty;
+        columnName = string.Empty;
+
+        var match = Regex.Match(
+            sql,
+            @"ALTER\s+TABLE\s+(?<table>\w+)\s+DROP\s+COLUMN\s+(?<column>\w+)",
             RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
 
         if (!match.Success)
@@ -298,7 +341,6 @@ public sealed class DatabaseMigrator
                 shortcut_keys TEXT NOT NULL DEFAULT 'Ctrl+C',
                 text_content TEXT NOT NULL DEFAULT '',
                 before_delay_ms INTEGER NOT NULL,
-                after_delay_ms INTEGER NOT NULL DEFAULT 0,
                 step_order INTEGER NOT NULL,
                 FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
             );
