@@ -26,6 +26,9 @@ captures/
 *.apk
 *.aab
 **/build-log.txt
+# 签名密钥库（项目级调试密钥可提交，正式密钥严禁提交）
+**/*.keystore
+**/*.jks
 
 # 本地日志与临时文件
 *.log
