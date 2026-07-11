@@ -19,6 +19,7 @@ public final class PickerCursorView extends View {
 
     private String stepNumber = "";
     private int actionColor = Color.parseColor("#2563EB"); // 默认蓝色
+    private boolean highlighted = false; // 长按拖动定位时的高亮状态
 
     public PickerCursorView(Context context) {
         super(context);
@@ -62,6 +63,14 @@ public final class PickerCursorView extends View {
         invalidate();
     }
 
+    /// <summary>
+    /// 设置高亮状态：长按进入拖动定位时加粗边框并切换为高亮色。
+    /// </summary>
+    public void setHighlight(boolean highlighted) {
+        this.highlighted = highlighted;
+        invalidate();
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
@@ -69,11 +78,13 @@ public final class PickerCursorView extends View {
         float cy = getHeight() / 2f;
         float radius = Math.min(getWidth(), getHeight()) * 0.28f;
 
-        circlePaint.setColor(actionColor);
-        crossPaint.setColor(actionColor);
-        dotPaint.setColor(actionColor);
+        int drawColor = highlighted ? Color.parseColor("#F59E0B") : actionColor;
+        circlePaint.setColor(drawColor);
+        circlePaint.setStrokeWidth(highlighted ? 9f : 5f);
+        crossPaint.setColor(drawColor);
+        dotPaint.setColor(drawColor);
 
-        // 外圆
+        // 外圆（高亮时加粗边框）
         canvas.drawCircle(cx, cy, radius, circlePaint);
 
         // 十字线

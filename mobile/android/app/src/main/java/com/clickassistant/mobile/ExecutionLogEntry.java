@@ -11,6 +11,7 @@ import java.util.UUID;
 public final class ExecutionLogEntry {
     private String id = UUID.randomUUID().toString();
     private String taskName = "";
+    private String taskId = "";
     private String status = "";
     private String message = "";
     private long timestamp = System.currentTimeMillis();
@@ -29,6 +30,18 @@ public final class ExecutionLogEntry {
 
     public ExecutionLogEntry setTaskName(String taskName) {
         this.taskName = taskName == null ? "" : taskName;
+        return this;
+    }
+
+    /// <summary>
+    /// 获取关联任务 ID，用于按任务筛选执行状态。
+    /// </summary>
+    public String getTaskId() {
+        return taskId;
+    }
+
+    public ExecutionLogEntry setTaskId(String taskId) {
+        this.taskId = taskId == null ? "" : taskId;
         return this;
     }
 
@@ -65,6 +78,7 @@ public final class ExecutionLogEntry {
         JSONObject object = new JSONObject();
         object.put("id", id);
         object.put("taskName", taskName);
+        object.put("taskId", taskId);
         object.put("status", status);
         object.put("message", message);
         object.put("timestamp", timestamp);
@@ -72,12 +86,13 @@ public final class ExecutionLogEntry {
     }
 
     /// <summary>
-    /// 从 JSON 还原执行日志条目。
+    /// 从 JSON 还原执行日志条目。taskId 使用 optString 兼容旧数据。
     /// </summary>
     public static ExecutionLogEntry fromJson(JSONObject object) {
         ExecutionLogEntry entry = new ExecutionLogEntry();
         entry.id = object.optString("id", UUID.randomUUID().toString());
         entry.taskName = object.optString("taskName", "");
+        entry.taskId = object.optString("taskId", "");
         entry.status = object.optString("status", "");
         entry.message = object.optString("message", "");
         entry.timestamp = object.optLong("timestamp", System.currentTimeMillis());

@@ -41,30 +41,22 @@ public sealed class ClickTaskValidationTests
     }
 
     [Fact]
-    public void Validate_WhenKeyboardPressCountIsInvalid_ThrowsDomainValidationException()
+    public void Setter_WhenKeyboardPressCountIsZero_ThrowsImmediately()
     {
-        var step = new ClickStep
+        // D5 后 setter 即时校验，非法值在赋值时就抛异常
+        Assert.Throws<DomainValidationException>(() =>
         {
-            Name = "键盘步骤",
-            ActionType = InputActionType.KeyboardPress,
-            KeyName = "A",
-            KeyPressCount = 0
-        };
-
-        Assert.Throws<DomainValidationException>(step.Validate);
+            var step = new ClickStep { KeyPressCount = 0 };
+        });
     }
 
     [Fact]
-    public void Validate_WhenMouseClickCountIsInvalid_ThrowsDomainValidationException()
+    public void Setter_WhenMouseClickCountIsZero_ThrowsImmediately()
     {
-        var step = new ClickStep
+        Assert.Throws<DomainValidationException>(() =>
         {
-            Name = "鼠标步骤",
-            ActionType = InputActionType.MouseClick,
-            MouseClickCount = 0
-        };
-
-        Assert.Throws<DomainValidationException>(step.Validate);
+            var step = new ClickStep { MouseClickCount = 0 };
+        });
     }
 
     [Fact]

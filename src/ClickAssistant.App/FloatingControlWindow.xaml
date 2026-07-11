@@ -11,112 +11,116 @@
         Topmost="True"
         ShowActivated="False"
         ShowInTaskbar="False"
-        Visibility="{Binding FloatingWindowVisibility}">
+        Visibility="{Binding IsFloatingWindowVisible, Converter={StaticResource BoolToVisibility}}">
     <Window.Resources>
-        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#172027" />
-        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#5B6975" />
-        <SolidColorBrush x:Key="AccentBrush" Color="#167C80" />
-        <SolidColorBrush x:Key="AccentDarkBrush" Color="#0E5659" />
-        <SolidColorBrush x:Key="DangerBrush" Color="#B44A45" />
+        <!-- 颜色与共享转换器已迁移到 App.xaml -->
 
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
             <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
         </Style>
 
         <Style x:Key="FloatingButtonStyle" TargetType="Button">
-            <Setter Property="MinHeight" Value="32" />
-            <Setter Property="Padding" Value="12,5" />
-            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Margin" Value="0,0,6,0" />
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-            <Setter Property="Background" Value="#F8FBFC" />
-            <Setter Property="BorderBrush" Value="#C5D2DB" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style x:Key="PrimaryFloatingButtonStyle" TargetType="Button" BasedOn="{StaticResource FloatingButtonStyle}">
             <Setter Property="Foreground" Value="White" />
-            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource AccentDarkBrush}" />
+            <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource PrimaryDarkBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
         </Style>
 
         <Style x:Key="DangerFloatingButtonStyle" TargetType="Button" BasedOn="{StaticResource FloatingButtonStyle}">
             <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+            <Setter Property="BorderBrush" Value="#FECACA" />
         </Style>
     </Window.Resources>
 
     <Grid MouseLeftButtonDown="HandleMouseLeftButtonDown">
-        <Border Padding="12"
-                Background="#FDFEFF"
-                BorderBrush="#B6C6CF"
-                BorderThickness="1"
-                CornerRadius="8"
-                Visibility="{Binding FloatingCollapsedVisibility}">
+        <!-- 收起态 -->
+        <Border Padding="12" CornerRadius="12"
+                Background="#FFFFFF" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                Visibility="{Binding IsFloatingCollapsedVisible, Converter={StaticResource BoolToVisibility}}"
+                Effect="{x:Null}">
             <DockPanel LastChildFill="True">
-                <Button DockPanel.Dock="Right"
-                        Command="{Binding ToggleFloatingWindowCommand}"
-                        Content="展开"
-                        Style="{StaticResource PrimaryFloatingButtonStyle}" />
-                <StackPanel Margin="0,0,10,0">
-                    <TextBlock FontSize="12"
-                               Foreground="{StaticResource TextSecondaryBrush}"
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Command="{Binding StopCommand}" Content="⏹"
+                            Style="{StaticResource DangerFloatingButtonStyle}"
+                            Visibility="{Binding IsExecutionRunning, Converter={StaticResource BoolToVisibility}}"
+                            MinHeight="28" Padding="6,0,6,0" Margin="0,0,4,0" />
+                    <Button Command="{Binding ToggleFloatingWindowCommand}"
+                            Content="展开" Style="{StaticResource PrimaryFloatingButtonStyle}" />
+                </StackPanel>
+                <StackPanel Margin="0,0,8,0">
+                    <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
                                Text="Click Assistant" />
-                    <TextBlock FontSize="16"
-                               FontWeight="SemiBold"
-                               Foreground="{StaticResource AccentDarkBrush}"
+                    <TextBlock FontSize="15" FontWeight="SemiBold"
+                               Foreground="{StaticResource PrimaryBrush}"
                                Text="{Binding StatusText}" />
                 </StackPanel>
             </DockPanel>
         </Border>
 
-        <Border Padding="14"
-                Background="#FDFEFF"
-                BorderBrush="#B6C6CF"
-                BorderThickness="1"
-                CornerRadius="8"
-                Visibility="{Binding FloatingExpandedVisibility}">
+        <!-- 展开态 -->
+        <Border Padding="16" CornerRadius="12"
+                Background="#FFFFFF" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                Visibility="{Binding IsFloatingExpandedVisible, Converter={StaticResource BoolToVisibility}}">
             <StackPanel>
                 <DockPanel>
                     <Button DockPanel.Dock="Right"
                             Command="{Binding ToggleFloatingWindowCommand}"
-                            Content="收起"
-                            Style="{StaticResource FloatingButtonStyle}" />
+                            Content="收起" Style="{StaticResource FloatingButtonStyle}" />
                     <StackPanel>
-                        <TextBlock FontSize="12"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
+                        <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
                                    Text="Click Assistant 控制" />
-                        <TextBlock FontSize="20"
-                                   FontWeight="SemiBold"
-                                   Foreground="{StaticResource AccentDarkBrush}"
+                        <TextBlock FontSize="18" FontWeight="SemiBold"
+                                   Foreground="{StaticResource PrimaryBrush}"
                                    Text="{Binding StatusText}" />
                     </StackPanel>
                 </DockPanel>
 
-                <Border Margin="0,12,0,12"
-                        Padding="12"
-                        Background="#EEF4F5"
-                        BorderBrush="#D4DEE6"
-                        BorderThickness="1"
-                        CornerRadius="8">
+                <Border Margin="0,10,0,10" Padding="12" CornerRadius="8"
+                        Background="#F9FAFB" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                     <StackPanel>
                         <TextBlock FontWeight="SemiBold" Text="{Binding FloatingTaskName}" />
-                        <TextBlock Margin="0,5,0,0"
+                        <TextBlock Margin="0,4,0,0" FontSize="12"
                                    Foreground="{StaticResource TextSecondaryBrush}"
                                    Text="{Binding FloatingTaskSummary}" />
                     </StackPanel>
                 </Border>
 
                 <WrapPanel>
-                    <Button Command="{Binding PauseCommand}"
-                            Content="暂停"
-                            Style="{StaticResource FloatingButtonStyle}" />
-                    <Button Command="{Binding ResumeCommand}"
-                            Content="继续"
-                            Style="{StaticResource PrimaryFloatingButtonStyle}" />
-                    <Button Command="{Binding StopCommand}"
-                            Content="停止"
-                            Style="{StaticResource DangerFloatingButtonStyle}" />
+                    <Button Command="{Binding PauseCommand}" Content="暂停"
+                            Style="{StaticResource FloatingButtonStyle}"
+                            Visibility="{Binding IsExecutionRunning, Converter={StaticResource BoolToVisibility}}" />
+                    <Button Command="{Binding ResumeCommand}" Content="继续"
+                            Style="{StaticResource PrimaryFloatingButtonStyle}"
+                            Visibility="{Binding IsExecutionPaused, Converter={StaticResource BoolToVisibility}}" />
+                    <Button Command="{Binding StopCommand}" Content="停止"
+                            Style="{StaticResource DangerFloatingButtonStyle}"
+                            Visibility="{Binding IsExecutionRunning, Converter={StaticResource BoolToVisibility}}" />
                 </WrapPanel>
             </StackPanel>
         </Border>

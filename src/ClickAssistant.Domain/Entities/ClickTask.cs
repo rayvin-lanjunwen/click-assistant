@@ -7,7 +7,10 @@ namespace ClickAssistant.Domain.Entities;
 /// </summary>
 public sealed class ClickTask
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
+    private int repeatCount = 1;
+    private int startDelayMs = 3000;
+
+    public Guid Id { get; init; } = Guid.NewGuid();
 
     public string Name { get; set; } = "新建点击任务";
 
@@ -15,34 +18,35 @@ public sealed class ClickTask
 
     public bool Enabled { get; set; } = true;
 
-    public int RepeatCount { get; set; } = 1;
+    public int RepeatCount
+    {
+        get => repeatCount;
+        set => repeatCount = value >= 1 ? value
+            : throw new DomainValidationException("重复次数必须大于或等于 1。");
+    }
 
-    public int StartDelayMs { get; set; } = 3000;
+    public int StartDelayMs
+    {
+        get => startDelayMs;
+        set => startDelayMs = value >= 0 ? value
+            : throw new DomainValidationException("开始延迟不能小于 0。");
+    }
 
     public List<ClickStep> Steps { get; set; } = [];
 
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
     /// 校验任务保存规则，保存前调用。
+    /// RepeatCount/StartDelayMs 的不变量已由 setter 保证，此处仅校验名称和步骤。
     /// </summary>
     public void ValidateForSave()
     {
         if (string.IsNullOrWhiteSpace(Name))
         {
             throw new DomainValidationException("任务名称不能为空。");
-        }
-
-        if (RepeatCount < 1)
-        {
-            throw new DomainValidationException("重复次数必须大于或等于 1。");
-        }
-
-        if (StartDelayMs < 0)
-        {
-            throw new DomainValidationException("开始延迟不能小于 0。");
         }
 
         foreach (var step in Steps)
@@ -76,11 +80,12 @@ public sealed class ClickTask
 
     /// <summary>
     /// 复制任务并重置标识，便于用户基于已有任务快速创建新任务。
+    /// 步骤通过 Copy() 方法深拷贝，新增属性时只需修改 Copy() 方法。
     /// </summary>
     public ClickTask Duplicate()
     {
-        var now = DateTime.Now;
-        var duplicatedTask = new ClickTask
+        var now = DateTime.UtcNow;
+        return new ClickTask
         {
             Id = Guid.NewGuid(),
             Name = $"{Name} 副本",
@@ -89,38 +94,11 @@ public sealed class ClickTask
             RepeatCount = RepeatCount,
             StartDelayMs = StartDelayMs,
             CreatedAt = now,
-            UpdatedAt = now
+            UpdatedAt = now,
+            Steps = Steps
+                .OrderBy(step => step.Order)
+                .Select(step => step.Copy(Id))
+                .ToList()
         };
-
-        duplicatedTask.Steps = Steps
-            .OrderBy(step => step.Order)
-            .Select(step => new ClickStep
-            {
-                Id = Guid.NewGuid(),
-                TaskId = duplicatedTask.Id,
-                Name = step.Name,
-                Enabled = step.Enabled,
-                ActionType = step.ActionType,
-                X = step.X,
-                Y = step.Y,
-                ClickType = step.ClickType,
-                MouseClickCount = step.MouseClickCount,
-                ClickIntervalMs = step.ClickIntervalMs,
-                PressDurationMs = step.PressDurationMs,
-                KeyName = step.KeyName,
-                KeyPressCount = step.KeyPressCount,
-                KeyIntervalMs = step.KeyIntervalMs,
-                ShortcutKeys = step.ShortcutKeys,
-                TextContent = step.TextContent,
-                AutoFocusBeforeInput = step.AutoFocusBeforeInput,
-                EndX = step.EndX,
-                EndY = step.EndY,
-                SwipeDurationMs = step.SwipeDurationMs,
-                BeforeDelayMs = step.BeforeDelayMs,
-                Order = step.Order
-            })
-            .ToList();
-
-        return duplicatedTask;
     }
 }

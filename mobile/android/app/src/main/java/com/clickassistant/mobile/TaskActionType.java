@@ -10,6 +10,7 @@ import android.graphics.Color;
 /// </summary>
 public enum TaskActionType {
     TAP("点击"),
+    LONG_PRESS("长按"),
     SWIPE("滑动"),
     TEXT_INPUT("文本输入");
 
@@ -31,10 +32,12 @@ public enum TaskActionType {
         switch (this) {
             case TAP:
                 return Color.parseColor("#2563EB");
+            case LONG_PRESS:
+                return Color.parseColor("#F97316");
             case SWIPE:
                 return Color.parseColor("#16A064");
             case TEXT_INPUT:
-                return Color.parseColor("#F97316");
+                return Color.parseColor("#8B5CF6");
             default:
                 return Color.parseColor("#2563EB");
         }

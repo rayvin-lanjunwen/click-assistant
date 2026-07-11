@@ -1,8 +1,11 @@
 package com.clickassistant.mobile;
 
+import android.accessibilityservice.AccessibilityServiceInfo;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ComponentName;
+import androidx.appcompat.widget.SwitchCompat;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -15,8 +18,10 @@ import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityManager;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -29,6 +34,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 
@@ -40,7 +46,6 @@ public final class MainActivity extends Activity {
     private enum Page {
         ONBOARDING,   // 权限引导页
         HOME,         // 首页
-        NEW_TASK,     // 新建任务类型选择
         LIBRARY,      // 任务库
         LOGS,         // 执行日志
         PROFILE,      // 个人中心
@@ -70,6 +75,10 @@ public final class MainActivity extends Activity {
     private Page currentPage = Page.ONBOARDING;
     private String currentFilter = "全部";
 
+    private final EnumMap<Page, View> pageViewCache = new EnumMap<>(Page.class);
+    private FrameLayout rootView;
+    private View currentContentView;
+
     private LinearLayout bottomNav;
     private TextView homeNavItem;
     private TextView libraryNavItem;
@@ -78,30 +87,76 @@ public final class MainActivity extends Activity {
 
     private EditText taskNameInput;
     private EditText taskDescInput;
-    private CheckBox taskEnabledBox;
+    private SwitchCompat taskEnabledBox;
     private EditText repeatCountInput;
     private EditText startDelayInput;
     private LinearLayout stepsContainer;
     private LinearLayout logContainer;
+    private int logDisplayCount = 30;
+    private List<ExecutionLogEntry> allLogEntries = new ArrayList<>();
     private EditText librarySearchInput;
     private LinearLayout libraryTaskList;
     private LinearLayout filterContainer;
 
     private TextView accessibilityStatusText;
     private TextView lastStatusText;
+    private SwitchCompat accessibilitySwitch;
+    // 抑制 Switch 程序化 setChecked 时触发跳转
+    private boolean suppressAccessibilitySwitch;
 
     private List<ClickTask> tasks = new ArrayList<>();
     private ClickTask selectedTask;
 
+    // 编辑器脏标记：用于退出编辑器时判断是否有未保存修改
+    private boolean editorDirty = false;
+    // 填充字段时抑制脏标记置位，避免 setText 触发 TextWatcher 误判为已修改
+    private boolean suppressDirty = false;
+    // 编辑器来源页面，退出时返回
+    private Page editorSourcePage = Page.LIBRARY;
+
+    // 执行控制按钮（成员变量，用于根据执行状态联动启用/禁用）
+    private Button editorStartButton;
+    private Button editorPauseButton;
+    private Button editorResumeButton;
+    private Button editorStopButton;
+
+    // 引导页持久标记：用户点击"暂不设置"或辅助功能已开启后不再展示引导页
+    private static final String PREFS_NAME = "click_assistant_app";
+    private static final String KEY_ONBOARDING_COMPLETED = "onboarding_completed";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        showPage(Page.ONBOARDING);
+        // 若引导已完成或辅助功能已开启，直接进入首页
+        if (isOnboardingCompleted() || isAccessibilityEnabled()) {
+            showPage(Page.HOME);
+        } else {
+            showPage(Page.ONBOARDING);
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        // 用户从系统设置开启辅助功能后返回 App 时，自动从引导页跳转首页
+        if (currentPage == Page.ONBOARDING && isAccessibilityEnabled()) {
+            setOnboardingCompleted();
+            showPage(Page.HOME);
+            return;
+        }
+        // 取点流程返回后自动恢复编辑器（任务和步骤已通过 Service 更新）
+        String activeTaskId = TaskStore.loadActiveTaskId(this);
+        if (activeTaskId != null && !activeTaskId.isEmpty() && currentPage != Page.EDITOR) {
+            loadTasks();
+            for (ClickTask t : tasks) {
+                if (activeTaskId.equals(t.getId())) {
+                    selectedTask = t;
+                    editorSourcePage = Page.HOME;
+                    showPage(Page.EDITOR);
+                    return;
+                }
+            }
+        }
         loadTasks();
         refreshPageContent();
     }
@@ -109,9 +164,7 @@ public final class MainActivity extends Activity {
     @Override
     public void onBackPressed() {
         if (currentPage == Page.EDITOR) {
-            showPage(Page.LIBRARY);
-        } else if (currentPage == Page.NEW_TASK) {
-            showPage(Page.HOME);
+            exitEditor();
         } else if (currentPage == Page.LOGS || currentPage == Page.LIBRARY || currentPage == Page.PROFILE) {
             showPage(Page.HOME);
         } else if (currentPage != Page.HOME && currentPage != Page.ONBOARDING) {
@@ -125,11 +178,54 @@ public final class MainActivity extends Activity {
 
     private void showPage(Page page) {
         currentPage = page;
-        // 如果已开启辅助功能，跳过引导页
+        // 如果已开启辅助功能，跳过引导页并持久标记
         if (page == Page.ONBOARDING && isAccessibilityEnabled()) {
             currentPage = Page.HOME;
+            setOnboardingCompleted();
         }
-        setContentView(buildContentView());
+
+        // 首次调用时创建持久根容器和底部导航
+        if (rootView == null) {
+            rootView = new FrameLayout(this);
+            rootView.setBackgroundColor(BG);
+            bottomNav = buildBottomNav();
+            FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    dp(64),
+                    Gravity.BOTTOM);
+            rootView.addView(bottomNav, navParams);
+            setContentView(rootView);
+        }
+
+        // 隐藏当前页面内容
+        if (currentContentView != null) {
+            currentContentView.setVisibility(View.GONE);
+        }
+
+        // 获取或构建目标页面视图，添加到底部导航之下（z-order 最底层）
+        View targetView = pageViewCache.get(currentPage);
+        if (targetView == null) {
+            targetView = buildPageContent(currentPage);
+            pageViewCache.put(currentPage, targetView);
+            rootView.addView(targetView, 0, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+        }
+        targetView.setVisibility(View.VISIBLE);
+        currentContentView = targetView;
+
+        // 管理底部导航可见性
+        boolean showBottomNav = currentPage != Page.EDITOR
+                && currentPage != Page.ONBOARDING;
+        bottomNav.setVisibility(showBottomNav ? View.VISIBLE : View.GONE);
+
+        // 任务库页面内部已预留底部空间，其他页面为底部导航腾出空间
+        if (showBottomNav && currentPage != Page.LIBRARY) {
+            targetView.setPadding(0, 0, 0, dp(64));
+        } else {
+            targetView.setPadding(0, 0, 0, 0);
+        }
+
         loadTasks();
         refreshPageContent();
     }
@@ -144,7 +240,31 @@ public final class MainActivity extends Activity {
         if (currentPage == Page.LOGS) {
             renderLog();
         }
+        if (currentPage == Page.EDITOR) {
+            updateExecutionButtonStates();
+        }
         updateBottomNav();
+    }
+
+    /// <summary>
+    /// 根据执行状态联动显示编辑器中的执行控制按钮（未运行时仅显示"开始"）。
+    /// </summary>
+    private void updateExecutionButtonStates() {
+        boolean svcRunning = ClickAssistantAccessibilityService.isRunning();
+        boolean svcPaused = ClickAssistantAccessibilityService.isPaused();
+
+        if (editorStartButton != null) {
+            editorStartButton.setVisibility(svcRunning ? View.GONE : View.VISIBLE);
+        }
+        if (editorPauseButton != null) {
+            editorPauseButton.setVisibility(svcRunning && !svcPaused ? View.VISIBLE : View.GONE);
+        }
+        if (editorResumeButton != null) {
+            editorResumeButton.setVisibility(svcRunning && svcPaused ? View.VISIBLE : View.GONE);
+        }
+        if (editorStopButton != null) {
+            editorStopButton.setVisibility(svcRunning ? View.VISIBLE : View.GONE);
+        }
     }
 
     private View buildContentView() {
@@ -157,7 +277,7 @@ public final class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT));
 
         // 编辑器/新建任务页/引导页不显示底部导航
-        if (currentPage != Page.EDITOR && currentPage != Page.NEW_TASK && currentPage != Page.ONBOARDING) {
+        if (currentPage != Page.EDITOR && currentPage != Page.ONBOARDING) {
             bottomNav = buildBottomNav();
             FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -179,8 +299,6 @@ public final class MainActivity extends Activity {
                 return buildOnboardingPage();
             case HOME:
                 return buildHomePage();
-            case NEW_TASK:
-                return buildNewTaskPage();
             case LIBRARY:
                 return buildLibraryPage();
             case LOGS:
@@ -306,7 +424,10 @@ public final class MainActivity extends Activity {
         skipText.setTextColor(TEXT_SECONDARY);
         skipText.setGravity(Gravity.CENTER);
         skipText.setPadding(0, dp(16), 0, dp(16));
-        skipText.setOnClickListener(v -> showPage(Page.HOME));
+        skipText.setOnClickListener(v -> {
+            setOnboardingCompleted();
+            showPage(Page.HOME);
+        });
         root.addView(skipText, blockParams());
 
         scroll.addView(root);
@@ -363,7 +484,7 @@ public final class MainActivity extends Activity {
         // 顶部标题区
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.VERTICAL);
-        header.setPadding(0, dp(16), 0, dp(8));
+        header.setPadding(0, dp(16), 0, dp(12));
         root.addView(header);
 
         TextView title = new TextView(this);
@@ -379,18 +500,17 @@ public final class MainActivity extends Activity {
         subtitle.setTextColor(TEXT_SECONDARY);
         header.addView(subtitle);
 
-        // 辅助功能状态卡片
+        // 辅助功能状态卡片（带 Switch 开关）
         LinearLayout statusCard = createCard(dp(16));
         statusCard.setOrientation(LinearLayout.HORIZONTAL);
         statusCard.setPadding(dp(16), dp(16), dp(16), dp(16));
         statusCard.setGravity(Gravity.CENTER_VERTICAL);
-        statusCard.setOnClickListener(v -> showPage(Page.PROFILE));
 
         FrameLayout iconFrame = new FrameLayout(this);
         iconFrame.setLayoutParams(new LinearLayout.LayoutParams(dp(48), dp(48)));
-        iconFrame.setBackground(circleDrawable(SUCCESS_LIGHT, 0));
+        iconFrame.setBackground(circleDrawable(isAccessibilityEnabled() ? SUCCESS_LIGHT : RED_LIGHT, 0));
         TextView iconView = new TextView(this);
-        iconView.setText("✅");
+        iconView.setText(isAccessibilityEnabled() ? "✅" : "⚠️");
         iconView.setTextSize(24);
         iconView.setGravity(Gravity.CENTER);
         FrameLayout.LayoutParams iconFrameParams1 = new FrameLayout.LayoutParams(
@@ -412,22 +532,28 @@ public final class MainActivity extends Activity {
         statusTextCol.addView(statusTitle);
 
         accessibilityStatusText = new TextView(this);
-        accessibilityStatusText.setText("已开启");
+        accessibilityStatusText.setText(isAccessibilityEnabled() ? "已开启" : "未开启");
         accessibilityStatusText.setTextSize(18);
-        accessibilityStatusText.setTextColor(SUCCESS);
+        accessibilityStatusText.setTextColor(isAccessibilityEnabled() ? SUCCESS : RED);
         accessibilityStatusText.setTypeface(null, Typeface.BOLD);
         statusTextCol.addView(accessibilityStatusText);
 
         statusCard.addView(statusTextCol);
-        TextView arrow = new TextView(this);
-        arrow.setText("›");
-        arrow.setTextSize(28);
-        arrow.setTextColor(TEXT_SECONDARY);
-        statusCard.addView(arrow);
+
+        accessibilitySwitch = new SwitchCompat(this);
+        accessibilitySwitch.setChecked(isAccessibilityEnabled());
+        accessibilitySwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (suppressAccessibilitySwitch) return;
+            // 拨向 ON 且已开启 → 不跳；拨向 OFF 或尚未开启 → 跳设置
+            if (!isChecked || !isAccessibilityEnabled()) {
+                openAccessibilitySettings();
+            }
+        });
+        statusCard.addView(accessibilitySwitch);
 
         root.addView(statusCard, blockParams());
 
-        // 快捷入口卡片
+        // 2×2 网格快捷入口
         TextView quickTitle = new TextView(this);
         quickTitle.setText("快捷入口");
         quickTitle.setTextSize(18);
@@ -436,9 +562,16 @@ public final class MainActivity extends Activity {
         quickTitle.setPadding(0, dp(24), 0, dp(12));
         root.addView(quickTitle);
 
-        addHomeCard(root, "➕", "新建任务", "创建自动化任务", PRIMARY, PRIMARY_LIGHT, v -> showPage(Page.NEW_TASK));
-        addHomeCard(root, "📂", "任务库", "管理与运行任务", PURPLE, PURPLE_LIGHT, v -> showPage(Page.LIBRARY));
-        addHomeCard(root, "📋", "执行日志", "查看任务执行记录", ORANGE, ORANGE_LIGHT, v -> showPage(Page.LOGS));
+        LinearLayout grid = new LinearLayout(this);
+        grid.setOrientation(LinearLayout.VERTICAL);
+        root.addView(grid);
+
+        addGridRow(grid,
+                new GridItem("⚡", "最近任务", "快速执行上次\n执行过的任务", PRIMARY, PRIMARY_LIGHT, v -> executeRecentTask()),
+                new GridItem("📂", "任务库", "管理与运行\n自动化任务", PURPLE, PURPLE_LIGHT, v -> showPage(Page.LIBRARY)));
+        addGridRow(grid,
+                new GridItem("📋", "执行日志", "查看任务\n执行记录", ORANGE, ORANGE_LIGHT, v -> showPage(Page.LOGS)),
+                new GridItem("➕", "新建任务", "创建新的\n自动化流程", CYAN, CYAN_LIGHT, v -> showNewTaskDialog()));
 
         // 最近状态
         TextView recentTitle = new TextView(this);
@@ -451,6 +584,7 @@ public final class MainActivity extends Activity {
 
         LinearLayout recentCard = createCard(dp(12));
         recentCard.setPadding(dp(16), dp(16), dp(16), dp(16));
+        recentCard.setOnClickListener(v -> showPage(Page.LOGS));
         lastStatusText = new TextView(this);
         lastStatusText.setText("暂无执行记录");
         lastStatusText.setTextSize(14);
@@ -463,58 +597,112 @@ public final class MainActivity extends Activity {
         return scroll;
     }
 
-    private void addHomeCard(LinearLayout root, String icon, String title, String desc, int color, int bgColor, View.OnClickListener listener) {
-        LinearLayout card = createCard(dp(12));
-        card.setOrientation(LinearLayout.HORIZONTAL);
+    private static class GridItem {
+        final String icon;
+        final String title;
+        final String desc;
+        final int color;
+        final int bgColor;
+        final View.OnClickListener listener;
+
+        GridItem(String icon, String title, String desc, int color, int bgColor, View.OnClickListener listener) {
+            this.icon = icon;
+            this.title = title;
+            this.desc = desc;
+            this.color = color;
+            this.bgColor = bgColor;
+            this.listener = listener;
+        }
+    }
+
+    private void addGridRow(LinearLayout root, GridItem left, GridItem right) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        rowParams.setMargins(0, 0, 0, dp(12));
+        row.setLayoutParams(rowParams);
+
+        row.addView(buildGridCard(left), new LinearLayout.LayoutParams(0, dp(120), 1));
+        View spacer = new View(this);
+        spacer.setLayoutParams(new LinearLayout.LayoutParams(dp(12), ViewGroup.LayoutParams.MATCH_PARENT));
+        row.addView(spacer);
+        row.addView(buildGridCard(right), new LinearLayout.LayoutParams(0, dp(120), 1));
+
+        root.addView(row);
+    }
+
+    private View buildGridCard(GridItem item) {
+        LinearLayout card = createCard(dp(16));
+        card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(16), dp(16), dp(16), dp(16));
-        card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setOnClickListener(listener);
-        LinearLayout.LayoutParams params = blockParams();
-        params.setMargins(0, 0, 0, dp(12));
-        card.setLayoutParams(params);
+        card.setGravity(Gravity.CENTER);
+        card.setOnClickListener(item.listener);
 
         FrameLayout iconFrame = new FrameLayout(this);
-        iconFrame.setLayoutParams(new LinearLayout.LayoutParams(dp(48), dp(48)));
-        iconFrame.setBackground(circleDrawable(bgColor, 0));
+        iconFrame.setLayoutParams(new LinearLayout.LayoutParams(dp(44), dp(44)));
+        iconFrame.setBackground(circleDrawable(item.bgColor, 0));
         TextView iconView = new TextView(this);
-        iconView.setText(icon);
-        iconView.setTextSize(24);
+        iconView.setText(item.icon);
+        iconView.setTextSize(22);
         iconView.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams iconFp1 = new FrameLayout.LayoutParams(
+        FrameLayout.LayoutParams iconFp = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        iconFp1.gravity = Gravity.CENTER;
-        iconFrame.addView(iconView, iconFp1);
+        iconFp.gravity = Gravity.CENTER;
+        iconFrame.addView(iconView, iconFp);
         card.addView(iconFrame);
 
-        LinearLayout textCol = new LinearLayout(this);
-        textCol.setOrientation(LinearLayout.VERTICAL);
-        textCol.setPadding(dp(16), 0, 0, 0);
-        textCol.setLayoutParams(new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
         TextView titleView = new TextView(this);
-        titleView.setText(title);
-        titleView.setTextSize(17);
+        titleView.setText(item.title);
+        titleView.setTextSize(15);
         titleView.setTextColor(TEXT_PRIMARY);
         titleView.setTypeface(null, Typeface.BOLD);
-        textCol.addView(titleView);
+        titleView.setGravity(Gravity.CENTER);
+        titleView.setPadding(0, dp(10), 0, dp(4));
+        card.addView(titleView);
 
         TextView descView = new TextView(this);
-        descView.setText(desc);
-        descView.setTextSize(13);
+        descView.setText(item.desc);
+        descView.setTextSize(12);
         descView.setTextColor(TEXT_SECONDARY);
+        descView.setGravity(Gravity.CENTER);
         descView.setLineSpacing(0, 1.3f);
-        textCol.addView(descView);
+        card.addView(descView);
 
-        card.addView(textCol);
+        return card;
+    }
 
-        TextView arrow = new TextView(this);
-        arrow.setText("›");
-        arrow.setTextSize(28);
-        arrow.setTextColor(TEXT_SECONDARY);
-        card.addView(arrow);
-
-        root.addView(card);
+    /// <summary>
+    /// 执行最近一次执行过的任务，若无记录则跳任务库。
+    /// </summary>
+    private void executeRecentTask() {
+        if (!isAccessibilityEnabled()) {
+            Toast.makeText(this, "请先开启辅助功能服务", Toast.LENGTH_LONG).show();
+            openAccessibilitySettings();
+            return;
+        }
+        List<ExecutionLogEntry> logs = ExecutionLogStore.loadLog(this);
+        String lastTaskId = null;
+        for (ExecutionLogEntry e : logs) {
+            if (e.getTaskId() != null && !e.getTaskId().isEmpty()) {
+                lastTaskId = e.getTaskId();
+                break;
+            }
+        }
+        if (lastTaskId == null) {
+            Toast.makeText(this, "暂无执行记录，请先创建任务", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        ClickTask target = null;
+        for (ClickTask t : tasks) {
+            if (lastTaskId.equals(t.getId())) { target = t; break; }
+        }
+        if (target == null) {
+            Toast.makeText(this, "最近任务已删除，请选择其他任务", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        selectedTask = target;
+        startTask();
     }
 
     private void refreshStatus() {
@@ -526,77 +714,123 @@ public final class MainActivity extends Activity {
         if (lastStatusText != null) {
             lastStatusText.setText(TaskStore.loadLastStatus(this));
         }
+        // 静默刷新 Switch 状态（抑制跳转）
+        if (accessibilitySwitch != null) {
+            suppressAccessibilitySwitch = true;
+            accessibilitySwitch.setChecked(enabled);
+            suppressAccessibilitySwitch = false;
+        }
     }
 
     private void refreshHomeStatus() {
         refreshStatus();
     }
 
-    // ---------- 新建任务页 ----------
+    // ---------- 新建任务弹窗 ----------
 
-    private ScrollView buildNewTaskPage() {
-        ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(BG);
+    /// <summary>
+    /// 弹出"选择操作模式"对话框，选择后直接创建单步骤任务并进入编辑器。
+    /// </summary>
+    private void showNewTaskDialog() {
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(dp(16), dp(8), dp(16), dp(8));
 
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(20), dp(16), dp(20), dp(16));
+        String[][] modes = {
+                {"🖱️ 单击", "在指定位置点击一次"},
+                {"👆 双击", "在指定位置快速连击两次"},
+                {"⏱️ 长按", "在指定位置长按"},
+                {"↔️ 滑动", "从起点滑动到终点"}
+        };
 
-        addPageHeader(root, "新建任务", "选择任务类型开始创建");
+        for (int i = 0; i < modes.length; i++) {
+            final int modeIndex = i;
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setPadding(dp(12), dp(14), dp(12), dp(14));
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            int[] colors = {PRIMARY, PURPLE, ORANGE, CYAN};
+            int[] lightColors = {PRIMARY_LIGHT, PURPLE_LIGHT, ORANGE_LIGHT, CYAN_LIGHT};
+            row.setBackground(roundedDrawable(lightColors[i], dp(12)));
+            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            rowParams.setMargins(0, 0, 0, dp(12));
+            row.setLayoutParams(rowParams);
 
-        addTemplateCard(root, "🖱️", "点击任务", "在指定位置执行\n点击操作", PRIMARY, PRIMARY_LIGHT, 0);
-        addTemplateCard(root, "⌨️", "文本输入任务", "在指定位置输入\n文本内容", PURPLE, PURPLE_LIGHT, 1);
-        addTemplateCard(root, "📝", "点击与文本组合", "组合点击与文本输入\n的自动化操作", ORANGE, ORANGE_LIGHT, 2);
-        addTemplateCard(root, "📄", "空白任务", "从空白开始创建\n自定义任务流程", CYAN, CYAN_LIGHT, 3);
+            TextView iconView = new TextView(this);
+            iconView.setText(modes[i][0]);
+            iconView.setTextSize(18);
+            iconView.setTextColor(colors[i]);
+            iconView.setTypeface(null, Typeface.BOLD);
+            row.addView(iconView);
 
-        scroll.addView(root);
-        return scroll;
+            TextView descView = new TextView(this);
+            descView.setText(modes[i][1]);
+            descView.setTextSize(13);
+            descView.setTextColor(TEXT_SECONDARY);
+            descView.setPadding(dp(12), 0, 0, 0);
+            LinearLayout.LayoutParams descParams = new LinearLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+            row.addView(descView, descParams);
+
+            row.setOnClickListener(v -> {
+                createTaskFromMode(modeIndex);
+            });
+
+            container.addView(row);
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("选择操作模式")
+                .setView(container)
+                .setNegativeButton("取消", null)
+                .show();
     }
 
-    private void addTemplateCard(LinearLayout root, String icon, String title, String desc, int color, int bgColor, int templateIndex) {
-        LinearLayout card = createCard(dp(16));
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(20), dp(20), dp(20), dp(20));
-        card.setGravity(Gravity.CENTER_HORIZONTAL);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(130));
-        params.setMargins(0, 0, 0, dp(12));
-        card.setLayoutParams(params);
-        card.setOnClickListener(v -> {
-            createTaskTemplate(templateIndex);
-        });
+    /// <summary>
+    /// 根据操作模式创建单步骤任务：0=单击 1=双击 2=长按 3=滑动
+    /// </summary>
+    private void createTaskFromMode(int mode) {
+        ClickTask task = new ClickTask();
+        task.setSteps(new ArrayList<>());
 
-        FrameLayout iconFrame = new FrameLayout(this);
-        iconFrame.setLayoutParams(new LinearLayout.LayoutParams(dp(56), dp(56)));
-        iconFrame.setBackground(circleDrawable(bgColor, 0));
-        TextView iconView = new TextView(this);
-        iconView.setText(icon);
-        iconView.setTextSize(28);
-        iconView.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams iconFp2 = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        iconFp2.gravity = Gravity.CENTER;
-        iconFrame.addView(iconView, iconFp2);
-        card.addView(iconFrame);
+        switch (mode) {
+            case 0: // 单击
+                task.setName("新建点击任务");
+                TaskStep tap = createDefaultStep(TaskActionType.TAP, 0);
+                tap.setTapCount(1);
+                tap.setClickIntervalMs(0);
+                task.getSteps().add(tap);
+                break;
+            case 1: // 双击
+                task.setName("新建双击任务");
+                TaskStep dbl = createDefaultStep(TaskActionType.TAP, 0);
+                dbl.setTapCount(2);
+                dbl.setClickIntervalMs(100);
+                task.getSteps().add(dbl);
+                break;
+            case 2: // 长按 - 独立类型
+                task.setName("新建长按任务");
+                TaskStep lp = createDefaultStep(TaskActionType.LONG_PRESS, 0);
+                lp.setTapCount(1);
+                lp.setPressDurationMs(800);
+                task.getSteps().add(lp);
+                break;
+            case 3: // 滑动
+                task.setName("新建滑动任务");
+                TaskStep sw = createDefaultStep(TaskActionType.SWIPE, 0);
+                sw.setEndX(500);
+                sw.setEndY(1200);
+                sw.setDurationMs(300);
+                task.getSteps().add(sw);
+                break;
+        }
 
-        TextView titleView = new TextView(this);
-        titleView.setText(title);
-        titleView.setTextSize(16);
-        titleView.setTextColor(TEXT_PRIMARY);
-        titleView.setTypeface(null, Typeface.BOLD);
-        titleView.setGravity(Gravity.CENTER);
-        titleView.setPadding(0, dp(12), 0, dp(4));
-        card.addView(titleView);
-
-        TextView descView = new TextView(this);
-        descView.setText(desc);
-        descView.setTextSize(13);
-        descView.setTextColor(TEXT_SECONDARY);
-        descView.setGravity(Gravity.CENTER);
-        descView.setLineSpacing(0, 1.3f);
-        card.addView(descView);
-
-        root.addView(card);
+        TaskStore.upsertTask(this, task);
+        selectedTask = task;
+        editorSourcePage = currentPage;
+        showPage(Page.EDITOR);
+        Toast.makeText(this, "已创建任务，请设置坐标和参数", Toast.LENGTH_SHORT).show();
     }
 
     // ---------- 任务库页 ----------
@@ -671,7 +905,7 @@ public final class MainActivity extends Activity {
         ((FrameLayout.MarginLayoutParams) fab.getLayoutParams()).setMargins(0, 0, dp(20), dp(84));
         fab.setBackground(circleDrawable(PRIMARY, 0));
         fab.setElevation(dp(6));
-        fab.setOnClickListener(v -> showPage(Page.NEW_TASK));
+        fab.setOnClickListener(v -> showNewTaskDialog());
 
         TextView fabIcon = new TextView(this);
         fabIcon.setText("+");
@@ -690,7 +924,7 @@ public final class MainActivity extends Activity {
     private void refreshFilterTabs() {
         if (filterContainer == null) return;
         filterContainer.removeAllViews();
-        String[] filters = {"全部", "运行中", "已完成", "已停止"};
+        String[] filters = {"全部", "进行中", "已完成", "已停止"};
         for (String filter : filters) {
             TextView tab = new TextView(this);
             tab.setText(filter);
@@ -746,12 +980,16 @@ public final class MainActivity extends Activity {
     }
 
     private boolean matchesFilter(ClickTask task) {
+        String lastStatus = ExecutionLogStore.getLastStatusByTaskId(this, task.getId());
         switch (currentFilter) {
             case "运行中":
-                return task.isEnabled();
+                return "运行中".equals(lastStatus)
+                        || "已暂停".equals(lastStatus)
+                        || "准备执行".equals(lastStatus);
             case "已完成":
+                return "已完成".equals(lastStatus);
             case "已停止":
-                return !task.isEnabled();
+                return "已停止".equals(lastStatus);
             case "全部":
             default:
                 return true;
@@ -766,10 +1004,6 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams params = blockParams();
         params.setMargins(0, 0, 0, dp(12));
         card.setLayoutParams(params);
-        card.setOnClickListener(v -> {
-            selectedTask = task;
-            showPage(Page.EDITOR);
-        });
 
         // 任务类型图标
         String icon = getTaskTypeIcon(task);
@@ -787,12 +1021,17 @@ public final class MainActivity extends Activity {
         iconFrame.addView(iconView, iconFp3);
         card.addView(iconFrame);
 
-        // 文本信息
+        // 文本信息（点击区域仅限此列，排除 CheckBox 区域）
         LinearLayout textCol = new LinearLayout(this);
         textCol.setOrientation(LinearLayout.VERTICAL);
         textCol.setPadding(dp(16), 0, 0, 0);
         textCol.setLayoutParams(new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        textCol.setOnClickListener(v -> {
+            selectedTask = task;
+            editorSourcePage = currentPage;
+            showPage(Page.EDITOR);
+        });
 
         TextView title = new TextView(this);
         title.setText(task.getName());
@@ -818,14 +1057,31 @@ public final class MainActivity extends Activity {
 
         card.addView(textCol);
 
+        // 快捷执行按钮
+        TextView execBtn = new TextView(this);
+        execBtn.setText("▶");
+        execBtn.setTextSize(16);
+        execBtn.setTextColor(SUCCESS);
+        execBtn.setGravity(Gravity.CENTER);
+        execBtn.setPadding(dp(4), dp(4), dp(4), dp(4));
+        execBtn.setOnClickListener(v -> {
+            selectedTask = task;
+            startTask();
+        });
+        card.addView(execBtn);
+
         // 开关
-        CheckBox toggle = new CheckBox(this);
-        toggle.setChecked(task.isEnabled());
-        toggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
+        SwitchCompat toggle = new SwitchCompat(this);
+        CompoundButton.OnCheckedChangeListener toggleListener = (buttonView, isChecked) -> {
             task.setEnabled(isChecked);
             TaskStore.upsertTask(this, task);
+            // 仅更新状态文本，不触发全量 rebuild 避免卡片闪烁/重建
             refreshLibrary();
-        });
+        };
+        // 避免 setChecked 在绑定阶段误触发监听器导致连锁重建
+        toggle.setOnCheckedChangeListener(null);
+        toggle.setChecked(task.isEnabled());
+        toggle.setOnCheckedChangeListener(toggleListener);
         card.addView(toggle);
 
         return card;
@@ -903,7 +1159,7 @@ public final class MainActivity extends Activity {
         versionCard.addView(versionTitle);
 
         TextView versionText = new TextView(this);
-        versionText.setText("Click Assistant 移动端 v0.5.0\n项目版本 v0.13.0");
+        versionText.setText("Click Assistant 移动端 v" + BuildConfig.VERSION_NAME + "\n项目版本 v" + BuildConfig.VERSION_NAME);
         versionText.setTextSize(13);
         versionText.setTextColor(TEXT_SECONDARY);
         versionText.setLineSpacing(0, 1.4f);
@@ -1023,8 +1279,15 @@ public final class MainActivity extends Activity {
         clearButton.setBackground(roundedDrawable(CARD_BG, dp(12)));
         clearButton.setPadding(dp(16), dp(16), dp(16), dp(16));
         clearButton.setOnClickListener(v -> {
-            ExecutionLogStore.clear(this);
-            renderLog();
+            new AlertDialog.Builder(this)
+                    .setTitle("清空执行日志")
+                    .setMessage("确定清空全部执行记录？此操作不可撤销")
+                    .setPositiveButton("清空", (dialog, which) -> {
+                        ExecutionLogStore.clear(this);
+                        renderLog();
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
         });
         LinearLayout.LayoutParams clearParams = blockParams();
         clearParams.setMargins(0, dp(16), 0, 0);
@@ -1089,12 +1352,29 @@ public final class MainActivity extends Activity {
 
         // 返回按钮
         TextView backButton = new TextView(this);
-        backButton.setText("‹ 返回任务库");
+        backButton.setText("‹ 返回");
         backButton.setTextSize(16);
         backButton.setTextColor(PRIMARY);
         backButton.setPadding(0, dp(8), 0, dp(8));
-        backButton.setOnClickListener(v -> showPage(Page.LIBRARY));
+        backButton.setOnClickListener(v -> exitEditor());
         root.addView(backButton);
+
+        // 顶部工具栏：返回 + 保存 并列
+        TextView saveTopButton = new TextView(this);
+        saveTopButton.setText("保存");
+        saveTopButton.setTextSize(16);
+        saveTopButton.setTextColor(Color.WHITE);
+        saveTopButton.setBackground(roundedDrawable(PRIMARY, dp(8)));
+        saveTopButton.setPadding(dp(12), dp(6), dp(12), dp(6));
+        saveTopButton.setGravity(Gravity.CENTER);
+        saveTopButton.setOnClickListener(v -> saveTaskFromInputs(true));
+        FrameLayout toolbar = new FrameLayout(this);
+        FrameLayout.LayoutParams saveParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        saveParams.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
+        toolbar.addView(backButton);
+        toolbar.addView(saveTopButton, saveParams);
+        root.addView(toolbar);
 
         TextView title = new TextView(this);
         title.setText(selectedTask != null ? selectedTask.getName() : "编辑任务");
@@ -1118,12 +1398,14 @@ public final class MainActivity extends Activity {
         addSectionTitle(basicCard, "基础信息");
         taskNameInput = addTextInput(basicCard, "任务名称", InputType.TYPE_CLASS_TEXT);
         taskDescInput = addTextInput(basicCard, "任务描述（可选）", InputType.TYPE_CLASS_TEXT);
-        taskEnabledBox = new CheckBox(this);
+        taskEnabledBox = new SwitchCompat(this);
         taskEnabledBox.setText("启用该任务");
         taskEnabledBox.setTextColor(TEXT_PRIMARY);
         basicCard.addView(taskEnabledBox);
         repeatCountInput = addTextInput(basicCard, "重复次数", InputType.TYPE_CLASS_NUMBER);
         startDelayInput = addTextInput(basicCard, "开始延迟（毫秒）", InputType.TYPE_CLASS_NUMBER);
+        // 为基础信息控件绑定变更监听，触发脏标记
+        attachDirtyListeners();
 
         Button saveButton = new Button(this);
         saveButton.setText("保存任务");
@@ -1167,16 +1449,27 @@ public final class MainActivity extends Activity {
         actionRow.setOrientation(LinearLayout.HORIZONTAL);
         actionRow.setPadding(0, dp(8), 0, dp(8));
 
-        Button startButton = createActionButton("开始执行", PRIMARY, v -> startTask());
-        Button pauseButton = createActionButton("暂停", TEXT_PRIMARY, v -> pauseTask());
-        Button resumeButton = createActionButton("继续", TEXT_PRIMARY, v -> resumeTask());
-        Button stopButton = createActionButton("停止", RED, v -> stopTask());
+        editorStartButton = createActionButton("开始执行", PRIMARY, v -> startTask());
+        editorPauseButton = createActionButton("暂停", TEXT_PRIMARY, v -> pauseTask());
+        editorResumeButton = createActionButton("继续", TEXT_PRIMARY, v -> resumeTask());
+        editorStopButton = createActionButton("停止", RED, v -> stopTask());
 
-        actionRow.addView(startButton, weightParams());
-        actionRow.addView(pauseButton, weightParams());
-        actionRow.addView(resumeButton, weightParams());
-        actionRow.addView(stopButton, weightParams());
+        actionRow.addView(editorStartButton, weightParams());
+        actionRow.addView(editorPauseButton, weightParams());
+        actionRow.addView(editorResumeButton, weightParams());
+        actionRow.addView(editorStopButton, weightParams());
+        updateExecutionButtonStates();
         controlCard.addView(actionRow);
+
+        // 任务级操作：复制、删除
+        LinearLayout taskActionRow = new LinearLayout(this);
+        taskActionRow.setOrientation(LinearLayout.HORIZONTAL);
+        taskActionRow.setPadding(0, dp(8), 0, dp(8));
+        Button duplicateButton = createActionButton("复制任务", PRIMARY, v -> duplicateSelectedTask());
+        Button deleteTaskButton = createActionButton("删除任务", RED, v -> deleteSelectedTask());
+        taskActionRow.addView(duplicateButton, weightParams());
+        taskActionRow.addView(deleteTaskButton, weightParams());
+        controlCard.addView(taskActionRow);
 
         TextView safetyHint = new TextView(this);
         safetyHint.setText("请先在安全界面验证坐标与步骤，避免误点登录、支付、权限或系统安全界面。");
@@ -1189,6 +1482,13 @@ public final class MainActivity extends Activity {
         root.addView(controlCard, blockParams());
 
         scroll.addView(root);
+
+        // 首次构建编辑器时填充字段并渲染步骤，后续切回时由 loadTasks 处理步骤刷新
+        if (selectedTask != null) {
+            populateTaskFields();
+            renderSteps();
+        }
+
         return scroll;
     }
 
@@ -1201,6 +1501,54 @@ public final class MainActivity extends Activity {
         button.setPadding(dp(8), dp(12), dp(8), dp(12));
         button.setOnClickListener(listener);
         return button;
+    }
+
+    /// <summary>
+    /// 退出任务编辑器：若有未保存修改，弹确认对话框（保存/不保存/取消）。
+    /// 返回进入编辑器时的来源页面（首页/任务库等）。
+    /// </summary>
+    private void exitEditor() {
+        final Page backPage = editorSourcePage;
+        if (!editorDirty) {
+            showPage(backPage);
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("未保存的修改")
+                .setMessage("当前任务有未保存的修改，是否保存？")
+                .setPositiveButton("保存", (dialog, which) -> {
+                    if (saveTaskFromInputs(true)) {
+                        showPage(backPage);
+                    }
+                })
+                .setNegativeButton("不保存", (dialog, which) -> showPage(backPage))
+                .setNeutralButton("取消", null)
+                .show();
+    }
+
+    /// <summary>
+    /// 为编辑器基础信息控件绑定变更监听，触发脏标记。
+    /// </summary>
+    private void attachDirtyListeners() {
+        TextWatcher watcher = new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (!suppressDirty) editorDirty = true;
+            }
+        };
+        if (taskNameInput != null) taskNameInput.addTextChangedListener(watcher);
+        if (taskDescInput != null) taskDescInput.addTextChangedListener(watcher);
+        if (repeatCountInput != null) repeatCountInput.addTextChangedListener(watcher);
+        if (startDelayInput != null) startDelayInput.addTextChangedListener(watcher);
+        if (taskEnabledBox != null) {
+            taskEnabledBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                if (!suppressDirty) editorDirty = true;
+            });
+        }
     }
 
     // ---------- 数据加载与刷新 ----------
@@ -1236,7 +1584,11 @@ public final class MainActivity extends Activity {
         }
         selectedTask = tasks.get(selectedIndex);
 
-        populateTaskFields();
+        // 编辑器页面跳过字段重填，避免用已保存数据覆盖用户正在编辑的内容；
+        // 步骤列表仍刷新以反映取点等外部更新。
+        if (currentPage != Page.EDITOR) {
+            populateTaskFields();
+        }
         renderSteps();
     }
 
@@ -1249,11 +1601,13 @@ public final class MainActivity extends Activity {
                 || startDelayInput == null) {
             return;
         }
+        suppressDirty = true;
         taskNameInput.setText(selectedTask.getName());
         taskDescInput.setText(selectedTask.getDescription());
         taskEnabledBox.setChecked(selectedTask.isEnabled());
         repeatCountInput.setText(String.valueOf(selectedTask.getRepeatCount()));
         startDelayInput.setText(String.valueOf(selectedTask.getStartDelayMs()));
+        suppressDirty = false;
     }
 
     private void renderSteps() {
@@ -1267,33 +1621,59 @@ public final class MainActivity extends Activity {
         }
 
         if (steps.isEmpty()) {
-            TextView empty = new TextView(this);
-            empty.setText("暂无步骤，点击【添加步骤】创建");
-            empty.setTextColor(TEXT_SECONDARY);
-            empty.setPadding(0, dp(8), 0, dp(8));
-            stepsContainer.addView(empty);
+            LinearLayout emptyCard = createCard(dp(16));
+            emptyCard.setOrientation(LinearLayout.VERTICAL);
+            emptyCard.setPadding(dp(32), dp(28), dp(32), dp(28));
+            emptyCard.setGravity(Gravity.CENTER);
+            emptyCard.setOnClickListener(v -> showAddStepDialog());
+
+            TextView emptyIcon = new TextView(this);
+            emptyIcon.setText("➕");
+            emptyIcon.setTextSize(40);
+            emptyIcon.setGravity(Gravity.CENTER);
+            emptyCard.addView(emptyIcon);
+
+            TextView emptyTitle = new TextView(this);
+            emptyTitle.setText("添加第一个步骤");
+            emptyTitle.setTextSize(16);
+            emptyTitle.setTextColor(TEXT_PRIMARY);
+            emptyTitle.setTypeface(null, Typeface.BOLD);
+            emptyTitle.setGravity(Gravity.CENTER);
+            emptyTitle.setPadding(0, dp(12), 0, dp(4));
+            emptyCard.addView(emptyTitle);
+
+            TextView emptyDesc = new TextView(this);
+            emptyDesc.setText("点击此处或下方按钮添加步骤");
+            emptyDesc.setTextSize(13);
+            emptyDesc.setTextColor(TEXT_SECONDARY);
+            emptyDesc.setGravity(Gravity.CENTER);
+            emptyCard.addView(emptyDesc);
+
+            stepsContainer.addView(emptyCard, blockParams());
+            return;
         }
     }
 
     private void renderLog() {
         if (logContainer == null) return;
         logContainer.removeAllViews();
-        List<ExecutionLogEntry> entries = ExecutionLogStore.loadLog(this);
-        Collections.reverse(entries);
+        allLogEntries = ExecutionLogStore.loadLog(this);
+        Collections.reverse(allLogEntries);
 
-        if (entries.isEmpty()) {
+        if (allLogEntries.isEmpty()) {
             TextView empty = new TextView(this);
             empty.setText("暂无执行记录");
             empty.setTextColor(TEXT_SECONDARY);
             empty.setPadding(dp(16), dp(24), dp(16), dp(24));
             empty.setGravity(Gravity.CENTER);
             logContainer.addView(empty);
+            logDisplayCount = 30;
             return;
         }
 
-        int limit = Math.min(entries.size(), 30);
+        int limit = Math.min(allLogEntries.size(), logDisplayCount);
         for (int i = 0; i < limit; i++) {
-            ExecutionLogEntry entry = entries.get(i);
+            ExecutionLogEntry entry = allLogEntries.get(i);
             LinearLayout card = createCard(dp(12));
             card.setOrientation(LinearLayout.VERTICAL);
             card.setPadding(dp(16), dp(14), dp(16), dp(14));
@@ -1301,7 +1681,7 @@ public final class MainActivity extends Activity {
             params.setMargins(0, 0, 0, dp(10));
             card.setLayoutParams(params);
 
-            java.text.SimpleDateFormat format = new java.text.SimpleDateFormat("MM-dd HH:mm:ss", Locale.ROOT);
+            java.text.SimpleDateFormat format = new java.text.SimpleDateFormat("MM/dd HH:mm", Locale.ROOT);
             String time = format.format(new java.util.Date(entry.getTimestamp()));
             String taskName = entry.getTaskName().isEmpty() ? "未命名任务" : entry.getTaskName();
 
@@ -1339,7 +1719,46 @@ public final class MainActivity extends Activity {
             msgLine.setLineSpacing(0, 1.3f);
             card.addView(msgLine);
 
+            card.setOnClickListener(v -> {
+                String taskId = entry.getTaskId();
+                if (taskId == null || taskId.isEmpty()) return;
+                ClickTask target = null;
+                for (ClickTask t : tasks) {
+                    if (taskId.equals(t.getId())) { target = t; break; }
+                }
+                final ClickTask foundTask = target;
+                new AlertDialog.Builder(this)
+                        .setTitle(taskName)
+                        .setItems(new String[]{"重新执行此任务", "查看任务详情"}, (dialog, which) -> {
+                            if (which == 0 && foundTask != null) {
+                                selectedTask = foundTask;
+                                startTask();
+                            } else if (which == 1 && foundTask != null) {
+                                selectedTask = foundTask;
+                                editorSourcePage = currentPage;
+                                showPage(Page.EDITOR);
+                            }
+                        })
+                        .setNegativeButton("取消", null)
+                        .show();
+            });
+
             logContainer.addView(card);
+        }
+
+        // 加载更多
+        if (allLogEntries.size() > logDisplayCount) {
+            Button loadMore = new Button(this);
+            loadMore.setText("加载更多（已显示 " + logDisplayCount + " / 共 " + allLogEntries.size() + " 条）");
+            loadMore.setTextColor(PRIMARY);
+            loadMore.setAllCaps(false);
+            loadMore.setBackground(roundedDrawable(PRIMARY_LIGHT, dp(8)));
+            loadMore.setPadding(dp(16), dp(12), dp(16), dp(12));
+            loadMore.setOnClickListener(v -> {
+                logDisplayCount += 30;
+                renderLog();
+            });
+            logContainer.addView(loadMore, blockParams());
         }
     }
 
@@ -1407,6 +1826,34 @@ public final class MainActivity extends Activity {
         LinearLayout buttons = new LinearLayout(this);
         buttons.setOrientation(LinearLayout.HORIZONTAL);
         buttons.setPadding(0, dp(8), 0, 0);
+        // 排序按钮：上移 / 下移
+        Button upButton = new Button(this);
+        upButton.setText("↑");
+        upButton.setTextColor(PRIMARY);
+        upButton.setBackground(roundedDrawable(PRIMARY_LIGHT, dp(8)));
+        upButton.setAllCaps(false);
+        upButton.setEnabled(index > 0);
+        upButton.setOnClickListener(view -> moveStep(index, -1));
+        Button downButton = new Button(this);
+        downButton.setText("↓");
+        downButton.setTextColor(PRIMARY);
+        downButton.setBackground(roundedDrawable(PRIMARY_LIGHT, dp(8)));
+        downButton.setAllCaps(false);
+        downButton.setEnabled(index < total - 1);
+        downButton.setOnClickListener(view -> moveStep(index, 1));
+        buttons.addView(upButton, weightParams());
+        buttons.addView(downButton, weightParams());
+        // 点选坐标（不依赖弹窗，直接从编辑器行触发，避免弹窗被后台回收）
+        if (step.getActionType() == TaskActionType.TAP || step.getActionType() == TaskActionType.SWIPE) {
+            Button pickButton = new Button(this);
+            pickButton.setText("点选坐标");
+            pickButton.setTextColor(SUCCESS);
+            pickButton.setBackground(roundedDrawable(SUCCESS_LIGHT, dp(8)));
+            pickButton.setAllCaps(false);
+            pickButton.setOnClickListener(view -> startCoordinatePickForStep(step, step.getActionType()));
+            buttons.addView(pickButton, weightParams());
+        }
+        // 编辑 / 删除按钮
         Button editButton = new Button(this);
         editButton.setText("编辑");
         editButton.setOnClickListener(view -> showStepEditorDialog(step));
@@ -1430,10 +1877,12 @@ public final class MainActivity extends Activity {
         switch (actionType) {
             case TAP:
                 return PRIMARY;
+            case LONG_PRESS:
+                return ORANGE;
             case SWIPE:
                 return Color.parseColor("#16A064");
             case TEXT_INPUT:
-                return ORANGE;
+                return Color.parseColor("#8B5CF6");
             default:
                 return PRIMARY;
         }
@@ -1470,6 +1919,7 @@ public final class MainActivity extends Activity {
 
         TaskStore.upsertTask(this, task);
         selectedTask = task;
+        editorSourcePage = currentPage;
         showPage(Page.EDITOR);
         Toast.makeText(this, "已新建任务", Toast.LENGTH_SHORT).show();
     }
@@ -1516,6 +1966,7 @@ public final class MainActivity extends Activity {
             ClickAssistantAccessibilityService.clearMarkers();
 
             refreshStatus();
+            editorDirty = false;
             if (showToast) Toast.makeText(this, "任务已保存", Toast.LENGTH_SHORT).show();
             return true;
         } catch (IllegalArgumentException ex) {
@@ -1546,6 +1997,7 @@ public final class MainActivity extends Activity {
         TaskStep step = createDefaultStep(type, selectedTask.getSteps().size());
         selectedTask.getSteps().add(step);
         TaskStore.upsertTask(this, selectedTask);
+        editorDirty = true;
         renderSteps();
     }
 
@@ -1588,6 +2040,7 @@ public final class MainActivity extends Activity {
         Collections.swap(steps, index, target);
         selectedTask.normalizeStepOrders();
         TaskStore.upsertTask(this, selectedTask);
+        editorDirty = true;
         renderSteps();
     }
 
@@ -1595,6 +2048,7 @@ public final class MainActivity extends Activity {
         selectedTask.getSteps().removeIf(s -> s.getId().equals(step.getId()));
         selectedTask.normalizeStepOrders();
         TaskStore.upsertTask(this, selectedTask);
+        editorDirty = true;
         renderSteps();
     }
 
@@ -1606,7 +2060,7 @@ public final class MainActivity extends Activity {
         scroll.addView(container);
 
         final EditText nameInput = addEditorInput(container, "步骤名称", InputType.TYPE_CLASS_TEXT, step.getName());
-        final CheckBox enabledBox = new CheckBox(this);
+        final SwitchCompat enabledBox = new SwitchCompat(this);
         enabledBox.setText("启用该步骤");
         enabledBox.setChecked(step.isEnabled());
         enabledBox.setTextColor(TEXT_PRIMARY);
@@ -1642,7 +2096,6 @@ public final class MainActivity extends Activity {
             textInput = null;
             charIntervalInput = null;
             autoFocusBox = null;
-            addPickButton(container, step, TaskActionType.TAP);
         } else if (step.getActionType() == TaskActionType.SWIPE) {
             tapCountInput = null;
             clickIntervalInput = null;
@@ -1653,7 +2106,6 @@ public final class MainActivity extends Activity {
             textInput = null;
             charIntervalInput = null;
             autoFocusBox = null;
-            addPickButton(container, step, TaskActionType.SWIPE);
         } else {
             tapCountInput = null;
             clickIntervalInput = null;
@@ -1671,6 +2123,34 @@ public final class MainActivity extends Activity {
         }
 
         final EditText beforeDelayInput = addEditorInput(container, "步骤前等待，毫秒", InputType.TYPE_CLASS_NUMBER, String.valueOf(step.getBeforeDelayMs()));
+
+        // 取点按钮：先保存弹窗输入、关闭弹窗，再进入取点模式
+        final Runnable beforePick = () -> {
+            step.setName(nameInput.getText().toString().trim());
+            step.setEnabled(enabledBox.isChecked());
+            if (xInput != null) step.setX(parseInt(xInput, "X 坐标"));
+            if (yInput != null) step.setY(parseInt(yInput, "Y 坐标"));
+            step.setBeforeDelayMs(parseInt(beforeDelayInput, "步骤前等待"));
+            if (step.getActionType() == TaskActionType.TAP) {
+                if (tapCountInput != null) step.setTapCount(parseInt(tapCountInput, "点击次数"));
+                if (clickIntervalInput != null) step.setClickIntervalMs(parseInt(clickIntervalInput, "连点间隔"));
+                if (pressDurationInput != null) step.setPressDurationMs(parseInt(pressDurationInput, "按压时长"));
+            } else if (step.getActionType() == TaskActionType.SWIPE) {
+                if (endXInput != null) step.setEndX(parseInt(endXInput, "终点 X 坐标"));
+                if (endYInput != null) step.setEndY(parseInt(endYInput, "终点 Y 坐标"));
+                if (durationInput != null) step.setDurationMs(parseInt(durationInput, "滑动持续时间"));
+            }
+            step.validateForSave();
+            TaskStore.upsertTask(this, selectedTask);
+            editorDirty = true;
+            renderSteps();
+        };
+
+        if (step.getActionType() == TaskActionType.TAP) {
+            addPickButton(container, step, TaskActionType.TAP, beforePick);
+        } else if (step.getActionType() == TaskActionType.SWIPE) {
+            addPickButton(container, step, TaskActionType.SWIPE, beforePick);
+        }
 
         new AlertDialog.Builder(this)
                 .setTitle("编辑步骤：" + step.getActionType().getDisplayName())
@@ -1699,6 +2179,7 @@ public final class MainActivity extends Activity {
 
                         step.validateForSave();
                         TaskStore.upsertTask(this, selectedTask);
+                        editorDirty = true;
                         renderSteps();
                     } catch (IllegalArgumentException ex) {
                         Toast.makeText(this, ex.getMessage(), Toast.LENGTH_LONG).show();
@@ -1709,13 +2190,26 @@ public final class MainActivity extends Activity {
     }
 
     private void addPickButton(LinearLayout container, TaskStep step, TaskActionType mode) {
+        addPickButton(container, step, mode, null);
+    }
+
+    private void addPickButton(LinearLayout container, TaskStep step, TaskActionType mode, Runnable beforePick) {
         Button pickButton = new Button(this);
         pickButton.setText(mode == TaskActionType.SWIPE ? "点选滑动起终点" : "点选点击位置");
         pickButton.setTextColor(PRIMARY);
         pickButton.setAllCaps(false);
         pickButton.setBackground(roundedDrawable(PRIMARY_LIGHT, dp(8)));
         pickButton.setPadding(dp(12), dp(12), dp(12), dp(12));
-        pickButton.setOnClickListener(view -> startCoordinatePickForStep(step, mode));
+        pickButton.setOnClickListener(view -> {
+            try {
+                if (beforePick != null) beforePick.run();
+            } catch (Exception ex) {
+                // 取点前数据校验失败则不进入取点流程
+                Toast.makeText(this, ex.getMessage(), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            startCoordinatePickForStep(step, mode);
+        });
         container.addView(pickButton, blockParams());
     }
 
@@ -1782,6 +2276,13 @@ public final class MainActivity extends Activity {
     }
 
     private void showExecutionConfirmDialog(ClickTask task) {
+        boolean skipConfirm = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .getBoolean("skip_execution_confirm", false);
+        if (skipConfirm) {
+            doStartTask(task);
+            return;
+        }
+
         StringBuilder summary = new StringBuilder();
         summary.append("任务：").append(task.getName()).append("\n");
         summary.append("重复次数：").append(task.getRepeatCount()).append("\n");
@@ -1793,23 +2294,47 @@ public final class MainActivity extends Activity {
             index++;
             summary.append(String.format(Locale.ROOT, "  %d. %s - %s\n", index, step.getActionType().getDisplayName(), step.getSummary()));
         }
+
+        final CheckBox rememberBox = new CheckBox(this);
+        rememberBox.setText("记住选择，不再弹出确认");
+        rememberBox.setTextColor(TEXT_PRIMARY);
+        rememberBox.setPadding(0, dp(8), 0, 0);
+
+        LinearLayout dialogLayout = new LinearLayout(this);
+        dialogLayout.setOrientation(LinearLayout.VERTICAL);
+        dialogLayout.setPadding(dp(8), dp(4), dp(8), dp(4));
+        TextView msgView = new TextView(this);
+        msgView.setText(summary.toString());
+        msgView.setTextSize(14);
+        msgView.setTextColor(TEXT_PRIMARY);
+        dialogLayout.addView(msgView);
+        dialogLayout.addView(rememberBox);
+
         new AlertDialog.Builder(this)
                 .setTitle("执行前确认")
-                .setMessage(summary.toString())
+                .setView(dialogLayout)
                 .setPositiveButton("确认执行", (dialog, which) -> {
-                    if (!ClickAssistantAccessibilityService.startTask(task)) {
-                        TaskStore.saveLastStatus(this, "执行失败：辅助功能服务未连接或已有任务正在运行");
-                        refreshStatus();
-                        Toast.makeText(this, "启动失败，请确认辅助功能服务已连接且没有其他任务运行", Toast.LENGTH_LONG).show();
-                        return;
+                    if (rememberBox.isChecked()) {
+                        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                                .edit().putBoolean("skip_execution_confirm", true).apply();
                     }
-                    TaskStore.saveActiveTaskId(this, task.getId());
-                    refreshStatus();
-                    Toast.makeText(this, "已开始执行，可切到目标界面", Toast.LENGTH_SHORT).show();
-                    moveTaskToBack(true);
+                    doStartTask(task);
                 })
                 .setNegativeButton("取消", null)
                 .show();
+    }
+
+    private void doStartTask(ClickTask task) {
+        if (!ClickAssistantAccessibilityService.startTask(task)) {
+            TaskStore.saveLastStatus(this, "执行失败：辅助功能服务未连接或已有任务正在运行");
+            refreshStatus();
+            Toast.makeText(this, "启动失败，请确认辅助功能服务已连接且没有其他任务运行", Toast.LENGTH_LONG).show();
+            return;
+        }
+        TaskStore.saveActiveTaskId(this, task.getId());
+        refreshStatus();
+        Toast.makeText(this, "已开始执行，可切到目标界面", Toast.LENGTH_SHORT).show();
+        moveTaskToBack(true);
     }
 
     private void pauseTask() {
@@ -1849,12 +2374,40 @@ public final class MainActivity extends Activity {
     }
 
     private boolean isAccessibilityEnabled() {
-        String enabledServices = Settings.Secure.getString(getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
-        if (enabledServices == null) return false;
-        ComponentName expectedComponent = new ComponentName(this, ClickAssistantAccessibilityService.class);
-        String normalized = enabledServices.toLowerCase(Locale.ROOT);
-        return normalized.contains(expectedComponent.flattenToString().toLowerCase(Locale.ROOT))
-                || normalized.contains(expectedComponent.flattenToShortString().toLowerCase(Locale.ROOT));
+        AccessibilityManager am = (AccessibilityManager) getSystemService(Context.ACCESSIBILITY_SERVICE);
+        if (am == null) return false;
+        ComponentName expected = new ComponentName(this, ClickAssistantAccessibilityService.class);
+        String expectedLong = expected.flattenToString();
+        String expectedShort = expected.flattenToShortString();
+        // AccessibilityServiceInfo.getId() 可能返回长格式或短格式，都检查
+        List<AccessibilityServiceInfo> enabledServices = am.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK);
+        for (AccessibilityServiceInfo info : enabledServices) {
+            String id = info.getId();
+            if (expectedLong.equals(id) || expectedShort.equals(id)) {
+                return true;
+            }
+            // 兜底：通过 ServiceInfo 对比包名 + 类名
+            if (info.getResolveInfo() != null && info.getResolveInfo().serviceInfo != null) {
+                String pkg = info.getResolveInfo().serviceInfo.packageName;
+                String cls = info.getResolveInfo().serviceInfo.name;
+                if (getPackageName().equals(pkg) && ClickAssistantAccessibilityService.class.getName().equals(cls)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isOnboardingCompleted() {
+        return getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .getBoolean(KEY_ONBOARDING_COMPLETED, false);
+    }
+
+    private void setOnboardingCompleted() {
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .edit()
+                .putBoolean(KEY_ONBOARDING_COMPLETED, true)
+                .apply();
     }
 
     // ---------- UI 样式工具 ----------

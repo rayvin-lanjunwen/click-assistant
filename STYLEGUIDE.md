@@ -123,7 +123,7 @@ docs: 更新 README 中的安装步骤
 - 项目源代码统一放在 `src/` 目录下。
 - 测试代码统一放在 `tests/` 目录下，并尽量与 `src/` 保持相同的目录层级。
 - 配置文件放在项目根目录，例如 `.eslintrc`、`prettier.config.js`、`.editorconfig`。
-- 项目根目录只保留入口文档和治理文档，例如 `README.md`、`CHANGELOG.md`、`WORKLOG.md`、`RULE.md`、`STYLEGUIDE.md`。
+- 项目根目录只保留入口文档和治理文档，例如 `README.md`、`CHANGELOG.md`、`WORKLOG.md`、`AGENTS.md`、`STYLEGUIDE.md`。
 - 规划与需求类文档统一放在 `docs/planning/` 目录下，例如需求规格说明、产品原型蓝图和范围说明。
 - 架构与技术方案类文档统一放在 `docs/architecture/` 目录下。
 - 设计、交互和界面说明类文档统一放在 `docs/design/` 目录下。

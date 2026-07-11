@@ -2,8 +2,82 @@
 
 本文档用于记录项目中值得追踪的版本、功能、修复和重要变更，并与 GitHub Releases（GitHub 发布页面）保持同步。
 
+- 修复: 移动端辅助功能检测 Android 13+ 长/短格式匹配失败导致引导页不跳转，增加 flattenToShortString + ResolveInfo 兜底三层匹配。
+- 修复: 桌面端启动 StaticResourceExtension 异常，App.xaml 集中管理 19 个共享 Brush + BoolToVisibility 等转换器。
+- 新增: 移动端编辑器退出返回来源页（不再固定跳任务库）。
+- 变更: 移动端+桌面端执行按钮改为按状态 Visibility 切换（未运行仅显示"开始"，运行中切换暂停/继续/停止）。
+- 变更: 移动端弹窗 CheckBox → SwitchCompat，与其他页面统一。
+- 变更: 移动端辅助功能 Switch 方向区分：拨向 ON 且已开启不跳转；onResume 自动刷新 Switch 状态。
+- 变更: 桌面端导航按钮 DataTrigger 活跃态高亮（蓝色文字+蓝色背景+加粗）。
+- 变更: 桌面端版本号从硬编码改为 Assembly Version 动态读取。
+- 变更: 桌面端悬浮窗按钮按执行状态 Visibility 切换，收起态暂停/停止仅在运行时可见。
+- 新增: 桌面端任务库左栏增加 ▶快捷执行 和 复制选中任务 按钮。
+- test: 修复 D5 setter 即时校验导致的 2 个测试失败（改为断言 setter 抛异常）。
+- 修复: README.md 版本号从 v0.13.0 更新为 v0.14.0。
+
+- docs: `RULE.md` 重命名为 `AGENTS.md`，同步更新 README/STYLEGUIDE/WORKLOG 中所有引用。
+
+## v0.14.0 - 2026-07-11 22:30
+
+### 移动端 Bug 修复
+
+- 修复: 辅助功能检测在 Android 13+ 不工作，改用 AccessibilityManager.getEnabledAccessibilityServiceList() API 替代受限的 Settings.Secure 查询。
+- 修复: 引导页循环陷阱导致用户永远被困在引导页，增加持久"引导已完成"标记；用户点击"暂不设置"或辅助功能已开启后永不再显示引导页。
+- 修复: 标记覆盖层长按菜单永远弹不出，原因是 overlay Window 设置了 FLAG_NOT_TOUCHABLE 导致触摸事件不传递到 marker。
+- 修复: AccessibilityNodeInfo 未回收导致系统资源泄漏，doDispatchText 和 typeTextCharByChar 中所有节点路径均增加 recycle() 调用，新增 recycleNode() 安全回收方法。
+- 修复: 任务库卡片 CheckBox 点击冲突——setChecked 绑定阶段误触发监听器导致连锁重建，增加 null 监听器保护。
+
+### 移动端 Phase 1 后续修复（N1~N6）
+
+- 修复: CheckBox 点击冲突残留——Card 点击事件限到 textCol 列，CheckBox 加 setOnTouchListener 消费触控事件阻止冒泡。
+- 新增: 步骤行增加 ↑↓ 排序按钮，调用已有 moveStep(index, direction) 方法，首/末步自动禁用。
+- 修复: dispatchSwipe 缺少暂停/停止检查，增加 stopRequested/running/paused 检查和 onCompleted 回调的 stop 检查。
+- 新增: 编辑器执行按钮根据 ClickAssistantAccessibilityService 运行状态联动启用/禁用，Service 新增 isRunning()/isPaused() 静态方法。
+- 修复: editorDirty 切回编辑器时被重置——loadTasks() 编辑器页跳过 populateTaskFields()，不覆盖用户正在编辑的字段。
+- 修复: 步骤编辑弹窗取点时被销毁——步骤行直接加"点选坐标"按钮（TAP/SWIPE 步骤），不依赖 AlertDialog 避免后台回收；addPickButton 新增 beforePick 回调参数。
+
+### 移动端 UI 优化 Phase 2（P2-1~P2-6）
+
+- 变更: 首页从纵向卡片列表改为 2×2 网格布局（辅助功能+Switch / 快速点击 / 任务库 / 执行日志），辅助功能状态卡片增加 Switch 开关直接跳系统设置。
+- 变更: 新建任务从独立页面改为弹窗模式（单击/双击/长按/滑动），废弃 NEW_TASK 页面和相关枚举值。
+- 变更: 悬浮按钮重写为左侧垂直抽屉，收起状态显示 ▶ 箭头，展开后显示 ▶开始/📍添加点/🗑删除点/📋查看/«收起，带展开/收起透明度动画。
+- 变更: 任务库卡片和编辑器中 CheckBox 全面替换为 AndroidX SwitchCompat，增加 appcompat 依赖。
+- 变更: 版本号从硬编码改为 BuildConfig.VERSION_NAME 动态读取。
+- 新增: 首页"快速点击"功能——在预设位置一键执行单击，无需创建任务。
+
+### 桌面端修复 Phase 4 前置（D1~D3）
+
+- 修复: MainWindow.xaml.cs 两处直接 MessageBox.Show 改为通过 IDialogService.ShowError() 调用。
+- 优化: Dispatcher.Invoke 同步阻塞改为 Dispatcher.InvokeAsync 异步调度。
+- 移除: 废弃 DatabaseInitializer.cs，所有表创建和补列统一到 DatabaseMigrator 版本化迁移。
+
+### 基础设施 Phase 5（I1~I4）
+
+- 修复: DatabaseMigrator.EnsureMigrationsTableAsync 增加事务包裹（BeginTransactionAsync + CommitAsync），异常时 RollbackAsync。
+- 安全: PRAGMA table_info 增加表名白名单校验（AllowedTableNames），仅允许访问已知表名，防止拼装 SQL 注入。
+- 变更: 统一时间存储为 DateTime.UtcNow——ClickTask.cs(×3)、ClickTaskService.cs、ClickExecutionEngine.cs(×2)、SqliteAppSettingsRepository.cs 共 6 处；保留执行日志展示 HH:mm:ss 用 Now。
+- test: 新增 DatabaseMigratorTests（3 测试：全新建表/幂等验证/旧库升级）、SqliteExecutionLogRepositoryTests（3 测试）、SqliteAppSettingsRepositoryTests（4 测试），共 10 个新测试。
+
+### 桌面端架构优化 Phase 4（P4-1~P4-4）
+
+- 重构: MainWindowViewModel 的 NotifyEditorDerivedProperties（曾一次触发 42 个属性通知）拆分为 9 个按属性组分组的通知方法，38 个调用点中 26 个改为精确组通知，剩余 12 个保留全量通知（SelectedTask 切换等正确场景）。
+- 变更: ClickStep 实现 INotifyPropertyChanged，新增 RaisePropertyChanged() 方法；删除 RefreshSelectedStepListItem hack，WPF ItemsControl 增量刷新由 ClickStep.PropertyChanged 驱动。
+- 重构: FormatMilliseconds 提取为共享 TimeFormattingHelper.FormatMilliseconds()，消除 MainWindowViewModel 和 StepSummaryConverter 两处重复实现。
+
+### 领域层优化（D5~D7）
+
+- 变更: ClickTask/ClickStep 的 Id 改为 init-only；RepeatCount/StartDelayMs/MouseClickCount/ClickIntervalMs/PressDurationMs/KeyPressCount/KeyIntervalMs/SwipeDurationMs/BeforeDelayMs 等 9 个数值属性 setter 即时校验不变量。
+- 重构: ClickTask.Duplicate() 消除 25 行手工逐字段拷贝，步骤拷贝委托给 ClickStep.Copy(Guid newTaskId) 方法，新增属性时只需修改一处。
+- 重构: ClickStep.ValidateForSave() 的连续 if-chain 改为字典分派 ActionValidators（Dictionary<InputActionType, Action<ClickStep>>），新增动作类型只需一行注册。
+
 ## v0.13.0 - 2026-07-11 19:40
 
+- 修复: 移动端取点交互重构为长按拖动模式，解决取点与「完成」按钮点击冲突及取点覆盖层阻挡所有操作的问题。
+  - 取点覆盖层由「滑动即跟踪 + 松手弹确认气泡」改为「长按 500ms 进入拖动定位 + 松手直接确认」
+  - 移除「完成」按钮：进入取点模式时隐藏悬浮按钮，确认坐标后自动退出取点模式并恢复按钮
+  - 新增取点覆盖层左上角 ✕ 取消按钮，避免误入取点后无法退出
+  - PickerCursorView 新增高亮状态：长按进入拖动时圆圈边框加粗（5f→9f）并切换为高亮橙色
+  - 删除不再使用的 showConfirmBubble 确认气泡逻辑及 PopupWindow 导入
 - 重构: 移动端取点体验全面重构，引入常驻悬浮触发按钮 + 手指跟随取点光标 + 确认气泡 + 持久化标记覆盖层 + 执行脉冲动效。
   - 新增 FloatingTriggerButton.java：右下角常驻悬浮按钮（「取点」↔「完成」状态切换）
   - 新增 MarkerOverlayManager.java：独立 Window 管理标记圆圈，支持长按菜单（移动/调整/删除）和执行动效

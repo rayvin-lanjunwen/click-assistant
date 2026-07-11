@@ -2,8 +2,35 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:ClickAssistant.App"
+             xmlns:converters="clr-namespace:ClickAssistant.App.Converters"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+        <ResourceDictionary>
+            <!-- 共享颜色资源：所有窗口可见 -->
+            <SolidColorBrush x:Key="PrimaryBrush" Color="#2563EB" />
+            <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#1D4ED8" />
+            <SolidColorBrush x:Key="PrimaryLightBrush" Color="#DBEAFE" />
+            <SolidColorBrush x:Key="SecondaryBrush" Color="#8B5CF6" />
+            <SolidColorBrush x:Key="SecondaryLightBrush" Color="#F3E8FF" />
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1F2937" />
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#6B7280" />
+            <SolidColorBrush x:Key="TextMutedBrush" Color="#9CA3AF" />
+            <SolidColorBrush x:Key="BgPrimaryBrush" Color="#F5F7FA" />
+            <SolidColorBrush x:Key="BgCardBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="BorderBrush" Color="#E5E7EB" />
+            <SolidColorBrush x:Key="BorderLightBrush" Color="#F3F4F6" />
+            <SolidColorBrush x:Key="SuccessBrush" Color="#22C55E" />
+            <SolidColorBrush x:Key="SuccessLightBrush" Color="#DCFCE7" />
+            <SolidColorBrush x:Key="WarningBrush" Color="#F97316" />
+            <SolidColorBrush x:Key="WarningLightBrush" Color="#FFEDD5" />
+            <SolidColorBrush x:Key="DangerBrush" Color="#EF4444" />
+            <SolidColorBrush x:Key="DangerLightBrush" Color="#FEE2E2" />
+            <SolidColorBrush x:Key="CyanBrush" Color="#06B6D4" />
+            <SolidColorBrush x:Key="CyanLightBrush" Color="#CFFAFE" />
+
+            <!-- 共享转换器 -->
+            <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+            <converters:StepSummaryConverter x:Key="StepSummaryConverter" />
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

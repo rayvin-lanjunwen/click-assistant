@@ -16,6 +16,10 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -29,6 +33,9 @@ android {
 }
 
 dependencies {
+    // AndroidX AppCompat — 提供 SwitchCompat 等现代控件
+    implementation "androidx.appcompat:appcompat:1.7.0"
+
     // JUnit 4 用于本地单元测试（不依赖 Android 框架）
     testImplementation "junit:junit:4.13.2"
 

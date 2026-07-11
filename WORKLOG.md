@@ -4,7 +4,26 @@
 
 ## 2026-07-11
 
-- 2026-07-11 19:40 移动端取点体验全面重构：新增常驻悬浮触发按钮 FloatingTriggerButton（右下角「取点」/「完成」）；取点改为手指跟随光标 + 松手弹出 ✓ 确认气泡；新增 MarkerOverlayManager 独立管理持久化标记圆圈（支持长按菜单、执行脉冲动效）；重构 ClickAssistantAccessibilityService 从一次性取点改为多步连续取点模式；TaskStore 新增 activeTaskId/activeStepId 读写；MainActivity 取点流程改为设定活动步骤；保存任务自动清除标记。
+- 2026-07-11 23:55 全面检查：双端编译通过、25 个测试全部通过（修复 2 个 D5 导致的测试失败）；README 版本号从 v0.13.0 更正为 v0.14.0。
+- 2026-07-11 23:40 桌面端交互优化第一批（D-Nav1/D-Nav2/D-F1/D-L1/D-M2）：导航按钮 DataTrigger 活跃态高亮；版本号改为动态读取 Assembly Version；悬浮窗按钮按执行状态 Visibility 切换；任务库左栏新增快捷执行+复制任务按钮；鼠标专页执行按钮状态分组。
+- 2026-07-11 23:25 移动端交互优化第一批（E1/E5/E3/H2/V2）：编辑器退出返回来源页（editorSourcePage）；执行按钮 Visibility 按状态切换（替代 enable/disable）；弹窗 CheckBox → SwitchCompat；Switch 方向区分+onResume 刷新；版本号硬编码修复。
+- 2026-07-11 23:10 修复移动端辅助功能检测：isAccessibilityEnabled() 同时检查 flattenToString 和 flattenToShortString 双格式 + ResolveInfo 兜底，解决 Android 13+ 引导页不跳转问题。
+- 2026-07-11 23:00 修复 WPF 启动 StaticResourceExtension 异常：App.xaml 从空变更为 ResourceDictionary（19 个 Brush + BoolToVisibility + StepSummaryConverter），删除 MainWindow.xaml 和 FloatingControlWindow.xaml 中重复资源。
+- 2026-07-11 22:50 打包发布：Windows 自包含 .exe 构建成功（修复 1 处 RefreshSelectedStepListItem 残留引用 + 1 处 Validate 重复定义）；Android APK 构建成功（需启用 android.useAndroidX + buildConfig + 修复 totalSteps→total）。
+- 2026-07-11 22:45 新建 ERRORLOG.md 记录 8 条典型错误，AGENTS.md 增加第 10 节"错误日志"规范，README.md 顶部增加 AGENTS.md 读取提示。
+- 2026-07-11 22:35 RULE.md 重命名为 AGENTS.md，同步更新 README/STYLEGUIDE/WORKLOG 中所有引用。
+- 2026-07-11 22:30 按 AGENTS.md 完成本日工作收尾：更新 CHANGELOG v0.14.0、WORKLOG 和 VERSION 文件，记录所有本日变更。
+- 2026-07-11 22:20 领域层优化（D5/D6/D7）：ClickTask/ClickStep Id 改为 init-only、关键数值属性 setter 即时校验；Duplicate() 委托 ClickStep.Copy() 深拷贝消除手工逐字段赋值；ValidateForSave() if-chain 改为字典分派 ActionValidators。
+- 2026-07-11 22:10 桌面端架构优化（P4-1~P4-4）：MainWindowViewModel 的 NotifyEditorDerivedProperties 拆分为 9 个按属性组分组的通知方法（26/38 调用点改为精确组通知）；ClickStep 实现 INotifyPropertyChanged（消除 RefreshSelectedStepListItem hack）；FormatMilliseconds 提取为共享 TimeFormattingHelper。
+- 2026-07-11 21:50 移动端 UI 优化 Phase 2（P2-1~P2-6）：首页改为 2x2 网格布局 + 辅助功能 Switch 卡片；新建任务改为弹窗模式（单击/双击/长按/滑动）废弃 NEW_TASK 页面；悬浮按钮重写为左侧垂直抽屉（展开/收起动画）；CheckBox 全面替换为 SwitchCompat；版本号改用 BuildConfig.VERSION_NAME。
+- 2026-07-11 21:35 基础设施优化 Phase 5（I1~I4）：EnsureMigrationsTableAsync 加事务保护；PRAGMA table_info 增加表名白名单防注入；统一 DateTime.Now→DateTime.UtcNow（6 处）；新增 DatabaseMigrator/SqliteExecutionLogRepository/SqliteAppSettingsRepository 测试（10 个新测试）；删除冗余 DatabaseInitializer.cs。
+- 2026-07-11 21:25 桌面端修复 Phase 4 前置（D1~D3）：MainWindow.xaml.cs 两处 MessageBox.Show 改为 IDialogService.ShowError；Dispatcher.Invoke 改为 InvokeAsync；废弃 DatabaseInitializer 统一到 DatabaseMigrator 版本化迁移。
+- 2026-07-11 21:15 移动端修复 N1~N6：CheckBox 点击区域限到 textCol（加 setOnTouchListener 消费触控）；步骤行增加 ↑↓ 排序按钮；dispatchSwipe 增加暂停/停止检查；执行按钮根据运行状态联动启用/禁用；编辑器页面 loadTasks 不再覆盖用户编辑字段；步骤行直接加"点选坐标"按钮避免弹窗被后台回收。
+- 2026-07-11 21:00 移动端修复 N5（深入）：loadTasks() 编辑器页跳过 populateTaskFields 避免覆盖用户输入；buildTaskEditorPage 首次构建时填充字段；N6（深入）步骤行直接加"点选坐标"按钮独立于弹窗。
+- 2026-07-11 20:40 移动端 5 个高优先级 bug 修复：辅助功能检测改用 AccessibilityManager API 兼容 Android 13+；引导页增加持久"已完成"标记防循环被困；标记覆盖层移除 FLAG_NOT_TOUCHABLE 修复长按菜单；AccessibilityNodeInfo 增加 recycle() 防泄漏；CheckBox 绑定阶段抑制 setChecked 触发。
+
+- 2026-07-11 21:20 修复移动端 5 个高优先级问题（取点交互 24/25 经确认保留长按方式不改）：①开启辅助功能后返回 App 自动跳首页；②编辑器退出时未保存修改提醒（脏标记 + 保存/不保存/取消）；③编辑器新增复制任务、删除任务按钮；④清空执行日志加确认对话框；⑤筛选「已完成/已停止/运行中」改为按最近执行状态筛选而非启用开关（ExecutionLogEntry 新增 taskId）。涉及 MainActivity.java、ClickAssistantAccessibilityService.java、ExecutionLogEntry.java、ExecutionLogStore.java。
+- 2026-07-11 20:55 修复移动端取点两大交互问题：①取点全屏覆盖层消费所有触摸且 z-order 高于悬浮按钮，导致「完成」按钮点不到；②覆盖层阻挡一切底层操作。改为长按 500ms 进入拖动定位、松手直接确认坐标并自动退出取点模式，不再需要「完成」按钮；enterPickMode 隐藏悬浮按钮，exitPickMode 恢复；新增左上角 ✕ 取消按钮；PickerCursorView 高亮反馈（边框加粗 5f→9f + 高亮橙色）；删除 showConfirmBubble 死代码与 PopupWindow 导入。
 - 2026-07-11 19:20 移动端取点与执行优化：硬编码按压时长改为使用 pressDurationMs；取点倒计时 5→3 秒；取点覆盖层增加"测试点击"按钮；取点确认/取消后不强制切回 App（改用 Toast）；版本号 v0.12.0 → v0.13.0。
 - 2026-07-11 19:15 修复"选择坐标"功能未实现问题：CoordinatePickerWindow 支持点击空白区域直接采集坐标；标记拖动后自动跟踪变更状态；关闭后正确重置 isCoordinateCapturePending；修复 MainWindow.xaml 底部版本号仍显示 v0.12.0 的问题。
 - 2026-07-11 18:46 完成双端 UI 重设计与打包：桌面端 WPF 全面升级为蓝色主色左侧导航 Dashboard 布局；移动端底部导航扩展为 4 标签并优化执行日志页；Windows 自包含 .exe 发布到 dist/ 目录；Android debug APK 构建成功。

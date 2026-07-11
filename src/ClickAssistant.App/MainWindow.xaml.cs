@@ -1,9 +1,11 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
+using ClickAssistant.App.Services;
 using ClickAssistant.App.ViewModels;
 using ClickAssistant.Application.Abstractions;
 using ClickAssistant.Application.Services;
+using ClickAssistant.Domain.Entities;
 using ClickAssistant.Infrastructure.Persistence;
 using ClickAssistant.Infrastructure.Windows;
 
@@ -20,6 +22,7 @@ public partial class MainWindow : Window
     private IAppSettingsRepository? appSettingsRepository;
     private IClickExecutionEngine? executionEngine;
     private ICursorPositionService? cursorPositionService;
+    private IDialogService? dialogService;
     private FloatingControlWindow? floatingWindow;
     private MouseClickVisualWindow? mouseClickVisualWindow;
     private HwndSource? hwndSource;
@@ -52,6 +55,7 @@ public partial class MainWindow : Window
             var cursorPositionService = new WindowsCursorPositionService();
             var hotkeyService = new WindowsGlobalHotkeyService();
             var taskService = new ClickTaskService(taskRepository);
+            var dialogService = new WpfDialogService();
             var clickExecutionEngine = new ClickExecutionEngine(
                 taskRepository,
                 executionLogRepository,
@@ -62,9 +66,11 @@ public partial class MainWindow : Window
                 taskService,
                 clickExecutionEngine,
                 mouseClickService,
-                executionLogRepository);
+                executionLogRepository,
+                dialogService);
             executionEngine = clickExecutionEngine;
             this.cursorPositionService = cursorPositionService;
+            this.dialogService = dialogService;
             globalHotkeyService = hotkeyService;
             appSettingsRepository = settingsRepository;
 
@@ -92,7 +98,7 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            MessageBox.Show(exception.Message, "启动失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            dialogService?.ShowError(exception.Message, "启动失败");
             Close();
         }
     }
@@ -140,7 +146,7 @@ public partial class MainWindow : Window
 
     private void HandleMouseClickVisualRequested(object? sender, MouseClickVisualEventArgs e)
     {
-        Dispatcher.Invoke(() => mouseClickVisualWindow?.ShowAt(e.Point.X, e.Point.Y));
+        _ = Dispatcher.InvokeAsync(() => mouseClickVisualWindow?.ShowAt(e.Point.X, e.Point.Y));
     }
 
     private void HandleCoordinateSelectionRequested(object? sender, EventArgs e)
@@ -150,25 +156,26 @@ public partial class MainWindow : Window
             return;
         }
 
-        // 获取所有启用的步骤列表，传递给可视化覆盖层
         var allSteps = viewModel.CurrentSteps.ToList();
-        var highlightedStep = viewModel.SelectedStep;
+        var targetStep = viewModel.SelectedStep as ClickStep;
 
         var pickerWindow = new CoordinatePickerWindow(
             allSteps,
+            targetStep: targetStep,
             onStepClicked: clickedStep =>
             {
-                // 点击标记时同步选中步骤
-                Dispatcher.Invoke(() => viewModel.SelectedStep = clickedStep);
+                _ = Dispatcher.InvokeAsync(() =>
+                {
+                    viewModel.SelectedStep = clickedStep;
+                });
             })
         {
             Owner = this,
-            HighlightedStep = highlightedStep
+            HighlightedStep = targetStep
         };
         pickerWindow.ShowDialog();
 
-        // 拖动结束后坐标已在步骤上直接更新，触发保存提示
-        viewModel.NotifyEditorDerivedValuesAfterPicker();
+        viewModel.CoordinatePickerClosed(pickerWindow.IsCoordinateChanged);
         Activate();
     }
 
@@ -243,7 +250,7 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            MessageBox.Show(exception.Message, "快捷键保存失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            dialogService?.ShowError(exception.Message, "快捷键保存失败");
             viewModel.SetHotkeyStatus($"快捷键保存失败：{exception.Message}");
         }
     }
@@ -257,6 +264,7 @@ public partial class MainWindow : Window
         {
             viewModel.StopHotkeyChangeRequested -= HandleStopHotkeyChangeRequested;
             viewModel.CoordinateSelectionRequested -= HandleCoordinateSelectionRequested;
+            viewModel.Dispose();
         }
 
         if (globalHotkeyService is not null)

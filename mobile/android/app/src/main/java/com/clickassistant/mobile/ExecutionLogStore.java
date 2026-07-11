@@ -81,6 +81,22 @@ public final class ExecutionLogStore {
     }
 
     /// <summary>
+    /// 查询指定任务最近一次执行的状态，找不到时返回 null。
+    /// loadLog 按时间升序返回，倒序遍历即从最新记录开始匹配。
+    /// </summary>
+    public static String getLastStatusByTaskId(Context context, String taskId) {
+        if (taskId == null || taskId.isEmpty()) return null;
+        List<ExecutionLogEntry> entries = loadLog(context);
+        for (int i = entries.size() - 1; i >= 0; i--) {
+            ExecutionLogEntry entry = entries.get(i);
+            if (taskId.equals(entry.getTaskId())) {
+                return entry.getStatus();
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
     /// 清空执行日志。
     /// </summary>
     public static void clear(Context context) {

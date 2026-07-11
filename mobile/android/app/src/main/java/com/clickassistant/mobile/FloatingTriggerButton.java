@@ -1,40 +1,57 @@
 package com.clickassistant.mobile;
 
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
+import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 /// <summary>
-/// 常驻悬浮触发按钮，辅助功能服务启动后显示在右下角。
-/// 支持两种状态：IDLE（「取点」白色）→ PICKING（「完成」蓝色）。
+/// 左侧垂直悬浮抽屉按钮。
+/// 收起状态仅显示一个小箭头，展开后显示操作面板。
 /// 通过回调接口通知 ClickAssistantAccessibilityService。
 /// </summary>
 public final class FloatingTriggerButton {
 
     /// <summary>
-    /// 点击回调接口。
+    /// 操作回调接口。
     /// </summary>
     public interface OnTriggerListener {
-        /// IDLE 状态被点击 — 进入取点模式。
+        /// 点击 ▶开始。
         void onStartPick();
-        /// PICKING 状态被点击 — 完成取点。
+        /// 点击完成（取点用）。
         void onFinishPick();
+        /// 点击 📍添加点。
+        void onAddPoint();
+        /// 点击 🗑删除点。
+        void onDeletePoint();
+        /// 点击 📋查看。
+        void onViewLog();
     }
 
     private final Context context;
     private final WindowManager windowManager;
     private OnTriggerListener listener;
 
-    private LinearLayout buttonView;
-    private Button actionButton;
-    private boolean pickMode = false;
+    private LinearLayout drawerRoot;
+    private LinearLayout expandedPanel;
+    private TextView collapseArrow;
+    private boolean expanded = false;
     private boolean addedToWindow = false;
+    private boolean pickMode = false;
+
+    // 颜色定义
+    private static final int BG_COLOR = Color.parseColor("#FFFFFF");
+    private static final int ACCENT = Color.parseColor("#2563EB");
+    private static final int TEXT_PRIMARY = Color.parseColor("#1F2937");
+    private static final int TEXT_SECONDARY = Color.parseColor("#6B7280");
+    private static final int SHADOW_COLOR = Color.argb(30, 0, 0, 0);
 
     public FloatingTriggerButton(Context context) {
         this.context = context;
@@ -45,41 +62,26 @@ public final class FloatingTriggerButton {
         this.listener = listener;
     }
 
-    /// <summary>
-    /// 显示悬浮按钮。
-    /// </summary>
     public void show() {
         if (addedToWindow) return;
-        createButtonView();
+        createDrawerView();
         addToWindow();
     }
 
-    /// <summary>
-    /// 隐藏悬浮按钮。
-    /// </summary>
     public void hide() {
         if (!addedToWindow) return;
         try {
-            windowManager.removeView(buttonView);
+            windowManager.removeView(drawerRoot);
             addedToWindow = false;
-            buttonView = null;
-            actionButton = null;
+            drawerRoot = null;
+            expandedPanel = null;
+            collapseArrow = null;
         } catch (IllegalArgumentException ignored) {
         }
     }
 
-    /// <summary>
-    /// 切换到取点模式（按钮文字=完成，蓝色背景）。
-    /// </summary>
     public void setPickMode(boolean pickMode) {
         this.pickMode = pickMode;
-        if (actionButton != null) {
-            actionButton.setText(pickMode ? "完成" : "取点");
-            actionButton.setBackgroundColor(pickMode
-                    ? Color.parseColor("#2563EB")
-                    : Color.parseColor("#EEEEEE"));
-            actionButton.setTextColor(pickMode ? Color.WHITE : Color.parseColor("#333333"));
-        }
     }
 
     public boolean isPickMode() {
@@ -92,36 +94,131 @@ public final class FloatingTriggerButton {
 
     // ---------- 内部实现 ----------
 
-    private void createButtonView() {
-        buttonView = new LinearLayout(context);
-        buttonView.setOrientation(LinearLayout.HORIZONTAL);
-        buttonView.setGravity(Gravity.CENTER);
+    private void createDrawerView() {
+        drawerRoot = new LinearLayout(context);
+        drawerRoot.setOrientation(LinearLayout.HORIZONTAL);
+        drawerRoot.setGravity(Gravity.CENTER_VERTICAL);
 
-        actionButton = new Button(context);
-        actionButton.setText("取点");
-        actionButton.setTextSize(14);
-        actionButton.setPadding(dp(16), dp(10), dp(16), dp(10));
-        actionButton.setBackgroundColor(Color.parseColor("#EEEEEE"));
-        actionButton.setTextColor(Color.parseColor("#333333"));
-        actionButton.setAllCaps(false);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(BG_COLOR);
+        bg.setCornerRadii(new float[]{0, dp(12), dp(12), 0, 0, 0, 0, 0});
+        drawerRoot.setBackground(bg);
+        drawerRoot.setElevation(dp(6));
 
-        actionButton.setOnClickListener(v -> {
-            if (listener == null) return;
-            if (pickMode) {
-                listener.onFinishPick();
-            } else {
-                listener.onStartPick();
+        // 展开面板（初始隐藏）
+        expandedPanel = new LinearLayout(context);
+        expandedPanel.setOrientation(LinearLayout.VERTICAL);
+        expandedPanel.setPadding(dp(8), dp(8), dp(8), dp(8));
+        expandedPanel.setVisibility(View.GONE);
+        expandedPanel.setMinimumWidth(dp(140));
+
+        // ▶开始 / 完成
+        addPanelButton(expandedPanel, "▶ 开始", ACCENT, true, () -> {
+            if (listener != null) {
+                if (pickMode) {
+                    listener.onFinishPick();
+                } else {
+                    listener.onStartPick();
+                }
             }
         });
 
+        // 📍添加点
+        addPanelButton(expandedPanel, "📍 添加点", Color.parseColor("#16A064"), false, () -> {
+            if (listener != null) listener.onAddPoint();
+        });
+
+        // 🗑删除点
+        addPanelButton(expandedPanel, "🗑 删除点", Color.parseColor("#EF4444"), false, () -> {
+            if (listener != null) listener.onDeletePoint();
+        });
+
+        // 📋查看
+        addPanelButton(expandedPanel, "📋 查看", TEXT_SECONDARY, false, () -> {
+            if (listener != null) listener.onViewLog();
+        });
+
+        // «收起 分隔线
+        View divider = new View(context);
+        divider.setBackgroundColor(Color.parseColor("#E5E7EB"));
+        LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(1));
+        dividerParams.setMargins(dp(4), dp(4), dp(4), dp(4));
+        expandedPanel.addView(divider, dividerParams);
+
+        // «收起箭头
+        TextView collapseLabel = new TextView(context);
+        collapseLabel.setText("« 收起");
+        collapseLabel.setTextSize(12);
+        collapseLabel.setTextColor(TEXT_SECONDARY);
+        collapseLabel.setPadding(dp(12), dp(6), dp(8), dp(4));
+        collapseLabel.setGravity(Gravity.CENTER_VERTICAL);
+        collapseLabel.setOnClickListener(v -> collapse());
+        expandedPanel.addView(collapseLabel);
+
+        drawerRoot.addView(expandedPanel);
+
+        // 收起箭头
+        collapseArrow = new TextView(context);
+        collapseArrow.setText("▶");
+        collapseArrow.setTextSize(16);
+        collapseArrow.setTextColor(Color.WHITE);
+        collapseArrow.setGravity(Gravity.CENTER);
+        collapseArrow.setBackgroundColor(ACCENT);
+        collapseArrow.setPadding(dp(6), dp(18), dp(6), dp(18));
+        collapseArrow.setOnClickListener(v -> {
+            if (expanded) {
+                collapse();
+            } else {
+                expand();
+            }
+        });
+        drawerRoot.addView(collapseArrow);
+    }
+
+    private void addPanelButton(LinearLayout panel, String label, int color, boolean primary, Runnable action) {
+        TextView btn = new TextView(context);
+        btn.setText(label);
+        btn.setTextSize(13);
+        btn.setTextColor(color);
+        btn.setPadding(dp(12), dp(8), dp(8), dp(8));
+        btn.setGravity(Gravity.CENTER_VERTICAL);
+
+        GradientDrawable btnBg = new GradientDrawable();
+        btnBg.setCornerRadius(dp(8));
+        btnBg.setColor(primary ? Color.argb(20, Color.red(color), Color.green(color), Color.blue(color)) : Color.TRANSPARENT);
+        btn.setBackground(btnBg);
+
+        btn.setOnClickListener(v -> {
+            if (action != null) action.run();
+        });
+
         LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        buttonView.addView(actionButton, btnParams);
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        btnParams.setMargins(0, dp(2), 0, dp(2));
+        panel.addView(btn, btnParams);
+    }
+
+    private void expand() {
+        if (expandedPanel == null || collapseArrow == null) return;
+        expandedPanel.setVisibility(View.VISIBLE);
+        expandedPanel.setAlpha(0f);
+        expandedPanel.animate().alpha(1f).setDuration(200).start();
+        collapseArrow.setText("◀");
+        expanded = true;
+    }
+
+    private void collapse() {
+        if (expandedPanel == null || collapseArrow == null) return;
+        expandedPanel.animate().alpha(0f).setDuration(150).withEndAction(() -> {
+            expandedPanel.setVisibility(View.GONE);
+        }).start();
+        collapseArrow.setText("▶");
+        expanded = false;
     }
 
     private void addToWindow() {
-        if (buttonView == null) return;
+        if (drawerRoot == null) return;
 
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -130,16 +227,17 @@ public final class FloatingTriggerButton {
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                         | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                 PixelFormat.TRANSLUCENT);
-        params.gravity = Gravity.BOTTOM | Gravity.END;
-        params.x = dp(12);
-        params.y = dp(80);
+        params.gravity = Gravity.CENTER_VERTICAL | Gravity.START;
+        params.x = 0;
+        params.y = 0;
 
         try {
-            windowManager.addView(buttonView, params);
+            windowManager.addView(drawerRoot, params);
             addedToWindow = true;
         } catch (RuntimeException ignored) {
-            buttonView = null;
-            actionButton = null;
+            drawerRoot = null;
+            expandedPanel = null;
+            collapseArrow = null;
         }
     }
 

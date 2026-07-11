@@ -1,4 +1,6 @@
+using System.Text.RegularExpressions;
 using Microsoft.Data.Sqlite;
+
 
 namespace ClickAssistant.Infrastructure.Persistence;
 
@@ -63,20 +65,87 @@ public sealed class DatabaseMigrator
 
     /// <summary>
     /// 确保 schema_migrations 表存在。
+    /// 兼容旧版仅含 version/applied_at 两列的表结构，自动补充 name 列。
     /// </summary>
     private static async Task EnsureMigrationsTableAsync(
         SqliteConnection connection,
         CancellationToken cancellationToken)
     {
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            await using var createCommand = connection.CreateCommand();
+            createCommand.Transaction = transaction;
+            createCommand.CommandText = """
+                CREATE TABLE IF NOT EXISTS schema_migrations (
+                    version TEXT PRIMARY KEY,
+                    applied_at TEXT NOT NULL
+                );
+                """;
+            await createCommand.ExecuteNonQueryAsync(cancellationToken);
+
+            if (!await HasColumnAsync(connection, "schema_migrations", "name", cancellationToken, transaction))
+            {
+                await using var alterCommand = connection.CreateCommand();
+                alterCommand.Transaction = transaction;
+                alterCommand.CommandText = """
+                    ALTER TABLE schema_migrations ADD COLUMN name TEXT NOT NULL DEFAULT '';
+                    """;
+                await alterCommand.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 已知表名白名单，PRAGMA table_info 仅允许查询这些表，防止拼装 SQL 注入。
+    /// </summary>
+    private static readonly HashSet<string> AllowedTableNames =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "tasks",
+            "task_steps",
+            "execution_logs",
+            "app_settings",
+            "schema_migrations"
+        };
+
+    /// <summary>
+    /// 检查指定表是否包含某列，表名仅限白名单。
+    /// </summary>
+    private static async Task<bool> HasColumnAsync(
+        SqliteConnection connection,
+        string tableName,
+        string columnName,
+        CancellationToken cancellationToken,
+        SqliteTransaction? transaction = null)
+    {
+        if (!AllowedTableNames.Contains(tableName))
+        {
+            return false;
+        }
+
         await using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TABLE IF NOT EXISTS schema_migrations (
-                version TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                applied_at TEXT NOT NULL
-            );
-            """;
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        command.Transaction = transaction;
+        command.CommandText = $"PRAGMA table_info({tableName});";
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            if (string.Equals(reader.GetString(1), columnName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -101,6 +170,7 @@ public sealed class DatabaseMigrator
 
     /// <summary>
     /// 按版本号升序执行所有未应用的迁移，每个迁移在独立事务中执行。
+    /// 若迁移语句为 ALTER TABLE ADD COLUMN 且目标列已存在，则自动跳过该语句。
     /// </summary>
     private static async Task ApplyMissingMigrationsAsync(
         SqliteConnection connection,
@@ -121,6 +191,12 @@ public sealed class DatabaseMigrator
             {
                 foreach (var sql in migration.SqlStatements)
                 {
+                    if (TryParseAlterTableAddColumn(sql, out var tableName, out var columnName)
+                        && await HasColumnAsync(connection, tableName, columnName, cancellationToken, transaction))
+                    {
+                        continue;
+                    }
+
                     await using var command = connection.CreateCommand();
                     command.Transaction = transaction;
                     command.CommandText = sql;
@@ -146,6 +222,32 @@ public sealed class DatabaseMigrator
                 throw;
             }
         }
+    }
+
+    /// <summary>
+    /// 尝试解析 ALTER TABLE ... ADD COLUMN 语句，返回表名与列名。
+    /// </summary>
+    private static bool TryParseAlterTableAddColumn(
+        string sql,
+        out string tableName,
+        out string columnName)
+    {
+        tableName = string.Empty;
+        columnName = string.Empty;
+
+        var match = Regex.Match(
+            sql,
+            @"ALTER\s+TABLE\s+(?<table>\w+)\s+ADD\s+COLUMN\s+(?<column>\w+)",
+            RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
+
+        if (!match.Success)
+        {
+            return false;
+        }
+
+        tableName = match.Groups["table"].Value;
+        columnName = match.Groups["column"].Value;
+        return true;
     }
 
     /// <summary>
@@ -196,7 +298,7 @@ public sealed class DatabaseMigrator
                 shortcut_keys TEXT NOT NULL DEFAULT 'Ctrl+C',
                 text_content TEXT NOT NULL DEFAULT '',
                 before_delay_ms INTEGER NOT NULL,
-                after_delay_ms INTEGER NOT NULL,
+                after_delay_ms INTEGER NOT NULL DEFAULT 0,
                 step_order INTEGER NOT NULL,
                 FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
             );

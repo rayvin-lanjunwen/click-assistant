@@ -9,12 +9,16 @@ using ClickAssistant.Domain.Enums;
 namespace ClickAssistant.App;
 
 /// <summary>
-/// 全屏可视化步骤标记层，显示所有步骤的操作位置并可拖动调整。
-/// 点击标记同步选中步骤，Esc 或再次点击空白区关闭。
+/// 全屏可视化坐标选择层。
+/// 1. 传入 targetStep 时，点击空白区域可直接将该步骤坐标设为点击位置并关闭窗口。
+/// 2. 点击已有步骤标记可快速切换选中步骤。
+/// 3. 拖动标记可调整步骤坐标。
+/// 4. 按 Esc 取消并关闭。
 /// </summary>
 public partial class CoordinatePickerWindow : Window
 {
     private readonly List<ClickStep> steps;
+    private readonly ClickStep? targetStep;
     private readonly Action<ClickStep>? onStepClicked;
     private readonly Dictionary<ClickStep, MarkerElements> markerMap = [];
 
@@ -24,14 +28,21 @@ public partial class CoordinatePickerWindow : Window
 
     public CoordinatePickerWindow(
         List<ClickStep> steps,
+        ClickStep? targetStep = null,
         Action<ClickStep>? onStepClicked = null)
     {
         this.steps = steps;
+        this.targetStep = targetStep;
         this.onStepClicked = onStepClicked;
         InitializeComponent();
     }
 
     public ClickStep? HighlightedStep { get; set; }
+
+    /// <summary>
+    /// 标识本次选择过程中是否有步骤坐标发生变更（拖动或空白区域点击）。
+    /// </summary>
+    public bool IsCoordinateChanged { get; private set; }
 
     private void HandleLoaded(object sender, RoutedEventArgs e)
     {
@@ -84,8 +95,8 @@ public partial class CoordinatePickerWindow : Window
     private void DrawClickMarker(ClickStep step, MarkerElements marker)
     {
         var isHighlighted = HighlightedStep?.Id == step.Id;
-        var color = isHighlighted ? Color.FromRgb(22, 124, 128) : Color.FromRgb(55, 104, 224);
-        var fillAlpha = isHighlighted ? (byte)60 : (byte)30;
+        var color = isHighlighted ? Color.FromRgb(37, 99, 235) : Color.FromRgb(59, 130, 246);
+        var fillAlpha = isHighlighted ? (byte)50 : (byte)25;
 
         // Circle marker
         var circle = new Ellipse
@@ -147,8 +158,8 @@ public partial class CoordinatePickerWindow : Window
     private void DrawSwipeMarker(ClickStep step, MarkerElements marker)
     {
         var isHighlighted = HighlightedStep?.Id == step.Id;
-        var color = isHighlighted ? Color.FromRgb(22, 124, 128) : Color.FromRgb(22, 160, 64);
-        var fillAlpha = isHighlighted ? (byte)60 : (byte)30;
+        var color = isHighlighted ? Color.FromRgb(37, 99, 235) : Color.FromRgb(22, 160, 64);
+        var fillAlpha = isHighlighted ? (byte)50 : (byte)25;
 
         // Direction line
         var line = new Line
@@ -251,8 +262,8 @@ public partial class CoordinatePickerWindow : Window
     private void DrawTextInputMarker(ClickStep step, MarkerElements marker)
     {
         var isHighlighted = HighlightedStep?.Id == step.Id;
-        var color = isHighlighted ? Color.FromRgb(22, 124, 128) : Color.FromRgb(193, 127, 34);
-        var fillAlpha = isHighlighted ? (byte)60 : (byte)30;
+        var color = isHighlighted ? Color.FromRgb(37, 99, 235) : Color.FromRgb(249, 115, 22);
+        var fillAlpha = isHighlighted ? (byte)50 : (byte)25;
 
         // Circle marker
         var circle = new Ellipse
@@ -417,6 +428,8 @@ public partial class CoordinatePickerWindow : Window
             draggingStep.Y = (int)screenPoint.Y;
         }
 
+        IsCoordinateChanged = true;
+
         // Redraw this marker
         UpdateMarkerPosition(draggingStep, draggingMarker);
     }
@@ -440,11 +453,10 @@ public partial class CoordinatePickerWindow : Window
             return;
         }
 
-        // Click on blank area
         var canvasPoint = e.GetPosition(OverlayCanvas);
         var screenPoint = CanvasToScreenPoint(canvasPoint);
 
-        // Check if any marker was clicked
+        // 优先检测是否点击了已有步骤标记
         ClickStep? clickedStep = null;
         foreach (var (step, marker) in markerMap)
         {
@@ -460,6 +472,18 @@ public partial class CoordinatePickerWindow : Window
             HighlightedStep = clickedStep;
             onStepClicked?.Invoke(clickedStep);
             DrawAllMarkers();
+            e.Handled = true;
+            return;
+        }
+
+        // 点击空白区域：若存在 targetStep，则将其坐标设为点击位置并关闭窗口
+        if (targetStep is not null)
+        {
+            targetStep.X = (int)screenPoint.X;
+            targetStep.Y = (int)screenPoint.Y;
+            IsCoordinateChanged = true;
+            onStepClicked?.Invoke(targetStep);
+            Close();
             e.Handled = true;
         }
     }

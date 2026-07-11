@@ -123,7 +123,7 @@ public sealed class ClickExecutionEngine : IClickExecutionEngine
         var task = await taskRepository.GetByIdAsync(taskId, cancellationToken)
             ?? throw new InvalidOperationException("任务不存在，无法执行。");
 
-        var startedAt = DateTime.Now;
+        var startedAt = DateTime.UtcNow;
         var executionLog = new ExecutionLog
         {
             TaskId = task.Id,
@@ -184,7 +184,7 @@ public sealed class ClickExecutionEngine : IClickExecutionEngine
         }
         finally
         {
-            executionLog.EndedAt = DateTime.Now;
+            executionLog.EndedAt = DateTime.UtcNow;
             await executionLogRepository.AddAsync(executionLog, CancellationToken.None);
         }
     }

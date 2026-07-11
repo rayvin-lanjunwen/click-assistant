@@ -28,7 +28,7 @@ public sealed class ClickTaskService
     /// </summary>
     public async Task SaveAsync(ClickTask task, CancellationToken cancellationToken = default)
     {
-        task.UpdatedAt = DateTime.Now;
+        task.UpdatedAt = DateTime.UtcNow;
 
         if (task.CreatedAt == default)
         {

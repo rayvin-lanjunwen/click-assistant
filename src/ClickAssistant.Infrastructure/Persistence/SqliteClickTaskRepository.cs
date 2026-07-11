@@ -197,7 +197,7 @@ public sealed class SqliteClickTaskRepository : IClickTaskRepository
                 key_name, key_press_count, key_interval_ms, shortcut_keys, text_content,
                 auto_focus_before_input,
                 end_x, end_y, swipe_duration_ms,
-                before_delay_ms, after_delay_ms, step_order
+                before_delay_ms, step_order
             )
             VALUES (
                 $id, $taskId, $name, $enabled, $actionType, $x, $y, $clickType, $mouseClickCount,
@@ -205,7 +205,7 @@ public sealed class SqliteClickTaskRepository : IClickTaskRepository
                 $keyName, $keyPressCount, $keyIntervalMs, $shortcutKeys, $textContent,
                 $autoFocusBeforeInput,
                 $endX, $endY, $swipeDurationMs,
-                $beforeDelayMs, $afterDelayMs, $order
+                $beforeDelayMs, $order
             );
             """;
 
@@ -230,7 +230,6 @@ public sealed class SqliteClickTaskRepository : IClickTaskRepository
         command.Parameters.AddWithValue("$endY", step.EndY);
         command.Parameters.AddWithValue("$swipeDurationMs", step.SwipeDurationMs);
         command.Parameters.AddWithValue("$beforeDelayMs", step.BeforeDelayMs);
-        command.Parameters.AddWithValue("$afterDelayMs", 0);
         command.Parameters.AddWithValue("$order", step.Order);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
@@ -256,7 +255,7 @@ public sealed class SqliteClickTaskRepository : IClickTaskRepository
                 COALESCE(end_x, 0) AS end_x,
                 COALESCE(end_y, 0) AS end_y,
                 COALESCE(swipe_duration_ms, 300) AS swipe_duration_ms,
-                before_delay_ms, after_delay_ms, step_order
+                before_delay_ms, step_order
             FROM task_steps
             WHERE task_id = $taskId
             ORDER BY step_order ASC;
@@ -269,28 +268,28 @@ public sealed class SqliteClickTaskRepository : IClickTaskRepository
         {
             steps.Add(new ClickStep
             {
-                Id = Guid.Parse(reader.GetString(0)),
-                TaskId = Guid.Parse(reader.GetString(1)),
-                Name = reader.GetString(2),
-                Enabled = reader.GetInt32(3) == 1,
-                ActionType = ParseEnumOrDefault(reader.GetString(4), InputActionType.MouseClick),
-                X = reader.GetInt32(5),
-                Y = reader.GetInt32(6),
-                ClickType = ParseEnumOrDefault(reader.GetString(7), ClickType.LeftSingle),
-                MouseClickCount = reader.GetInt32(8),
-                ClickIntervalMs = reader.GetInt32(9),
-                PressDurationMs = reader.GetInt32(10),
-                KeyName = reader.GetString(11),
-                KeyPressCount = reader.GetInt32(12),
-                KeyIntervalMs = reader.GetInt32(13),
-                ShortcutKeys = reader.GetString(14),
-                TextContent = reader.GetString(15),
-                AutoFocusBeforeInput = reader.GetInt32(16) == 1,
-                EndX = reader.GetInt32(17),
-                EndY = reader.GetInt32(18),
-                SwipeDurationMs = reader.GetInt32(19),
-                BeforeDelayMs = reader.GetInt32(20),
-                Order = reader.GetInt32(22)
+                Id = Guid.Parse(reader.GetString(reader.GetOrdinal("id"))),
+                TaskId = Guid.Parse(reader.GetString(reader.GetOrdinal("task_id"))),
+                Name = reader.GetString(reader.GetOrdinal("name")),
+                Enabled = reader.GetInt32(reader.GetOrdinal("enabled")) == 1,
+                ActionType = ParseEnumOrDefault(reader.GetString(reader.GetOrdinal("action_type")), InputActionType.MouseClick),
+                X = reader.GetInt32(reader.GetOrdinal("x")),
+                Y = reader.GetInt32(reader.GetOrdinal("y")),
+                ClickType = ParseEnumOrDefault(reader.GetString(reader.GetOrdinal("click_type")), ClickType.LeftSingle),
+                MouseClickCount = reader.GetInt32(reader.GetOrdinal("mouse_click_count")),
+                ClickIntervalMs = reader.GetInt32(reader.GetOrdinal("click_interval_ms")),
+                PressDurationMs = reader.GetInt32(reader.GetOrdinal("press_duration_ms")),
+                KeyName = reader.GetString(reader.GetOrdinal("key_name")),
+                KeyPressCount = reader.GetInt32(reader.GetOrdinal("key_press_count")),
+                KeyIntervalMs = reader.GetInt32(reader.GetOrdinal("key_interval_ms")),
+                ShortcutKeys = reader.GetString(reader.GetOrdinal("shortcut_keys")),
+                TextContent = reader.GetString(reader.GetOrdinal("text_content")),
+                AutoFocusBeforeInput = reader.GetInt32(reader.GetOrdinal("auto_focus_before_input")) == 1,
+                EndX = reader.GetInt32(reader.GetOrdinal("end_x")),
+                EndY = reader.GetInt32(reader.GetOrdinal("end_y")),
+                SwipeDurationMs = reader.GetInt32(reader.GetOrdinal("swipe_duration_ms")),
+                BeforeDelayMs = reader.GetInt32(reader.GetOrdinal("before_delay_ms")),
+                Order = reader.GetInt32(reader.GetOrdinal("step_order"))
             });
         }
 

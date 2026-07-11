@@ -18,8 +18,8 @@ public sealed class SqliteClickTaskRepositoryTests
         try
         {
             var connectionFactory = new SqliteConnectionFactory(databasePath);
-            var databaseInitializer = new DatabaseInitializer(connectionFactory);
-            await databaseInitializer.InitializeAsync();
+            var databaseMigrator = new DatabaseMigrator(connectionFactory);
+            await databaseMigrator.InitializeAsync();
 
             var repository = new SqliteClickTaskRepository(connectionFactory);
             var task = CreateTask();
@@ -83,8 +83,8 @@ public sealed class SqliteClickTaskRepositoryTests
             Description = "验证任务和步骤可以保存、读取和删除。",
             RepeatCount = 2,
             StartDelayMs = 100,
-            CreatedAt = DateTime.Now,
-            UpdatedAt = DateTime.Now,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
             Steps =
             [
                 new ClickStep

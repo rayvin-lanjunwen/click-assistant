@@ -4,7 +4,9 @@ package com.clickassistant.mobile;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PixelFormat;
 import android.os.Bundle;
@@ -21,12 +23,12 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 import android.widget.LinearLayout;
-import android.widget.PopupWindow;
 import android.widget.TextView;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.Locale;
 
@@ -36,7 +38,7 @@ import java.util.Locale;
 /// 对应电脑端 ClickExecutionEngine 的移动端执行器。
 /// </summary>
 public final class ClickAssistantAccessibilityService extends AccessibilityService {
-    private static volatile ClickAssistantAccessibilityService activeService;
+    private static WeakReference<ClickAssistantAccessibilityService> activeServiceRef;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
 
@@ -46,11 +48,24 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
     // 标记覆盖层管理器（持久化标记圆圈 + 执行动效）
     private MarkerOverlayManager markerOverlayManager;
 
-    // 取点覆盖层（手指跟踪 + 确认气泡）
+    // 取点覆盖层（长按拖动定位 + 松手确认）
     private View coordinatePickerOverlay;
     private PickerCursorView pickerCursorView;
     private int pickerX;
     private int pickerY;
+    // 是否已进入拖动定位状态（长按达阈值后置 true）
+    private boolean isDragging = false;
+    // 取点覆盖层内的取消按钮引用
+    private View cancelPickButton;
+
+    // 长按触发拖动的阈值时长（毫秒）
+    private static final long LONG_PRESS_THRESHOLD_MS = 500;
+
+    // 长按计时：到时进入拖动定位状态
+    private final Runnable longPressRunnable = () -> {
+        isDragging = true;
+        enterDragVisual();
+    };
 
     // 当前取点目标
     private String pickTaskId;
@@ -74,12 +89,32 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
     private int repeatIndex;
     private int stepIndex;
 
+    private static ClickAssistantAccessibilityService getActiveService() {
+        return activeServiceRef != null ? activeServiceRef.get() : null;
+    }
+
     public static boolean isActive() {
-        return activeService != null;
+        return getActiveService() != null;
+    }
+
+    /// <summary>
+    /// 是否有任务正在执行（包括暂停状态）。
+    /// </summary>
+    public static boolean isRunning() {
+        ClickAssistantAccessibilityService service = getActiveService();
+        return service != null && service.running;
+    }
+
+    /// <summary>
+    /// 当前任务是否处于暂停状态。
+    /// </summary>
+    public static boolean isPaused() {
+        ClickAssistantAccessibilityService service = getActiveService();
+        return service != null && service.paused;
     }
 
     public static boolean startTask(ClickTask task) {
-        ClickAssistantAccessibilityService service = activeService;
+        ClickAssistantAccessibilityService service = getActiveService();
         if (service == null || service.running) {
             return false;
         }
@@ -88,28 +123,28 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
     }
 
     public static void requestStop() {
-        ClickAssistantAccessibilityService service = activeService;
+        ClickAssistantAccessibilityService service = getActiveService();
         if (service != null) {
             service.stop(ExecutionState.STOPPED.getDisplayName(), "已通过应用停止");
         }
     }
 
     public static void requestPause() {
-        ClickAssistantAccessibilityService service = activeService;
+        ClickAssistantAccessibilityService service = getActiveService();
         if (service != null) {
             service.pause();
         }
     }
 
     public static void requestResume() {
-        ClickAssistantAccessibilityService service = activeService;
+        ClickAssistantAccessibilityService service = getActiveService();
         if (service != null) {
             service.resume();
         }
     }
 
     public static boolean startCoordinatePick() {
-        ClickAssistantAccessibilityService service = activeService;
+        ClickAssistantAccessibilityService service = getActiveService();
         if (service == null) {
             return false;
         }
@@ -122,7 +157,7 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
     /// 清除所有标记（供 MainActivity 保存任务后调用）。
     /// </summary>
     public static void clearMarkers() {
-        ClickAssistantAccessibilityService service = activeService;
+        ClickAssistantAccessibilityService service = getActiveService();
         if (service != null && service.markerOverlayManager != null) {
             service.markerOverlayManager.clearAll();
             service.markerOverlayManager.hide();
@@ -132,7 +167,7 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
-        activeService = this;
+        activeServiceRef = new WeakReference<>(this);
 
         // 创建标记覆盖层
         markerOverlayManager = new MarkerOverlayManager(this);
@@ -176,6 +211,24 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
             public void onFinishPick() {
                 exitPickMode();
             }
+
+            @Override
+            public void onAddPoint() {
+                enterPickMode();
+            }
+
+            @Override
+            public void onDeletePoint() {
+                markerOverlayManager.clearAll();
+                markerOverlayManager.hide();
+                TaskStore.saveLastStatus(ClickAssistantAccessibilityService.this, "标记点已清除");
+                showToast("已清除所有标记点");
+            }
+
+            @Override
+            public void onViewLog() {
+                openMainActivity();
+            }
         });
         floatingTriggerButton.show();
 
@@ -208,7 +261,7 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
             markerOverlayManager.hide();
         }
         stop(ExecutionState.STOPPED.getDisplayName(), "辅助功能服务已断开");
-        activeService = null;
+        activeServiceRef = null;
         return super.onUnbind(intent);
     }
 
@@ -384,6 +437,7 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
 
         switch (step.getActionType()) {
             case TAP:
+            case LONG_PRESS:
                 dispatchTapSequence(step, 0);
                 break;
             case SWIPE:
@@ -458,6 +512,15 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
     /// 滑动手势：从起点到终点按 durationMs 完成一次滑动。
     /// </summary>
     private void dispatchSwipe(TaskStep step) {
+        if (stopRequested || !running) {
+            stop(ExecutionState.STOPPED.getDisplayName(), "已停止");
+            return;
+        }
+        if (paused) {
+            handler.postDelayed(() -> dispatchSwipe(step), 200);
+            return;
+        }
+
         Path path = new Path();
         path.moveTo(step.getX(), step.getY());
         path.lineTo(step.getEndX(), step.getEndY());
@@ -468,6 +531,10 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
         boolean accepted = dispatchGesture(gesture, new GestureResultCallback() {
             @Override
             public void onCompleted(GestureDescription gestureDescription) {
+                if (stopRequested || !running) {
+                    stop(ExecutionState.STOPPED.getDisplayName(), "已停止");
+                    return;
+                }
                 finishStep(step);
             }
 
@@ -530,9 +597,11 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
                 focus = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
             } catch (Exception ignored) {
             }
+            root.recycle();
         }
 
         if (focus == null || !focus.isEditable()) {
+            recycleNode(focus);
             failTask("执行失败：未找到可编辑且已聚焦的输入框");
             return;
         }
@@ -540,8 +609,10 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
         int charInterval = Math.max(0, step.getCharIntervalMs());
         if (charInterval <= 0) {
             if (setNodeText(focus, text)) {
+                recycleNode(focus);
                 finishStep(step);
             } else {
+                recycleNode(focus);
                 failTask("执行失败：目标输入框拒绝写入文本");
             }
         } else {
@@ -569,6 +640,7 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
     /// </summary>
     private void typeTextCharByChar(TaskStep step, AccessibilityNodeInfo node, int index, int charInterval) {
         if (stopRequested || !running) {
+            recycleNode(node);
             stop(ExecutionState.STOPPED.getDisplayName(), "已停止");
             return;
         }
@@ -580,15 +652,29 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
 
         String text = step.getTextContent();
         if (index >= text.length()) {
+            recycleNode(node);
             finishStep(step);
             return;
         }
 
         if (!setNodeText(node, text.substring(0, index + 1))) {
+            recycleNode(node);
             failTask("执行失败：逐字输入过程中目标输入框拒绝写入文本");
             return;
         }
         handler.postDelayed(() -> typeTextCharByChar(step, node, index + 1, charInterval), charInterval);
+    }
+
+    /// <summary>
+    /// 安全回收 AccessibilityNodeInfo，避免 NPE。
+    /// </summary>
+    private void recycleNode(AccessibilityNodeInfo node) {
+        if (node != null) {
+            try {
+                node.recycle();
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     /// <summary>
@@ -611,6 +697,7 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
         TaskStore.saveLastStatus(this, message);
         ExecutionLogStore.addEntry(this, new ExecutionLogEntry()
                 .setTaskName(currentTask == null ? "" : currentTask.getName())
+                .setTaskId(currentTask == null ? "" : currentTask.getId())
                 .setStatus(status)
                 .setMessage(message));
         updateExecutionControlOverlay(status, message);
@@ -847,20 +934,28 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
         }
 
         showNewPickerOverlay(targetStep);
-        floatingTriggerButton.setPickMode(true);
+        // 取点模式下隐藏悬浮按钮，改由覆盖层内「长按拖动 + 松手确认」完成取点，无需「完成」按钮
+        floatingTriggerButton.hide();
     }
 
     /// <summary>
     /// 退出取点模式：移除取点覆盖层，保留标记圆圈和悬浮按钮。
     /// </summary>
     private void exitPickMode() {
+        cancelLongPress();
+        isDragging = false;
         removeCoordinatePickerOverlay();
-        floatingTriggerButton.setPickMode(false);
+        // 恢复悬浮按钮显示
+        if (floatingTriggerButton != null) {
+            floatingTriggerButton.setPickMode(false);
+            floatingTriggerButton.show();
+        }
         TaskStore.saveLastStatus(this, "取点完成，标记已保留。回 App 保存任务后清除。");
     }
 
     /// <summary>
-    /// 新版取点覆盖层：透明背景 + 手指跟随 + 松手弹出确认气泡。
+    /// 取点覆盖层：半透明背景 + 长按拖动定位 + 松手直接确认坐标。
+    /// 不再依赖外部「完成」按钮，确认后自动退出取点模式。
     /// </summary>
     private void showNewPickerOverlay(TaskStep targetStep) {
         WindowManager windowManager = getSystemService(WindowManager.class);
@@ -878,6 +973,7 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
         int screenHeight = getResources().getDisplayMetrics().heightPixels;
         pickerX = targetStep.getX() > 0 ? targetStep.getX() : screenWidth / 2;
         pickerY = targetStep.getY() > 0 ? targetStep.getY() : screenHeight / 2;
+        isDragging = false;
 
         int cursorSize = dp(72);
         pickerCursorView = new PickerCursorView(this);
@@ -886,23 +982,69 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
         FrameLayout.LayoutParams cursorParams = new FrameLayout.LayoutParams(cursorSize, cursorSize);
         overlay.addView(pickerCursorView, cursorParams);
 
-        // 手指跟踪
+        // 左上角取消按钮（自绘 ✕）
+        int cancelSize = dp(40);
+        cancelPickButton = new View(this) {
+            private final Paint xPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            {
+                xPaint.setColor(Color.WHITE);
+                xPaint.setStyle(Paint.Style.STROKE);
+                xPaint.setStrokeWidth(dp(2));
+            }
+            @Override
+            protected void onDraw(Canvas canvas) {
+                super.onDraw(canvas);
+                float pad = dp(10);
+                canvas.drawLine(pad, pad, getWidth() - pad, getHeight() - pad, xPaint);
+                canvas.drawLine(getWidth() - pad, pad, pad, getHeight() - pad, xPaint);
+            }
+        };
+        cancelPickButton.setBackgroundColor(Color.argb(120, 0, 0, 0));
+        FrameLayout.LayoutParams cancelParams = new FrameLayout.LayoutParams(cancelSize, cancelSize);
+        cancelParams.gravity = Gravity.TOP | Gravity.START;
+        cancelParams.leftMargin = dp(16);
+        cancelParams.topMargin = dp(40);
+        overlay.addView(cancelPickButton, cancelParams);
+        cancelPickButton.setOnClickListener(v -> exitPickMode());
+
+        // 长按拖动取点：按下启动 500ms 计时，到时进入拖动定位；松手时若已拖动则确认，否则忽略
+        // 注意：触摸落在左上角取消按钮上时由其自身 OnClickListener 消费，不会进入此回调
         overlay.setOnTouchListener((view, event) -> {
             int action = event.getAction();
-            if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_MOVE) {
-                updatePickerCursor(Math.round(event.getRawX()), Math.round(event.getRawY()));
+            int rawX = Math.round(event.getRawX());
+            int rawY = Math.round(event.getRawY());
+
+            if (action == MotionEvent.ACTION_DOWN) {
+                isDragging = false;
+                // 启动长按计时，到时进入拖动定位状态
+                handler.postDelayed(longPressRunnable, LONG_PRESS_THRESHOLD_MS);
+                return true;
             }
-            if (action == MotionEvent.ACTION_UP) {
-                // 松手时在光标旁边显示确认气泡
-                updatePickerCursor(Math.round(event.getRawX()), Math.round(event.getRawY()));
-                showConfirmBubble(overlay, pickerX, pickerY);
+
+            if (action == MotionEvent.ACTION_MOVE) {
+                if (isDragging) {
+                    updatePickerCursor(rawX, rawY);
+                }
+                return true;
+            }
+
+            if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                cancelLongPress();
+                if (isDragging) {
+                    // 松手确认当前光标坐标
+                    updatePickerCursor(rawX, rawY);
+                    exitDragVisual();
+                    onPickConfirm(pickerX, pickerY);
+                }
+                isDragging = false;
+                return true;
             }
             return true;
         });
 
-        // 右上角提示文字
+        // 顶部居中提示文字
         TextView hintText = new TextView(this);
-        hintText.setText("滑动手指定位，松手后点击 \u2713 确认");
+        hintText.setText("长按屏幕拖动定位，松手确认");
         hintText.setTextColor(Color.WHITE);
         hintText.setTextSize(14);
         hintText.setPadding(dp(16), dp(8), dp(16), dp(8));
@@ -910,7 +1052,7 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
         FrameLayout.LayoutParams hintParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.TOP | Gravity.END);
+                Gravity.TOP | Gravity.CENTER_HORIZONTAL);
         hintParams.topMargin = dp(40);
         overlay.addView(hintText, hintParams);
 
@@ -932,37 +1074,6 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
             return;
         }
         overlay.post(() -> updatePickerCursor(pickerX, pickerY));
-    }
-
-    /// <summary>
-    /// 在光标旁边显示确认气泡（PopupWindow）。
-    /// </summary>
-    private void showConfirmBubble(FrameLayout parent, int x, int y) {
-        LinearLayout bubble = new LinearLayout(this);
-        bubble.setOrientation(LinearLayout.HORIZONTAL);
-        bubble.setBackgroundColor(Color.parseColor("#2563EB"));
-        bubble.setPadding(dp(4), dp(2), dp(4), dp(2));
-        bubble.setGravity(Gravity.CENTER);
-
-        TextView checkText = new TextView(this);
-        checkText.setText("\u2713");
-        checkText.setTextColor(Color.WHITE);
-        checkText.setTextSize(20);
-        checkText.setPadding(dp(8), dp(4), dp(8), dp(4));
-        bubble.addView(checkText);
-
-        PopupWindow popup = new PopupWindow(bubble,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT, true);
-        popup.setBackgroundDrawable(null);
-
-        bubble.setOnClickListener(v -> {
-            popup.dismiss();
-            onPickConfirm(pickerX, pickerY);
-        });
-
-        popup.showAtLocation(parent, Gravity.TOP | Gravity.START,
-                x + dp(40), y - dp(14));
     }
 
     private void onPickConfirm(int x, int y) {
@@ -998,7 +1109,7 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
             }
             TaskStore.upsertTask(this, task);
             TaskStore.saveLastStatus(this,
-                    String.format(Locale.ROOT, "已选起点：%d,%d，请滑动到终点确认", x, y));
+                    String.format(Locale.ROOT, "已选起点：%d,%d，请长按拖动到终点确认", x, y));
             return;
         }
 
@@ -1019,6 +1130,8 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
         }
 
         showToast("坐标已保存：" + x + "," + y);
+        // 坐标已确认，自动退出取点模式
+        exitPickMode();
     }
 
     private void updatePickerCursor(int x, int y) {
@@ -1054,6 +1167,31 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
 
         coordinatePickerOverlay = null;
         pickerCursorView = null;
+    }
+
+    /// <summary>
+    /// 取消尚未触发的长按计时。
+    /// </summary>
+    private void cancelLongPress() {
+        handler.removeCallbacks(longPressRunnable);
+    }
+
+    /// <summary>
+    /// 进入拖动定位的视觉反馈：光标放大并高亮。
+    /// </summary>
+    private void enterDragVisual() {
+        if (pickerCursorView == null) return;
+        pickerCursorView.animate().scaleX(1.3f).scaleY(1.3f).setDuration(150).start();
+        pickerCursorView.setHighlight(true);
+    }
+
+    /// <summary>
+    /// 退出拖动定位：恢复光标原始大小与配色。
+    /// </summary>
+    private void exitDragVisual() {
+        if (pickerCursorView == null) return;
+        pickerCursorView.animate().scaleX(1f).scaleY(1f).setDuration(150).start();
+        pickerCursorView.setHighlight(false);
     }
 
     private void showToast(String message) {

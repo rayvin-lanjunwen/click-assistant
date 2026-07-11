@@ -6,307 +6,706 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Click Assistant"
-        Width="1180"
-        Height="740"
-        MinWidth="1040"
-        MinHeight="660"
+        Width="1200"
+        Height="760"
+        MinWidth="1080"
+        MinHeight="680"
         WindowStartupLocation="CenterScreen"
-        Background="#EEF3F5">
+        Background="{StaticResource BgPrimaryBrush}">
     <Window.Resources>
-        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1D252C" />
-        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#5B6975" />
-        <SolidColorBrush x:Key="MutedBrush" Color="#EFF4F6" />
-        <SolidColorBrush x:Key="PanelBrush" Color="#FCFEFF" />
-        <SolidColorBrush x:Key="PanelBorderBrush" Color="#D4DEE6" />
-        <SolidColorBrush x:Key="AccentBrush" Color="#167C80" />
-        <SolidColorBrush x:Key="AccentDarkBrush" Color="#0E5659" />
-        <SolidColorBrush x:Key="WarmBrush" Color="#C17F22" />
-        <SolidColorBrush x:Key="DangerBrush" Color="#B44A45" />
-        <converters:StepSummaryConverter x:Key="StepSummaryConverter" />
+        <!-- 颜色与共享转换器已迁移到 App.xaml 的 Application.Resources，
+             所有窗口（包括独立窗口）均可见。-->
 
+        <!-- 基础 TextBlock -->
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
             <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
         </Style>
 
-        <Style x:Key="LogoMarkStyle" TargetType="Border">
-            <Setter Property="Width" Value="54" />
-            <Setter Property="Height" Value="54" />
-            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
-            <Setter Property="CornerRadius" Value="8" />
-        </Style>
-
-        <Style x:Key="PanelStyle" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource PanelBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
+        <!-- 卡片面板 -->
+        <Style x:Key="CardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Padding" Value="18" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="20" />
         </Style>
 
-        <Style x:Key="SubtlePanelStyle" TargetType="Border" BasedOn="{StaticResource PanelStyle}">
-            <Setter Property="Background" Value="#F7FAFB" />
-            <Setter Property="Padding" Value="14" />
-        </Style>
-
-        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
-            <Setter Property="MinHeight" Value="36" />
-            <Setter Property="Padding" Value="16,7" />
-            <Setter Property="Margin" Value="0,0,8,0" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource AccentDarkBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Cursor" Value="Hand" />
-        </Style>
-
-        <Style x:Key="SecondaryButtonStyle" TargetType="Button">
-            <Setter Property="MinHeight" Value="36" />
-            <Setter Property="Padding" Value="14,7" />
-            <Setter Property="Margin" Value="0,0,8,0" />
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-            <Setter Property="Background" Value="#F8FBFC" />
-            <Setter Property="BorderBrush" Value="#C5D2DB" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Cursor" Value="Hand" />
-        </Style>
-
-        <Style x:Key="DangerButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
-            <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
-        </Style>
-
-        <Style x:Key="NavButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
-            <Setter Property="HorizontalContentAlignment" Value="Left" />
-            <Setter Property="Margin" Value="0,0,0,8" />
-            <Setter Property="Padding" Value="12,9" />
-        </Style>
-
-        <Style x:Key="ChoiceButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="VerticalContentAlignment" Value="Stretch" />
-            <Setter Property="MinHeight" Value="126" />
-            <Setter Property="Margin" Value="0" />
+        <Style x:Key="SubtleCardStyle" TargetType="Border" BasedOn="{StaticResource CardStyle}">
+            <Setter Property="Background" Value="#F9FAFB" />
             <Setter Property="Padding" Value="16" />
         </Style>
 
+        <Style x:Key="HighlightCardStyle" TargetType="Border" BasedOn="{StaticResource CardStyle}">
+            <Setter Property="Background" Value="{StaticResource PrimaryLightBrush}" />
+            <Setter Property="BorderBrush" Value="#93C5FD" />
+            <Setter Property="Padding" Value="16" />
+        </Style>
+
+        <!-- 按钮 - 主按钮 -->
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="MinHeight" Value="40" />
+            <Setter Property="Padding" Value="20,9" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource PrimaryDarkBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource PrimaryDarkBrush}" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.5" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 按钮 - 次要按钮 -->
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button">
+            <Setter Property="MinHeight" Value="40" />
+            <Setter Property="Padding" Value="16,9" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F9FAFB" />
+                    <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.5" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 按钮 - 危险按钮 -->
+        <Style x:Key="DangerButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+            <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+            <Setter Property="BorderBrush" Value="#FECACA" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource DangerLightBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 按钮 - 链接文本 -->
+        <Style x:Key="LinkButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <TextBlock Text="{TemplateBinding Content}"
+                                   Foreground="{TemplateBinding Foreground}"
+                                   Cursor="Hand" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 选择卡片按钮 -->
+        <Style x:Key="ChoiceButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            <Setter Property="MinHeight" Value="140" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Padding" Value="20" />
+        </Style>
+
+        <!-- 导航按钮 -->
+        <Style x:Key="NavButtonStyle" TargetType="Button">
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Height" Value="44" />
+            <Setter Property="Margin" Value="12,2,12,2" />
+            <Setter Property="Padding" Value="16,0,16,0" />
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F3F4F6" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="NavButtonActiveStyle" TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
+            <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
+            <Setter Property="Background" Value="{StaticResource PrimaryLightBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
+        <!-- TabControl -->
         <Style TargetType="TabControl">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
         </Style>
 
         <Style TargetType="TabItem">
             <Setter Property="MinHeight" Value="36" />
-            <Setter Property="Padding" Value="16,7" />
-            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="Padding" Value="16,8" />
+            <Setter Property="Margin" Value="0,0,4,0" />
             <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderThickness="0,0,0,2"
+                                Padding="{TemplateBinding Padding}"
+                                CornerRadius="4,4,0,0">
+                            <ContentPresenter ContentSource="Header" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
+        <!-- TextBox -->
         <Style TargetType="TextBox">
-            <Setter Property="MinHeight" Value="34" />
-            <Setter Property="Padding" Value="8,5" />
-            <Setter Property="BorderBrush" Value="#C7D3DC" />
+            <Setter Property="MinHeight" Value="36" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Background" Value="#FBFDFE" />
+            <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="2,0">
+                            <ScrollViewer Name="PART_ContentHost" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
-        <Style TargetType="ListBox">
-            <Setter Property="BorderBrush" Value="#D3DEE6" />
+        <!-- ComboBox -->
+        <Style TargetType="ComboBox">
+            <Setter Property="MinHeight" Value="36" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Background" Value="#FBFDFE" />
+            <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+
+        <!-- CheckBox -->
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+
+        <!-- ListBox -->
+        <Style TargetType="ListBox">
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+            <Setter Property="Padding" Value="4" />
+        </Style>
+
+        <!-- Smooth ListBoxItem -->
+        <Style TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}"
+                                Name="ItemBorder">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource PrimaryLightBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#F3F4F6" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ScrollViewer -->
+        <Style TargetType="ScrollViewer">
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+            <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+        </Style>
+
+        <!-- 页面标题 -->
+        <Style x:Key="PageTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="24" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+        </Style>
+
+        <Style x:Key="PageSubtitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="Margin" Value="0,4,0,0" />
+        </Style>
+
+        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+
+        <Style x:Key="FormLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+
+        <!-- 状态徽章 -->
+        <Style x:Key="StatusBadgeStyle" TargetType="Border">
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Height" Value="24" />
         </Style>
     </Window.Resources>
 
+    <!-- 主布局：左侧导航 + 右侧内容 -->
     <Grid>
-        <ScrollViewer Padding="28"
-                      VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="240" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- ===== 左侧导航栏 ===== -->
+        <Border Grid.Column="0" Background="{StaticResource BgCardBrush}">
             <Grid>
-                <Grid MinHeight="600" Visibility="{Binding HomePageVisibility}">
-                    <StackPanel HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Width="360">
-                        <Border HorizontalAlignment="Center" Style="{StaticResource LogoMarkStyle}">
-                            <TextBlock HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       FontSize="22"
-                                       FontWeight="Bold"
-                                       Foreground="White"
-                                       Text="CA" />
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Logo -->
+                <StackPanel Grid.Row="0" Margin="24,28,24,32">
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="36" Height="36"
+                                Background="{StaticResource PrimaryBrush}"
+                                CornerRadius="8"
+                                Margin="0,0,12,0">
+                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       FontSize="16" FontWeight="Bold"
+                                       Foreground="White" Text="CA" />
+                        </Border>
+                        <TextBlock VerticalAlignment="Center"
+                                   FontSize="16" FontWeight="Bold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Text="Click Assistant" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- 导航项 -->
+                <StackPanel Grid.Row="1">
+                    <Button Command="{Binding ShowHomeCommand}"
+                            Content="首页">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsHomePageVisible}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
+                                        <Setter Property="Background" Value="{StaticResource PrimaryLightBrush}" />
+                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <Button Command="{Binding ShowNewTaskTypeCommand}"
+                            Content="新建任务">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsNewTaskTypePageVisible}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
+                                        <Setter Property="Background" Value="{StaticResource PrimaryLightBrush}" />
+                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <Button Command="{Binding ShowTaskLibraryCommand}"
+                            Content="任务库">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsTaskLibraryPageVisible}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
+                                        <Setter Property="Background" Value="{StaticResource PrimaryLightBrush}" />
+                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <Button Command="{Binding ShowExecutionLogsCommand}"
+                            Content="执行日志">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsExecutionLogsPageVisible}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
+                                        <Setter Property="Background" Value="{StaticResource PrimaryLightBrush}" />
+                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </StackPanel>
+
+                <!-- 底部状态 -->
+                <Border Grid.Row="3" Margin="16,0,16,20" Padding="14"
+                        Background="#F9FAFB" CornerRadius="10"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                   Text="执行状态" />
+                        <TextBlock FontSize="14" FontWeight="SemiBold"
+                                   Foreground="{StaticResource PrimaryBrush}"
+                                   Text="{Binding StatusText}" Margin="0,2,0,0" />
+                        <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="{Binding HotkeyStatus}" Margin="0,6,0,0"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock FontSize="10" Foreground="{StaticResource TextMutedBrush}"
+                                   Text="{Binding VersionText}" Margin="0,8,0,0" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- ===== 右侧内容区域 ===== -->
+        <ScrollViewer Grid.Column="1" Padding="28,24,28,28">
+            <Grid>
+                <!-- ********** 首页 ********** -->
+                <Grid Visibility="{Binding IsHomePageVisible, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Width="560">
+                        <!-- Hero 区域 -->
+                        <Border Margin="0,0,0,20" Style="{StaticResource CardStyle}" Padding="28">
+                            <StackPanel HorizontalAlignment="Center">
+                                <Border HorizontalAlignment="Center"
+                                        Width="56" Height="56"
+                                        Background="{StaticResource PrimaryBrush}"
+                                        CornerRadius="14"
+                                        Margin="0,0,0,16">
+                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               FontSize="22" FontWeight="Bold"
+                                               Foreground="White" Text="CA" />
+                                </Border>
+                                <TextBlock HorizontalAlignment="Center"
+                                           FontSize="28" FontWeight="Bold"
+                                           Text="Click Assistant" />
+                                <TextBlock HorizontalAlignment="Center"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="点击与输入助手 — 自动化重复操作" Margin="0,6,0,0" />
+                                <WrapPanel HorizontalAlignment="Center" Margin="0,14,0,0">
+                                    <Button Command="{Binding ShowNewTaskTypeCommand}" Content="新建任务"
+                                            Style="{StaticResource PrimaryButtonStyle}" />
+                                    <Button Command="{Binding ShowTaskLibraryCommand}" Content="任务库"
+                                            Style="{StaticResource SecondaryButtonStyle}" />
+                                    <Button Command="{Binding ShowExecutionLogsCommand}" Content="执行日志"
+                                            Style="{StaticResource SecondaryButtonStyle}" />
+                                </WrapPanel>
+                            </StackPanel>
                         </Border>
 
-                        <TextBlock Margin="0,18,0,0"
-                                   HorizontalAlignment="Center"
-                                   FontSize="34"
-                                   FontWeight="SemiBold"
-                                   Text="CLICK ASSISTANT" />
-                        <TextBlock Margin="0,6,0,32"
-                                   HorizontalAlignment="Center"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
-                                   Text="点击与输入助手" />
+                        <!-- 最近任务 -->
+                        <TextBlock FontSize="18" FontWeight="Bold" Margin="0,8,0,12"
+                                   Text="最近任务" Foreground="{StaticResource TextPrimaryBrush}" />
+                        <ItemsControl ItemsSource="{Binding RecentTasks}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,8" Style="{StaticResource SubtleCardStyle}" Padding="12,10">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Width="36" Height="36"
+                                                    Background="{StaticResource PrimaryLightBrush}"
+                                                    CornerRadius="8" Margin="0,0,10,0">
+                                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           FontSize="16" Text="🎯" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock FontWeight="SemiBold" FontSize="14"
+                                                           Text="{Binding Name}" />
+                                                <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
+                                                           Text="{Binding Description, StringFormat={}{0}}" />
+                                            </StackPanel>
+                                            <Button Grid.Column="2" Content="执行"
+                                                    Style="{StaticResource PrimaryButtonStyle}"
+                                                    MinHeight="30" Padding="12,4"
+                                                    Command="{Binding DataContext.StartCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
 
-                        <Button Margin="0"
-                                Command="{Binding ShowNewTaskTypeCommand}"
-                                Content="新建任务"
-                                Style="{StaticResource PrimaryButtonStyle}" />
-                        <Button Margin="0,12,0,0"
-                                Command="{Binding ShowTaskLibraryCommand}"
-                                Content="任务库"
-                                Style="{StaticResource SecondaryButtonStyle}" />
-                        <Button Margin="0,12,0,0"
-                                Command="{Binding ShowExecutionLogsCommand}"
-                                Content="执行日志"
-                                Style="{StaticResource SecondaryButtonStyle}" />
+                        <!-- 执行状态 -->
+                        <Border Margin="0,12,0,0" Style="{StaticResource SubtleCardStyle}">
+                            <StackPanel>
+                                <TextBlock FontSize="14" FontWeight="SemiBold" Text="执行状态" />
+                                <TextBlock Margin="0,6,0,0" FontSize="13"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="{Binding ExecutionSafetyText}" />
+                                <TextBlock Margin="0,4,0,0" FontSize="12"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Text="{Binding HotkeyStatus}" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </Grid>
 
-                <Grid Visibility="{Binding NewTaskTypePageVisibility}">
+                <!-- ********** 新建任务类型选择 ********** -->
+                <Grid Visibility="{Binding IsNewTaskTypePageVisible, Converter={StaticResource BoolToVisibility}}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="18" />
+                        <RowDefinition Height="20" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <DockPanel Grid.Row="0">
-                        <Button DockPanel.Dock="Right"
-                                Command="{Binding ShowHomeCommand}"
-                                Content="返回首页"
-                                Style="{StaticResource SecondaryButtonStyle}" />
-                        <StackPanel>
-                            <TextBlock FontSize="28" FontWeight="SemiBold" Text="新建任务" />
-                            <TextBlock Margin="0,6,0,0"
-                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                       Text="先选择任务类型。" />
-                        </StackPanel>
-                    </DockPanel>
+                    <StackPanel Grid.Row="0">
+                        <TextBlock Style="{StaticResource PageTitleStyle}" Text="新建任务" />
+                        <TextBlock Style="{StaticResource PageSubtitleStyle}" Text="选择任务类型开始创建自动化任务。" />
+                    </StackPanel>
 
                     <Grid Grid.Row="2">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="14" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="16" />
+                            <RowDefinition Height="14" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <Button Grid.Row="0"
-                                Grid.Column="0"
+                        <!-- 鼠标点击 -->
+                        <Button Grid.Row="0" Grid.Column="0"
                                 Command="{Binding CreateMouseClickTaskCommand}"
                                 Style="{StaticResource ChoiceButtonStyle}">
                             <StackPanel>
-                                <TextBlock FontSize="20" FontWeight="SemiBold" Text="鼠标点击" />
-                                <TextBlock Margin="0,8,0,0"
-                                           Foreground="{StaticResource TextSecondaryBrush}"
-                                           Text="固定坐标点击、重复点击、开始延迟和点击间隔。" />
-                                <TextBlock Margin="0,14,0,0"
-                                           FontWeight="SemiBold"
-                                           Foreground="{StaticResource AccentDarkBrush}"
+                                <Border Width="48" Height="48"
+                                        Background="{StaticResource PrimaryLightBrush}"
+                                        CornerRadius="10" Margin="0,0,0,12">
+                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               FontSize="22" Text="🖱️" />
+                                </Border>
+                                <TextBlock FontSize="18" FontWeight="SemiBold" Text="鼠标点击" />
+                                <TextBlock Margin="0,8,0,0" Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="固定坐标点击、重复点击、开始延迟和点击间隔。支持多位置顺序执行。" />
+                                <TextBlock Margin="0,14,0,0" FontWeight="SemiBold"
+                                           Foreground="{StaticResource PrimaryBrush}"
                                            Text="进入鼠标点击编辑页" />
                             </StackPanel>
                         </Button>
 
-                        <Button Grid.Row="0"
-                                Grid.Column="2"
+                        <!-- 键盘按键 -->
+                        <Button Grid.Row="0" Grid.Column="2"
                                 Command="{Binding CreateKeyboardTaskCommand}"
                                 Style="{StaticResource ChoiceButtonStyle}">
                             <StackPanel>
-                                <TextBlock FontSize="20" FontWeight="SemiBold" Text="键盘按键" />
-                                <TextBlock Margin="0,8,0,0"
-                                           Foreground="{StaticResource TextSecondaryBrush}"
-                                           Text="单键或连续按键任务，适合重复触发快捷操作。" />
-                                <TextBlock Margin="0,14,0,0"
-                                           FontWeight="SemiBold"
-                                           Foreground="{StaticResource WarmBrush}"
+                                <Border Width="48" Height="48"
+                                        Background="{StaticResource WarningLightBrush}"
+                                        CornerRadius="10" Margin="0,0,0,12">
+                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               FontSize="22" Text="⌨️" />
+                                </Border>
+                                <TextBlock FontSize="18" FontWeight="SemiBold" Text="键盘按键" />
+                                <TextBlock Margin="0,8,0,0" Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="单键或连续按键任务，适合重复触发快捷操作。支持按键捕获。" />
+                                <TextBlock Margin="0,14,0,0" FontWeight="SemiBold"
+                                           Foreground="{StaticResource WarningBrush}"
                                            Text="先保存到任务库" />
                             </StackPanel>
                         </Button>
 
-                        <Button Grid.Row="2"
-                                Grid.Column="0"
+                        <!-- 文本输入 -->
+                        <Button Grid.Row="2" Grid.Column="0"
                                 Command="{Binding CreateTextInputTaskCommand}"
                                 Style="{StaticResource ChoiceButtonStyle}">
                             <StackPanel>
-                                <TextBlock FontSize="20" FontWeight="SemiBold" Text="文本输入" />
-                                <TextBlock Margin="0,8,0,0"
-                                           Foreground="{StaticResource TextSecondaryBrush}"
-                                           Text="保存常用文本，后续可扩展为输入模板。" />
-                                <TextBlock Margin="0,14,0,0"
-                                           FontWeight="SemiBold"
-                                           Foreground="{StaticResource WarmBrush}"
+                                <Border Width="48" Height="48"
+                                        Background="{StaticResource SecondaryLightBrush}"
+                                        CornerRadius="10" Margin="0,0,0,12">
+                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               FontSize="22" Text="📝" />
+                                </Border>
+                                <TextBlock FontSize="18" FontWeight="SemiBold" Text="文本输入" />
+                                <TextBlock Margin="0,8,0,0" Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="保存常用文本并可配置字符间隔自动输入。支持自动聚焦目标输入框。" />
+                                <TextBlock Margin="0,14,0,0" FontWeight="SemiBold"
+                                           Foreground="{StaticResource SecondaryBrush}"
                                            Text="先保存到任务库" />
                             </StackPanel>
                         </Button>
 
-                        <Button Grid.Row="2"
-                                Grid.Column="2"
+                        <!-- 组合任务 -->
+                        <Button Grid.Row="2" Grid.Column="2"
                                 Command="{Binding CreateComboTaskCommand}"
                                 Style="{StaticResource ChoiceButtonStyle}">
                             <StackPanel>
-                                <TextBlock FontSize="20" FontWeight="SemiBold" Text="组合任务" />
-                                <TextBlock Margin="0,8,0,0"
-                                           Foreground="{StaticResource TextSecondaryBrush}"
-                                           Text="把鼠标、按键和文本组合成一组执行流程。" />
-                                <TextBlock Margin="0,14,0,0"
-                                           FontWeight="SemiBold"
-                                           Foreground="{StaticResource WarmBrush}"
+                                <Border Width="48" Height="48"
+                                        Background="{StaticResource CyanLightBrush}"
+                                        CornerRadius="10" Margin="0,0,0,12">
+                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               FontSize="22" Text="🔀" />
+                                </Border>
+                                <TextBlock FontSize="18" FontWeight="SemiBold" Text="组合任务" />
+                                <TextBlock Margin="0,8,0,0" Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="把鼠标、按键和文本组合成一组执行流程，按顺序自动执行。" />
+                                <TextBlock Margin="0,14,0,0" FontWeight="SemiBold"
+                                           Foreground="{StaticResource CyanBrush}"
                                            Text="先保存到任务库" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- 滑动任务 -->
+                        <Button Grid.Row="2" Grid.Column="0"
+                                Style="{StaticResource ChoiceButtonStyle}">
+                            <StackPanel>
+                                <Border Width="48" Height="48"
+                                        Background="{StaticResource SuccessLightBrush}"
+                                        CornerRadius="10" Margin="0,0,0,12">
+                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               FontSize="22" Text="↔️" />
+                                </Border>
+                                <TextBlock FontSize="18" FontWeight="SemiBold" Text="滑动手势" />
+                                <TextBlock Margin="0,8,0,0" Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="配置屏幕滑动轨迹，适合触控设备或模拟滑动操作。" />
                             </StackPanel>
                         </Button>
                     </Grid>
                 </Grid>
 
-                <Grid Visibility="{Binding TaskLibraryPageVisibility}">
+                <!-- ********** 任务库页 ********** -->
+                <Grid Visibility="{Binding IsTaskLibraryPageVisible, Converter={StaticResource BoolToVisibility}}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="18" />
+                        <RowDefinition Height="16" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <DockPanel Grid.Row="0">
-                        <Button DockPanel.Dock="Right"
-                                Command="{Binding ShowHomeCommand}"
-                                Content="返回首页"
-                                Style="{StaticResource SecondaryButtonStyle}" />
-                        <StackPanel>
-                            <TextBlock FontSize="28" FontWeight="SemiBold" Text="任务库" />
-                            <TextBlock Margin="0,6,0,0"
-                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                       Text="选择已保存任务后，可以编辑或执行。" />
-                        </StackPanel>
-                    </DockPanel>
+                    <StackPanel Grid.Row="0">
+                        <TextBlock Style="{StaticResource PageTitleStyle}" Text="任务库" />
+                        <TextBlock Style="{StaticResource PageSubtitleStyle}" Text="管理已保存的任务，编辑步骤后可直接执行。" />
+                    </StackPanel>
 
                     <Grid Grid.Row="2">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="360" />
-                            <ColumnDefinition Width="18" />
+                            <ColumnDefinition Width="340" />
+                            <ColumnDefinition Width="16" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Style="{StaticResource PanelStyle}">
+                        <!-- 左栏：任务列表 -->
+                        <Border Grid.Column="0" Style="{StaticResource CardStyle}">
                             <DockPanel LastChildFill="True">
-                                <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-                                    <TextBlock FontSize="18" FontWeight="SemiBold" Text="已保存任务" />
-                                    <Button Margin="0,12,0,0"
+                                <StackPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+                                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="已保存任务" />
+                                    <Button Margin="0,10,0,0"
                                             Command="{Binding ShowNewTaskTypeCommand}"
                                             Content="新建任务"
                                             Style="{StaticResource PrimaryButtonStyle}" />
+                                    <Button Margin="0,8,0,0"
+                                            Command="{Binding StartCommand}"
+                                            Content="▶ 快捷执行"
+                                            Style="{StaticResource SecondaryButtonStyle}" />
+                                    <Button Margin="0,8,0,0"
+                                            Command="{Binding DuplicateTaskCommand}"
+                                            Content="复制选中任务"
+                                            Style="{StaticResource SecondaryButtonStyle}" />
                                     <Button Margin="0,8,0,0"
                                             Command="{Binding DeleteTaskCommand}"
                                             Content="删除选中任务"
                                             Style="{StaticResource DangerButtonStyle}" />
                                 </StackPanel>
-
-                                <ListBox MinHeight="390"
+                                <ListBox MinHeight="400"
                                          ItemsSource="{Binding Tasks}"
                                          SelectedItem="{Binding SelectedTask, Mode=TwoWay}">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
-                                            <StackPanel Margin="8">
-                                                <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
-                                                <TextBlock Margin="0,4,0,0"
-                                                           Foreground="#5B6975"
+                                            <StackPanel Margin="4">
+                                                <TextBlock FontWeight="SemiBold" FontSize="14"
+                                                           Text="{Binding Name}" />
+                                                <TextBlock Margin="0,4,0,0" FontSize="12"
+                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                           TextTrimming="CharacterEllipsis"
                                                            Text="{Binding Description}" />
                                             </StackPanel>
                                         </DataTemplate>
@@ -315,620 +714,485 @@
                             </DockPanel>
                         </Border>
 
-                        <Border Grid.Column="2" Style="{StaticResource PanelStyle}">
+                        <!-- 右栏：任务详情 -->
+                        <Border Grid.Column="2" Style="{StaticResource CardStyle}">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="16" />
+                                    <RowDefinition Height="12" />
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
 
                                 <StackPanel Grid.Row="0">
-                                    <TextBlock FontSize="22"
-                                               FontWeight="SemiBold"
+                                    <TextBlock FontSize="20" FontWeight="Bold"
                                                Text="{Binding SelectedTask.Name}" />
-                                    <TextBlock Margin="0,5,0,0"
+                                    <TextBlock Margin="0,4,0,0" FontSize="13"
                                                Foreground="{StaticResource TextSecondaryBrush}"
                                                Text="{Binding SelectedTaskMetaText}" />
                                 </StackPanel>
 
                                 <TabControl Grid.Row="2" SelectedIndex="{Binding TaskLibrarySelectedTabIndex, Mode=TwoWay}">
+                                    <!-- 基础信息 Tab -->
                                     <TabItem Header="基础信息">
-                                        <Grid Margin="0,14,0,0" IsEnabled="{Binding IsTaskEditorEnabled}">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="16" />
-                                        <ColumnDefinition Width="140" />
-                                        <ColumnDefinition Width="16" />
-                                        <ColumnDefinition Width="150" />
-                                    </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="12" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
-
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="任务名称" />
-                                    <TextBlock Grid.Row="0" Grid.Column="2" Text="重复次数" />
-                                    <TextBlock Grid.Row="0" Grid.Column="4" Text="开始延迟（毫秒）" />
-
-                                    <TextBox Grid.Row="1"
-                                             Grid.Column="0"
-                                             Margin="0,6,0,0"
-                                             Text="{Binding SelectedTask.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBox Grid.Row="1"
-                                             Grid.Column="2"
-                                             Margin="0,6,0,0"
-                                             Text="{Binding SelectedTask.RepeatCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBox Grid.Row="1"
-                                             Grid.Column="4"
-                                             Margin="0,6,0,0"
-                                             Text="{Binding SelectedTask.StartDelayMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBlock Grid.Row="2"
-                                               Grid.Column="4"
-                                               Margin="0,4,0,0"
-                                               FontSize="12"
-                                               Foreground="{StaticResource TextSecondaryBrush}"
-                                               Text="点开始后，等待多久再执行第一步。" />
-
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="任务说明" />
-                                     <TextBox Grid.Row="4"
-                                             Grid.Column="0"
-                                             Grid.ColumnSpan="5"
-                                             Margin="0,6,0,0"
-                                             MinHeight="64"
-                                             AcceptsReturn="True"
-                                             TextWrapping="Wrap"
-                                             Text="{Binding SelectedTask.Description, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                        </Grid>
-                                    </TabItem>
-
-                                    <TabItem Header="步骤设置">
-                                        <Border Margin="0,14,0,0" Style="{StaticResource SubtlePanelStyle}">
-                                    <Grid IsEnabled="{Binding IsTaskEditorEnabled}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="250" />
-                                            <ColumnDefinition Width="18" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="12" />
-                                            <RowDefinition Height="Auto" />
-                                        </Grid.RowDefinitions>
-
-                                        <DockPanel Grid.Row="0" Grid.ColumnSpan="3">
-                                            <WrapPanel DockPanel.Dock="Right">
-                                                <Button Command="{Binding AddStepCommand}"
-                                                        Content="加鼠标"
-                                                        Style="{StaticResource SecondaryButtonStyle}" />
-                                                <Button Command="{Binding AddKeyboardStepCommand}"
-                                                        Content="加按键"
-                                                        Style="{StaticResource SecondaryButtonStyle}" />
-                                                <Button Command="{Binding AddShortcutStepCommand}"
-                                                        Content="加组合键"
-                                                        Style="{StaticResource SecondaryButtonStyle}" />
-                                                <Button Command="{Binding AddTextInputStepCommand}"
-                                                        Content="加文本"
-                                                        Style="{StaticResource SecondaryButtonStyle}" />
-                                            </WrapPanel>
-                                            <StackPanel>
-                                                <TextBlock FontSize="18" FontWeight="SemiBold" Text="步骤配置" />
-                                                <TextBlock Margin="0,4,0,0"
-                                                           Foreground="{StaticResource TextSecondaryBrush}"
-                                                           Text="已保存任务可在这里直接编辑步骤，保存后生效。" />
-                                            </StackPanel>
-                                        </DockPanel>
-
-                                        <ListBox x:Name="StepListBox"
-                                                 Grid.Row="2"
-                                                 Grid.Column="0"
-                                                 MinHeight="250"
-                                                 ItemsSource="{Binding CurrentSteps}"
-                                                 SelectedItem="{Binding SelectedStep, Mode=TwoWay}">
-                                            <ListBox.ItemContainerStyle>
-                                                <Style TargetType="ListBoxItem">
-                                                    <Setter Property="AllowDrop" Value="True" />
-                                                </Style>
-                                            </ListBox.ItemContainerStyle>
-                                            <ListBox.ItemTemplate>
-                                                <DataTemplate>
-                                                    <StackPanel Margin="6">
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <TextBlock FontWeight="Bold"
-                                                                       Foreground="{StaticResource AccentDarkBrush}"
-                                                                       Text="{Binding Order, StringFormat='{}{0}'}">
-                                                                <TextBlock.Style>
-                                                                    <Style TargetType="TextBlock">
-                                                                        <Setter Property="Width" Value="24" />
-                                                                    </Style>
-                                                                </TextBlock.Style>
-                                                            </TextBlock>
-                                                            <TextBlock Margin="4,0,0,0" Text="⚬" FontSize="10" VerticalAlignment="Center" Foreground="#A7CDD0" />
-                                                            <TextBlock Margin="6,0,0,0" FontWeight="SemiBold" Text="{Binding Name}" />
-                                                        </StackPanel>
-                                                        <TextBlock Margin="18,2,0,0"
-                                                                   FontSize="12"
-                                                                   Foreground="#5B6975"
-                                                                   Text="{Binding Converter={StaticResource StepSummaryConverter}}" />
-                                                    </StackPanel>
-                                                </DataTemplate>
-                                            </ListBox.ItemTemplate>
-                                        </ListBox>
-
-                                        <Grid Grid.Row="2" Grid.Column="2">
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="12" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="12" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="12" />
-                                                <RowDefinition Height="Auto" />
-                                            </Grid.RowDefinitions>
-
-                                            <Grid Grid.Row="0">
+                                        <Border Margin="0,14,0,0" Style="{StaticResource SubtleCardStyle}">
+                                            <Grid IsEnabled="{Binding IsTaskEditorEnabled}">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="14" />
-                                                    <ColumnDefinition Width="160" />
-                                                    <ColumnDefinition Width="14" />
-                                                    <ColumnDefinition Width="110" />
-                                                </Grid.ColumnDefinitions>
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                </Grid.RowDefinitions>
-
-                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="步骤名称" />
-                                                <TextBlock Grid.Row="0" Grid.Column="2" Text="动作类型" />
-                                                <TextBlock Grid.Row="0" Grid.Column="4" Text="启用" />
-
-                                                <TextBox Grid.Row="1"
-                                                         Grid.Column="0"
-                                                         Margin="0,6,0,0"
-                                                         Text="{Binding SelectedStepName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                <ComboBox Grid.Row="1"
-                                                          Grid.Column="2"
-                                                          Margin="0,6,0,0"
-                                                          MinHeight="34"
-                                                          ItemsSource="{Binding InputActionTypeOptions}"
-                                                          DisplayMemberPath="DisplayName"
-                                                          SelectedValuePath="Value"
-                                                          SelectedValue="{Binding SelectedStepActionType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                <CheckBox Grid.Row="1"
-                                                          Grid.Column="4"
-                                                          Margin="0,13,0,0"
-                                                          IsChecked="{Binding SelectedStepEnabled, Mode=TwoWay}" />
-                                            </Grid>
-
-                                            <Grid Grid.Row="2">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="150" />
-                                                    <ColumnDefinition Width="14" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                </Grid.RowDefinitions>
-
-                                                <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Text="步骤前等待（毫秒）" />
-                                                <TextBox Grid.Row="1"
-                                                         Grid.Column="0"
-                                                         Margin="0,6,0,0"
-                                                         Text="{Binding SelectedStepBeforeDelayMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                <TextBlock Grid.Row="2"
-                                                           Grid.Column="0"
-                                                           Grid.ColumnSpan="2"
-                                                           Margin="0,4,0,0"
-                                                           FontSize="12"
-                                                           Foreground="{StaticResource TextSecondaryBrush}"
-                                                           Text="执行本步骤前等待的时间。步骤间等待由下一步骤的前等待控制。" />
-                                            </Grid>
-
-                                            <Grid Grid.Row="4" Visibility="{Binding MouseStepFieldsVisibility}">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="100" />
-                                                    <ColumnDefinition Width="12" />
-                                                    <ColumnDefinition Width="100" />
-                                                    <ColumnDefinition Width="12" />
-                                                    <ColumnDefinition Width="110" />
-                                                    <ColumnDefinition Width="12" />
-                                                    <ColumnDefinition Width="100" />
-                                                    <ColumnDefinition Width="12" />
-                                                    <ColumnDefinition Width="100" />
-                                                </Grid.ColumnDefinitions>
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="10" />
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                </Grid.RowDefinitions>
-
-                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="X 坐标" />
-                                                <TextBlock Grid.Row="0" Grid.Column="2" Text="Y 坐标" />
-                                                <TextBlock Grid.Row="0" Grid.Column="4" Text="点击次数" />
-                                                <TextBlock Grid.Row="0" Grid.Column="6" Text="连点间隔(ms)" />
-                                                <TextBlock Grid.Row="0" Grid.Column="8" Text="按压时长(ms)" />
-                                                <TextBox Grid.Row="1"
-                                                         Grid.Column="0"
-                                                         Margin="0,6,0,0"
-                                                         Text="{Binding SelectedStepX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                <TextBox Grid.Row="1"
-                                                         Grid.Column="2"
-                                                         Margin="0,6,0,0"
-                                                         Text="{Binding SelectedStepY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                <TextBox Grid.Row="1"
-                                                         Grid.Column="4"
-                                                         Margin="0,6,0,0"
-                                                         Text="{Binding SelectedStepMouseClickCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                <TextBox Grid.Row="1"
-                                                         Grid.Column="6"
-                                                         Margin="0,6,0,0"
-                                                         Text="{Binding SelectedStepClickIntervalMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                <TextBox Grid.Row="1"
-                                                         Grid.Column="8"
-                                                         Margin="0,6,0,0"
-                                                         Text="{Binding SelectedStepPressDurationMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-
-                                                <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="4" Text="点击方式" />
-                                                <ComboBox Grid.Row="4"
-                                                          Grid.Column="0"
-                                                          Grid.ColumnSpan="4"
-                                                          Margin="0,6,0,0"
-                                                          MinHeight="34"
-                                                          ItemsSource="{Binding ClickTypeOptions}"
-                                                          DisplayMemberPath="DisplayName"
-                                                          SelectedValuePath="Value"
-                                                          SelectedValue="{Binding SelectedStepClickType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                <WrapPanel Grid.Row="4"
-                                                           Grid.Column="4"
-                                                           Grid.ColumnSpan="5"
-                                                           Margin="10,6,0,0">
-                                                    <Button Command="{Binding CaptureCoordinateCommand}"
-                                                            Content="选择坐标"
-                                                            Style="{StaticResource SecondaryButtonStyle}" />
-                                                    <Button Command="{Binding TestMouseClickCommand}"
-                                                            Content="测试点击"
-                                                            Style="{StaticResource SecondaryButtonStyle}" />
-                                                </WrapPanel>
-                                            </Grid>
-
-                                            <Grid Grid.Row="4" Visibility="{Binding SwipeStepFieldsVisibility}">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="100" />
-                                                    <ColumnDefinition Width="12" />
-                                                    <ColumnDefinition Width="100" />
-                                                    <ColumnDefinition Width="12" />
-                                                    <ColumnDefinition Width="100" />
-                                                    <ColumnDefinition Width="12" />
-                                                    <ColumnDefinition Width="100" />
-                                                    <ColumnDefinition Width="12" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="10" />
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                </Grid.RowDefinitions>
-
-                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="起点 X" />
-                                                <TextBlock Grid.Row="0" Grid.Column="2" Text="起点 Y" />
-                                                <TextBlock Grid.Row="0" Grid.Column="4" Text="终点 X" />
-                                                <TextBlock Grid.Row="0" Grid.Column="6" Text="终点 Y" />
-                                                <TextBox Grid.Row="1"
-                                                         Grid.Column="0"
-                                                         Margin="0,6,0,0"
-                                                         Text="{Binding SelectedStepX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                <TextBox Grid.Row="1"
-                                                         Grid.Column="2"
-                                                         Margin="0,6,0,0"
-                                                         Text="{Binding SelectedStepY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                <TextBox Grid.Row="1"
-                                                         Grid.Column="4"
-                                                         Margin="0,6,0,0"
-                                                         Text="{Binding SelectedStepEndX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                <TextBox Grid.Row="1"
-                                                         Grid.Column="6"
-                                                         Margin="0,6,0,0"
-                                                         Text="{Binding SelectedStepEndY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-
-                                                <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Text="滑动时长(ms)" />
-                                                <TextBox Grid.Row="4"
-                                                         Grid.Column="0"
-                                                         Grid.ColumnSpan="2"
-                                                         Margin="0,6,0,0"
-                                                         Text="{Binding SelectedStepSwipeDurationMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                <Button Grid.Row="4"
-                                                        Grid.Column="4"
-                                                        Grid.ColumnSpan="5"
-                                                        Margin="10,6,0,0"
-                                                        Command="{Binding CaptureCoordinateCommand}"
-                                                        Content="选择坐标"
-                                                        Style="{StaticResource SecondaryButtonStyle}" />
-                                            </Grid>
-
-                                            <Grid Grid.Row="4" Visibility="{Binding KeyboardStepFieldsVisibility}">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="14" />
-                                                    <ColumnDefinition Width="130" />
-                                                    <ColumnDefinition Width="14" />
+                                                    <ColumnDefinition Width="16" />
+                                                    <ColumnDefinition Width="140" />
+                                                    <ColumnDefinition Width="16" />
                                                     <ColumnDefinition Width="150" />
                                                 </Grid.ColumnDefinitions>
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
-                                                </Grid.RowDefinitions>
-
-                                                <Border Grid.Row="0"
-                                                        Grid.RowSpan="2"
-                                                        Grid.Column="0"
-                                                        Padding="14"
-                                                        Background="#EAF5F5"
-                                                        BorderBrush="#A7CDD0"
-                                                        BorderThickness="1"
-                                                        CornerRadius="8">
-                                                    <StackPanel>
-                                                        <TextBlock FontSize="12"
-                                                                   Foreground="{StaticResource TextSecondaryBrush}"
-                                                                   Text="按键捕获" />
-                                                        <TextBlock Margin="0,8,0,0"
-                                                                   FontSize="22"
-                                                                   FontWeight="SemiBold"
-                                                                   Foreground="{StaticResource AccentDarkBrush}"
-                                                                   Text="{Binding SelectedStepKeyDisplayText}" />
-                                                        <TextBox x:Name="KeyboardCaptureTextBox"
-                                                                 Margin="0,12,0,0"
-                                                                 Cursor="Hand"
-                                                                 Focusable="True"
-                                                                 GotKeyboardFocus="HandleKeyboardCaptureGotKeyboardFocus"
-                                                                 IsReadOnly="True"
-                                                                 LostKeyboardFocus="HandleKeyboardCaptureLostKeyboardFocus"
-                                                                 PreviewKeyDown="HandleKeyboardCapturePreviewKeyDown"
-                                                                 PreviewMouseLeftButtonDown="HandleKeyboardCapturePreviewMouseLeftButtonDown"
-                                                                 Text="{Binding SelectedStepKeyName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                        <TextBlock Margin="0,8,0,0"
-                                                                   FontSize="12"
-                                                                   Foreground="{StaticResource TextSecondaryBrush}"
-                                                                   Text="{Binding KeyboardCaptureStatus}" />
-                                                    </StackPanel>
-                                                </Border>
-
-                                                <TextBlock Grid.Row="0" Grid.Column="2" Text="连按次数" />
-                                                <TextBlock Grid.Row="0" Grid.Column="4" Text="连按间隔（毫秒）" />
-                                                <TextBox Grid.Row="1"
-                                                         Grid.Column="2"
-                                                         Margin="0,6,0,0"
-                                                         Text="{Binding SelectedStepKeyPressCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                <TextBox Grid.Row="1"
-                                                         Grid.Column="4"
-                                                         Margin="0,6,0,0"
-                                                         Text="{Binding SelectedStepKeyIntervalMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                            </Grid>
-
-                                            <Grid Grid.Row="4" Visibility="{Binding ShortcutStepFieldsVisibility}">
-                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="12" />
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
                                                 </Grid.RowDefinitions>
 
-                                                <TextBlock Text="组合键" />
-                                                <TextBox Grid.Row="1"
-                                                         Margin="0,6,0,0"
-                                                         Text="{Binding SelectedStepShortcutKeys, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                            </Grid>
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FormLabelStyle}" Text="任务名称" />
+                                                <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource FormLabelStyle}" Text="重复次数" />
+                                                <TextBlock Grid.Row="0" Grid.Column="4" Style="{StaticResource FormLabelStyle}" Text="开始延迟（毫秒）" />
 
-                                            <Grid Grid.Row="4" Visibility="{Binding TextInputStepFieldsVisibility}">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="14" />
-                                                    <ColumnDefinition Width="150" />
-                                                </Grid.ColumnDefinitions>
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                </Grid.RowDefinitions>
+                                                <TextBox Grid.Row="1" Grid.Column="0" Margin="0,4,0,0"
+                                                         Text="{Binding SelectedTask.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                <TextBox Grid.Row="1" Grid.Column="2" Margin="0,4,0,0"
+                                                         Text="{Binding SelectedTask.RepeatCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                <TextBox Grid.Row="1" Grid.Column="4" Margin="0,4,0,0"
+                                                         Text="{Binding SelectedTask.StartDelayMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                <TextBlock Grid.Row="2" Grid.Column="4" Margin="0,2,0,0" FontSize="11"
+                                                           Foreground="{StaticResource TextMutedBrush}"
+                                                           Text="点开始后，等待多久再执行第一步。" />
 
-                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="文本内容" />
-                                                <TextBlock Grid.Row="0" Grid.Column="2" Text="字符间隔（毫秒）" />
-                                                <TextBox Grid.Row="1"
-                                                         Grid.Column="0"
-                                                         Margin="0,6,0,0"
-                                                         MinHeight="78"
-                                                         AcceptsReturn="True"
+                                                <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource FormLabelStyle}" Text="任务说明" />
+                                                <TextBox Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="5" Margin="0,4,0,0"
+                                                         MinHeight="64" AcceptsReturn="True"
                                                          TextWrapping="Wrap"
-                                                         Text="{Binding SelectedStepTextContent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                <TextBox Grid.Row="1"
-                                                         Grid.Column="2"
-                                                         Margin="0,6,0,0"
-                                                         Text="{Binding SelectedStepKeyIntervalMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                <CheckBox Grid.Row="2"
-                                                          Grid.Column="0"
-                                                          Grid.ColumnSpan="2"
-                                                          Margin="0,8,0,0"
-                                                          Content="输入前自动点击目标位置获得焦点"
-                                                          IsChecked="{Binding SelectedStepAutoFocusBeforeInput, Mode=TwoWay}" />
+                                                         Text="{Binding SelectedTask.Description, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                             </Grid>
-
-                                            <Button Grid.Row="6"
-                                                    Command="{Binding RemoveStepCommand}"
-                                                    Content="删除当前步骤"
-                                                    Style="{StaticResource DangerButtonStyle}" />
-                                        </Grid>
-                                    </Grid>
                                         </Border>
                                     </TabItem>
 
-                                    <TabItem Header="执行确认">
-                                        <StackPanel Margin="0,14,0,0">
-                                            <TextBlock FontSize="18" FontWeight="SemiBold" Text="执行前确认" />
-                                            <TextBlock Margin="0,6,0,0"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                                       Text="{Binding ExecutionSummary}" />
-                                            <TextBlock Margin="0,10,0,0"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                                       Text="{Binding ExecutionSafetyText}" />
-                                            <TextBlock Margin="0,10,0,0"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                                       Text="{Binding HotkeyStatus}" />
+                                    <!-- 步骤设置 Tab -->
+                                    <TabItem Header="步骤设置">
+                                        <Border Margin="0,14,0,0" Style="{StaticResource SubtleCardStyle}">
+                                            <Grid IsEnabled="{Binding IsTaskEditorEnabled}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="240" />
+                                                    <ColumnDefinition Width="16" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="10" />
+                                                    <RowDefinition Height="*" />
+                                                </Grid.RowDefinitions>
 
-                                            <WrapPanel Margin="0,18,0,0">
-                                    <Button Command="{Binding ShowMouseClickEditorCommand}"
-                                            Content="鼠标专页"
-                                            Style="{StaticResource PrimaryButtonStyle}" />
-                                    <Button Command="{Binding SaveTaskCommand}"
-                                            Content="保存修改"
-                                            Style="{StaticResource SecondaryButtonStyle}" />
-                                    <Button Command="{Binding StartCommand}"
-                                            Content="执行"
-                                            Style="{StaticResource SecondaryButtonStyle}" />
-                                    <Button Command="{Binding DuplicateTaskCommand}"
-                                            Content="复制"
-                                            Style="{StaticResource SecondaryButtonStyle}" />
-                                    <Button Command="{Binding DeleteTaskCommand}"
-                                            Content="删除"
-                                            Style="{StaticResource DangerButtonStyle}" />
-                                            </WrapPanel>
-                                        </StackPanel>
+                                                <DockPanel Grid.Row="0" Grid.ColumnSpan="3">
+                                                    <Button DockPanel.Dock="Right" Content="＋ 添加步骤"
+                                                            Style="{StaticResource PrimaryButtonStyle}"
+                                                            MinHeight="34" Padding="14,6">
+                                                        <Button.ContextMenu>
+                                                            <ContextMenu>
+                                                                <MenuItem Header="鼠标点击" Command="{Binding AddStepCommand}" />
+                                                                <MenuItem Header="键盘按键" Command="{Binding AddKeyboardStepCommand}" />
+                                                                <MenuItem Header="组合键" Command="{Binding AddShortcutStepCommand}" />
+                                                                <MenuItem Header="文本输入" Command="{Binding AddTextInputStepCommand}" />
+                                                            </ContextMenu>
+                                                        </Button.ContextMenu>
+                                                    </Button>
+                                                    <StackPanel>
+                                                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="步骤配置" />
+                                                        <TextBlock FontSize="12"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   Text="已保存任务可在这里直接编辑步骤，保存后生效。" />
+                                                    </StackPanel>
+                                                </DockPanel>
+
+                                                <ListBox x:Name="StepListBox"
+                                                         Grid.Row="2" Grid.Column="0"
+                                                         MinHeight="220"
+                                                         ItemsSource="{Binding CurrentSteps}"
+                                                         SelectedItem="{Binding SelectedStep, Mode=TwoWay}">
+                                                    <ListBox.ItemContainerStyle>
+                                                        <Style TargetType="ListBoxItem">
+                                                            <Setter Property="AllowDrop" Value="True" />
+                                                            <Setter Property="Padding" Value="6" />
+                                                        </Style>
+                                                    </ListBox.ItemContainerStyle>
+                                                    <ListBox.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Margin="2">
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <TextBlock FontWeight="Bold" FontSize="13"
+                                                                               Foreground="{StaticResource PrimaryBrush}"
+                                                                               Text="{Binding Order, StringFormat='{}{0}'}">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="Width" Value="22" />
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
+                                                                    <TextBlock Margin="4,0,0,0" FontSize="14"
+                                                                               FontWeight="SemiBold"
+                                                                               Text="{Binding Name}" />
+                                                                </StackPanel>
+                                                                <TextBlock Margin="8,2,0,0" FontSize="11"
+                                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                                           Text="{Binding Converter={StaticResource StepSummaryConverter}}" />
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ListBox.ItemTemplate>
+                                                </ListBox>
+
+                                                <!-- 步骤详细编辑区 -->
+                                                <Grid Grid.Row="2" Grid.Column="2">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="10" />
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="10" />
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="10" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+
+                                                    <!-- 基本属性 -->
+                                                    <Grid Grid.Row="0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="12" />
+                                                            <ColumnDefinition Width="150" />
+                                                            <ColumnDefinition Width="12" />
+                                                            <ColumnDefinition Width="100" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
+                                                        <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FormLabelStyle}" Text="步骤名称" />
+                                                        <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource FormLabelStyle}" Text="动作类型" />
+                                                        <TextBlock Grid.Row="0" Grid.Column="4" Style="{StaticResource FormLabelStyle}" Text="启用" />
+                                                        <TextBox Grid.Row="1" Grid.Column="0" Margin="0,4,0,0"
+                                                                 Text="{Binding SelectedStepName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <ComboBox Grid.Row="1" Grid.Column="2" Margin="0,4,0,0"
+                                                                  ItemsSource="{Binding InputActionTypeOptions}"
+                                                                  DisplayMemberPath="DisplayName"
+                                                                  SelectedValuePath="Value"
+                                                                  SelectedValue="{Binding SelectedStepActionType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <CheckBox Grid.Row="1" Grid.Column="4" Margin="0,10,0,0"
+                                                                  IsChecked="{Binding SelectedStepEnabled, Mode=TwoWay}" />
+                                                    </Grid>
+
+                                                    <!-- 步骤前等待 -->
+                                                    <Grid Grid.Row="2">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="150" />
+                                                            <ColumnDefinition Width="12" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
+                                                        <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Style="{StaticResource FormLabelStyle}" Text="步骤前等待（毫秒）" />
+                                                        <TextBox Grid.Row="1" Grid.Column="0" Margin="0,4,0,0"
+                                                                 Text="{Binding SelectedStepBeforeDelayMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,2,0,0" FontSize="11"
+                                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                                   Text="步骤间等待由下一步骤的前等待控制。" />
+                                                    </Grid>
+
+                                                    <!-- 鼠标点击字段 -->
+                                                    <Grid Grid.Row="4" Visibility="{Binding IsMouseStepFieldsVisible, Converter={StaticResource BoolToVisibility}}">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="90" />
+                                                            <ColumnDefinition Width="10" />
+                                                            <ColumnDefinition Width="90" />
+                                                            <ColumnDefinition Width="10" />
+                                                            <ColumnDefinition Width="100" />
+                                                            <ColumnDefinition Width="10" />
+                                                            <ColumnDefinition Width="90" />
+                                                            <ColumnDefinition Width="10" />
+                                                            <ColumnDefinition Width="90" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="8" />
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
+                                                        <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FormLabelStyle}" Text="X 坐标" />
+                                                        <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource FormLabelStyle}" Text="Y 坐标" />
+                                                        <TextBlock Grid.Row="0" Grid.Column="4" Style="{StaticResource FormLabelStyle}" Text="点击次数" />
+                                                        <TextBlock Grid.Row="0" Grid.Column="6" Style="{StaticResource FormLabelStyle}" Text="连点间隔ms" />
+                                                        <TextBlock Grid.Row="0" Grid.Column="8" Style="{StaticResource FormLabelStyle}" Text="按压时长ms" />
+                                                        <TextBox Grid.Row="1" Grid.Column="0" Margin="0,4,0,0"
+                                                                 Text="{Binding SelectedStepX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <TextBox Grid.Row="1" Grid.Column="2" Margin="0,4,0,0"
+                                                                 Text="{Binding SelectedStepY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <TextBox Grid.Row="1" Grid.Column="4" Margin="0,4,0,0"
+                                                                 Text="{Binding SelectedStepMouseClickCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <TextBox Grid.Row="1" Grid.Column="6" Margin="0,4,0,0"
+                                                                 Text="{Binding SelectedStepClickIntervalMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <TextBox Grid.Row="1" Grid.Column="8" Margin="0,4,0,0"
+                                                                 Text="{Binding SelectedStepPressDurationMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="4" Style="{StaticResource FormLabelStyle}" Text="点击方式" />
+                                                        <ComboBox Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,4,0,0"
+                                                                  ItemsSource="{Binding ClickTypeOptions}"
+                                                                  DisplayMemberPath="DisplayName"
+                                                                  SelectedValuePath="Value"
+                                                                  SelectedValue="{Binding SelectedStepClickType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <WrapPanel Grid.Row="4" Grid.Column="4" Grid.ColumnSpan="5" Margin="8,4,0,0">
+                                                            <Button Command="{Binding CaptureCoordinateCommand}" Content="选择坐标"
+                                                                    Style="{StaticResource SecondaryButtonStyle}" />
+                                                            <Button Command="{Binding TestMouseClickCommand}" Content="测试点击"
+                                                                    Style="{StaticResource SecondaryButtonStyle}" />
+                                                        </WrapPanel>
+                                                    </Grid>
+
+                                                    <!-- 滑动字段 -->
+                                                    <Grid Grid.Row="4" Visibility="{Binding IsSwipeStepFieldsVisible, Converter={StaticResource BoolToVisibility}}">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="90" />
+                                                            <ColumnDefinition Width="10" />
+                                                            <ColumnDefinition Width="90" />
+                                                            <ColumnDefinition Width="10" />
+                                                            <ColumnDefinition Width="90" />
+                                                            <ColumnDefinition Width="10" />
+                                                            <ColumnDefinition Width="90" />
+                                                            <ColumnDefinition Width="10" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="8" />
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
+                                                        <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FormLabelStyle}" Text="起点 X" />
+                                                        <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource FormLabelStyle}" Text="起点 Y" />
+                                                        <TextBlock Grid.Row="0" Grid.Column="4" Style="{StaticResource FormLabelStyle}" Text="终点 X" />
+                                                        <TextBlock Grid.Row="0" Grid.Column="6" Style="{StaticResource FormLabelStyle}" Text="终点 Y" />
+                                                        <TextBox Grid.Row="1" Grid.Column="0" Margin="0,4,0,0"
+                                                                 Text="{Binding SelectedStepX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <TextBox Grid.Row="1" Grid.Column="2" Margin="0,4,0,0"
+                                                                 Text="{Binding SelectedStepY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <TextBox Grid.Row="1" Grid.Column="4" Margin="0,4,0,0"
+                                                                 Text="{Binding SelectedStepEndX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <TextBox Grid.Row="1" Grid.Column="6" Margin="0,4,0,0"
+                                                                 Text="{Binding SelectedStepEndY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Style="{StaticResource FormLabelStyle}" Text="滑动时长(ms)" />
+                                                        <TextBox Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,4,0,0"
+                                                                 Text="{Binding SelectedStepSwipeDurationMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <Button Grid.Row="4" Grid.Column="4" Grid.ColumnSpan="5" Margin="8,4,0,0"
+                                                                Command="{Binding CaptureCoordinateCommand}" Content="选择坐标"
+                                                                Style="{StaticResource SecondaryButtonStyle}" />
+                                                    </Grid>
+
+                                                    <!-- 键盘按键字段 -->
+                                                    <Grid Grid.Row="4" Visibility="{Binding IsKeyboardStepFieldsVisible, Converter={StaticResource BoolToVisibility}}">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="12" />
+                                                            <ColumnDefinition Width="130" />
+                                                            <ColumnDefinition Width="12" />
+                                                            <ColumnDefinition Width="140" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
+                                                        <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="0"
+                                                                Padding="14" CornerRadius="8"
+                                                                Background="{StaticResource PrimaryLightBrush}"
+                                                                BorderBrush="#93C5FD" BorderThickness="1">
+                                                            <StackPanel>
+                                                                <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Text="按键捕获" />
+                                                                <TextBlock Margin="0,8,0,0" FontSize="20" FontWeight="Bold"
+                                                                           Foreground="{StaticResource PrimaryDarkBrush}"
+                                                                           Text="{Binding SelectedStepKeyDisplayText}" />
+                                                                <TextBox x:Name="KeyboardCaptureTextBox" Margin="0,10,0,0"
+                                                                         Cursor="Hand" Focusable="True"
+                                                                         GotKeyboardFocus="HandleKeyboardCaptureGotKeyboardFocus"
+                                                                         IsReadOnly="True"
+                                                                         LostKeyboardFocus="HandleKeyboardCaptureLostKeyboardFocus"
+                                                                         PreviewKeyDown="HandleKeyboardCapturePreviewKeyDown"
+                                                                         PreviewMouseLeftButtonDown="HandleKeyboardCapturePreviewMouseLeftButtonDown"
+                                                                         Text="{Binding SelectedStepKeyName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                                <TextBlock Margin="0,6,0,0" FontSize="11"
+                                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                                           Text="{Binding KeyboardCaptureStatus}" />
+                                                            </StackPanel>
+                                                        </Border>
+                                                        <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource FormLabelStyle}" Text="连按次数" />
+                                                        <TextBlock Grid.Row="0" Grid.Column="4" Style="{StaticResource FormLabelStyle}" Text="连按间隔（毫秒）" />
+                                                        <TextBox Grid.Row="1" Grid.Column="2" Margin="0,4,0,0"
+                                                                 Text="{Binding SelectedStepKeyPressCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <TextBox Grid.Row="1" Grid.Column="4" Margin="0,4,0,0"
+                                                                 Text="{Binding SelectedStepKeyIntervalMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                    </Grid>
+
+                                                    <!-- 组合键字段 -->
+                                                    <Grid Grid.Row="4" Visibility="{Binding IsShortcutStepFieldsVisible, Converter={StaticResource BoolToVisibility}}">
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
+                                                        <TextBlock Style="{StaticResource FormLabelStyle}" Text="组合键（如 Ctrl+C）" />
+                                                        <TextBox Grid.Row="1" Margin="0,4,0,0"
+                                                                 Text="{Binding SelectedStepShortcutKeys, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                    </Grid>
+
+                                                    <!-- 文本输入字段 -->
+                                                    <Grid Grid.Row="4" Visibility="{Binding IsTextInputStepFieldsVisible, Converter={StaticResource BoolToVisibility}}">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="12" />
+                                                            <ColumnDefinition Width="140" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
+                                                        <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FormLabelStyle}" Text="文本内容" />
+                                                        <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource FormLabelStyle}" Text="字符间隔（毫秒）" />
+                                                        <TextBox Grid.Row="1" Grid.Column="0" Margin="0,4,0,0"
+                                                                 MinHeight="72" AcceptsReturn="True" TextWrapping="Wrap"
+                                                                 Text="{Binding SelectedStepTextContent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <TextBox Grid.Row="1" Grid.Column="2" Margin="0,4,0,0"
+                                                                 Text="{Binding SelectedStepKeyIntervalMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <CheckBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,6,0,0"
+                                                                  Content="输入前自动点击目标位置获得焦点"
+                                                                  IsChecked="{Binding SelectedStepAutoFocusBeforeInput, Mode=TwoWay}" />
+                                                    </Grid>
+
+                                                    <Button Grid.Row="6" Command="{Binding RemoveStepCommand}"
+                                                            Content="删除当前步骤" Style="{StaticResource DangerButtonStyle}" />
+                                                </Grid>
+                                            </Grid>
+                                        </Border>
                                     </TabItem>
                                 </TabControl>
+
+                                <!-- 执行操作栏（底部固定） -->
+                                <Border Margin="0,10,0,0" Padding="12" CornerRadius="8"
+                                        Background="{StaticResource SubtleCardStyle}">
+                                    <WrapPanel>
+                                        <TextBlock VerticalAlignment="Center" FontSize="12"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   Text="{Binding ExecutionSummary}"
+                                                   MaxWidth="400" TextTrimming="CharacterEllipsis"
+                                                   Margin="0,0,12,0" />
+                                        <Button Command="{Binding SaveTaskCommand}" Content="保存"
+                                                Style="{StaticResource SecondaryButtonStyle}" />
+                                        <Button Command="{Binding StartCommand}" Content="执行"
+                                                Style="{StaticResource PrimaryButtonStyle}" />
+                                        <Button Command="{Binding DuplicateTaskCommand}" Content="复制"
+                                                Style="{StaticResource SecondaryButtonStyle}" />
+                                        <Button Command="{Binding DeleteTaskCommand}" Content="删除"
+                                                Style="{StaticResource DangerButtonStyle}" />
+                                    </WrapPanel>
+                                </Border>
                             </Grid>
                         </Border>
                     </Grid>
                 </Grid>
 
-                <Grid Visibility="{Binding ExecutionLogsPageVisibility}">
+                <!-- ********** 执行日志页 ********** -->
+                <Grid Visibility="{Binding IsExecutionLogsPageVisible, Converter={StaticResource BoolToVisibility}}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="18" />
+                        <RowDefinition Height="16" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <DockPanel Grid.Row="0">
-                        <Button DockPanel.Dock="Right"
-                                Command="{Binding ShowHomeCommand}"
-                                Content="返回首页"
-                                Style="{StaticResource SecondaryButtonStyle}" />
-                        <StackPanel>
-                            <TextBlock FontSize="28" FontWeight="SemiBold" Text="执行日志" />
-                            <TextBlock Margin="0,6,0,0"
-                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                       Text="最近执行结果和本次运行记录。" />
-                        </StackPanel>
-                    </DockPanel>
+                    <StackPanel Grid.Row="0">
+                        <TextBlock Style="{StaticResource PageTitleStyle}" Text="执行日志" />
+                        <TextBlock Style="{StaticResource PageSubtitleStyle}" Text="历史执行记录和当前任务运行日志。" />
+                    </StackPanel>
 
                     <Grid Grid.Row="2">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="18" />
+                            <ColumnDefinition Width="16" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-
-                        <Border Grid.Column="0" Style="{StaticResource PanelStyle}">
+                        <Border Grid.Column="0" Style="{StaticResource CardStyle}">
                             <DockPanel LastChildFill="True">
-                                <TextBlock DockPanel.Dock="Top"
-                                           Margin="0,0,0,12"
-                                           FontSize="18"
-                                           FontWeight="SemiBold"
-                                           Text="最近执行结果" />
-                                <ListBox MinHeight="430" ItemsSource="{Binding RecentLogs}" />
+                                <TextBlock DockPanel.Dock="Top" Margin="0,0,0,12"
+                                           Style="{StaticResource SectionTitleStyle}" Text="历史执行记录" />
+                                <ListBox MinHeight="440" ItemsSource="{Binding RecentLogs}" />
                             </DockPanel>
                         </Border>
-
-                        <Border Grid.Column="2" Style="{StaticResource PanelStyle}">
+                        <Border Grid.Column="2" Style="{StaticResource CardStyle}">
                             <DockPanel LastChildFill="True">
-                                <TextBlock DockPanel.Dock="Top"
-                                           Margin="0,0,0,12"
-                                           FontSize="18"
-                                           FontWeight="SemiBold"
-                                           Text="本次运行记录" />
-                                <ListBox MinHeight="430" ItemsSource="{Binding RuntimeLogs}" />
+                                <TextBlock DockPanel.Dock="Top" Margin="0,0,0,12"
+                                           Style="{StaticResource SectionTitleStyle}" Text="当前任务运行日志" />
+                                <ListBox MinHeight="440" ItemsSource="{Binding RuntimeLogs}" />
                             </DockPanel>
                         </Border>
                     </Grid>
                 </Grid>
 
-                <Grid Visibility="{Binding MouseClickEditorPageVisibility}">
+                <!-- ********** 鼠标点击任务编辑页 ********** -->
+                <Grid Visibility="{Binding IsMouseClickEditorPageVisible, Converter={StaticResource BoolToVisibility}}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="18" />
+                        <RowDefinition Height="16" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="18" />
+                        <RowDefinition Height="16" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <DockPanel Grid.Row="0">
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                            <Button Command="{Binding ShowHomeCommand}"
-                                    Content="返回首页"
-                                    Style="{StaticResource SecondaryButtonStyle}" />
-                            <Button Command="{Binding ShowTaskLibraryCommand}"
-                                    Content="返回任务库"
-                                    Style="{StaticResource SecondaryButtonStyle}" />
-                        </StackPanel>
-                        <StackPanel>
-                            <TextBlock FontSize="28" FontWeight="SemiBold" Text="鼠标点击任务编辑" />
-                            <TextBlock Margin="0,6,0,0"
-                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                       Text="配置固定坐标、点击次数、开始延迟和点击间隔。运行中请用悬浮窗暂停或停止。" />
-                        </StackPanel>
-                    </DockPanel>
+                    <StackPanel Grid.Row="0">
+                        <TextBlock Style="{StaticResource PageTitleStyle}" Text="鼠标点击任务编辑" />
+                        <TextBlock FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"
+                                   Text="配置固定坐标、点击次数、开始延迟和点击间隔。运行中请用悬浮窗暂停或停止。" />
+                    </StackPanel>
 
-                    <Border Grid.Row="2" Style="{StaticResource PanelStyle}">
+                    <Border Grid.Row="2" Style="{StaticResource CardStyle}">
                         <Grid IsEnabled="{Binding IsTaskEditorEnabled}">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="300" />
-                                <ColumnDefinition Width="18" />
+                                <ColumnDefinition Width="280" />
+                                <ColumnDefinition Width="16" />
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="18" />
-                                <ColumnDefinition Width="260" />
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="250" />
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0">
-                                <TextBlock FontSize="16" FontWeight="SemiBold" Text="点击位置（按顺序执行）" />
-                                <TextBlock Margin="0,6,0,0"
-                                           Foreground="{StaticResource TextSecondaryBrush}"
-                                           TextWrapping="Wrap"
-                                           Text="{Binding MousePositionSummary}" />
-
-                                <ListBox x:Name="MouseStepListBox"
-                                         Margin="0,12,0,0"
-                                         MinHeight="230"
+                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="点击位置（按顺序执行）" />
+                                <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap" Text="{Binding MousePositionSummary}" />
+                                <ListBox x:Name="MouseStepListBox" Margin="0,10,0,0" MinHeight="220"
                                          ItemsSource="{Binding MouseSteps}"
                                          SelectedItem="{Binding SelectedStep, Mode=TwoWay}">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <StackPanel Margin="4">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock FontWeight="Bold"
-                                                               Foreground="{StaticResource AccentDarkBrush}"
+                                                    <TextBlock FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}"
                                                                Text="{Binding Order, StringFormat='{}{0}'}" />
-                                                    <TextBlock Margin="6,0,0,0" FontWeight="SemiBold" Text="{Binding Name}" />
+                                                    <TextBlock Margin="6,0,0,0" FontWeight="SemiBold"
+                                                               Text="{Binding Name}" />
                                                 </StackPanel>
-                                                <TextBlock Margin="0,4,0,0"
-                                                           FontSize="12"
+                                                <TextBlock Margin="0,4,0,0" FontSize="11"
                                                            Foreground="{StaticResource TextSecondaryBrush}"
                                                            Text="{Binding Converter={StaticResource StepSummaryConverter}}" />
                                             </StackPanel>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
-
-                                <WrapPanel Margin="0,12,0,0">
-                                    <Button Command="{Binding AddStepCommand}"
-                                            Content="添加位置"
+                                <WrapPanel Margin="0,10,0,0">
+                                    <Button Command="{Binding AddStepCommand}" Content="添加位置"
                                             Style="{StaticResource PrimaryButtonStyle}" />
-                                    <Button Command="{Binding RemoveStepCommand}"
-                                            Content="删除位置"
+                                    <Button Command="{Binding RemoveStepCommand}" Content="删除位置"
                                             Style="{StaticResource DangerButtonStyle}" />
                                 </WrapPanel>
                             </StackPanel>
@@ -936,179 +1200,131 @@
                             <Grid Grid.Column="2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="16" />
+                                    <ColumnDefinition Width="14" />
                                     <ColumnDefinition Width="140" />
-                                    <ColumnDefinition Width="16" />
-                                    <ColumnDefinition Width="160" />
+                                    <ColumnDefinition Width="14" />
+                                    <ColumnDefinition Width="150" />
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="12" />
+                                    <RowDefinition Height="10" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="18" />
+                                    <RowDefinition Height="14" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="18" />
+                                    <RowDefinition Height="14" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="任务名称" />
-                                <TextBlock Grid.Row="0" Grid.Column="2" Text="执行轮数" />
-                                <TextBlock Grid.Row="0" Grid.Column="4" Text="开始延迟（毫秒）" />
-
-                                <TextBox Grid.Row="1"
-                                         Grid.Column="0"
-                                         Margin="0,6,0,0"
+                                <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FormLabelStyle}" Text="任务名称" />
+                                <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource FormLabelStyle}" Text="执行轮数" />
+                                <TextBlock Grid.Row="0" Grid.Column="4" Style="{StaticResource FormLabelStyle}" Text="开始延迟（毫秒）" />
+                                <TextBox Grid.Row="1" Grid.Column="0" Margin="0,4,0,0"
                                          Text="{Binding MouseTaskName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBox Grid.Row="1"
-                                         Grid.Column="2"
-                                         Margin="0,6,0,0"
+                                <TextBox Grid.Row="1" Grid.Column="2" Margin="0,4,0,0"
                                          Text="{Binding MouseRepeatCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBox Grid.Row="1"
-                                         Grid.Column="4"
-                                         Margin="0,6,0,0"
+                                <TextBox Grid.Row="1" Grid.Column="4" Margin="0,4,0,0"
                                          Text="{Binding MouseStartDelayMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-
-                                <TextBlock Grid.Row="3" Grid.Column="0" Text="任务说明" />
-                                <TextBox Grid.Row="4"
-                                         Grid.Column="0"
-                                         Grid.ColumnSpan="5"
-                                         Margin="0,6,0,0"
-                                         MinHeight="64"
-                                         AcceptsReturn="True"
-                                         TextWrapping="Wrap"
+                                <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource FormLabelStyle}" Text="任务说明" />
+                                <TextBox Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="5" Margin="0,4,0,0"
+                                         MinHeight="56" AcceptsReturn="True" TextWrapping="Wrap"
                                          Text="{Binding MouseTaskDescription, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-
-                                <TextBlock Grid.Row="6"
-                                           Grid.ColumnSpan="5"
-                                           FontSize="16"
-                                           FontWeight="SemiBold"
+                                <TextBlock Grid.Row="6" Grid.ColumnSpan="5" FontSize="15" FontWeight="SemiBold"
                                            Text="当前选中位置" />
-
-                                <Grid Grid.Row="7" Grid.ColumnSpan="5" Margin="0,8,0,0">
+                                <Grid Grid.Row="7" Grid.ColumnSpan="5" Margin="0,6,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="100" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="100" />
+                                        <ColumnDefinition Width="10" />
                                         <ColumnDefinition Width="110" />
-                                        <ColumnDefinition Width="12" />
-                                        <ColumnDefinition Width="110" />
-                                        <ColumnDefinition Width="12" />
-                                        <ColumnDefinition Width="120" />
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="12" />
+                                        <RowDefinition Height="10" />
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
-
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="位置名称" />
-                                    <TextBlock Grid.Row="0" Grid.Column="2" Text="X 坐标" />
-                                    <TextBlock Grid.Row="0" Grid.Column="4" Text="Y 坐标" />
-                                    <TextBlock Grid.Row="0" Grid.Column="6" Text="点击次数" />
-
-                                    <TextBox Grid.Row="1"
-                                             Grid.Column="0"
-                                             Margin="0,6,0,0"
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FormLabelStyle}" Text="位置名称" />
+                                    <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource FormLabelStyle}" Text="X 坐标" />
+                                    <TextBlock Grid.Row="0" Grid.Column="4" Style="{StaticResource FormLabelStyle}" Text="Y 坐标" />
+                                    <TextBlock Grid.Row="0" Grid.Column="6" Style="{StaticResource FormLabelStyle}" Text="点击次数" />
+                                    <TextBox Grid.Row="1" Grid.Column="0" Margin="0,4,0,0"
                                              Text="{Binding SelectedStepName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBox Grid.Row="1"
-                                             Grid.Column="2"
-                                             Margin="0,6,0,0"
+                                    <TextBox Grid.Row="1" Grid.Column="2" Margin="0,4,0,0"
                                              Text="{Binding MouseX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBox Grid.Row="1"
-                                             Grid.Column="4"
-                                             Margin="0,6,0,0"
+                                    <TextBox Grid.Row="1" Grid.Column="4" Margin="0,4,0,0"
                                              Text="{Binding MouseY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBox Grid.Row="1"
-                                              Grid.Column="6"
-                                              Margin="0,6,0,0"
+                                    <TextBox Grid.Row="1" Grid.Column="6" Margin="0,4,0,0"
                                              Text="{Binding MouseClickCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="点击间隔（毫秒）" />
-                                    <TextBlock Grid.Row="3" Grid.Column="2" Text="点击方式" />
-
-                                    <TextBox Grid.Row="4"
-                                             Grid.Column="0"
-                                             Margin="0,6,0,0"
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource FormLabelStyle}" Text="点击间隔（毫秒）" />
+                                    <TextBlock Grid.Row="3" Grid.Column="2" Style="{StaticResource FormLabelStyle}" Text="点击方式" />
+                                    <TextBox Grid.Row="4" Grid.Column="0" Margin="0,4,0,0"
                                              Text="{Binding MouseClickIntervalMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <ComboBox Grid.Row="4"
-                                              Grid.Column="2"
-                                              Grid.ColumnSpan="3"
-                                              Margin="0,6,0,0"
-                                              MinHeight="34"
+                                    <ComboBox Grid.Row="4" Grid.Column="2" Grid.ColumnSpan="3" Margin="0,4,0,0"
                                               ItemsSource="{Binding ClickTypeOptions}"
-                                              DisplayMemberPath="DisplayName"
-                                              SelectedValuePath="Value"
+                                              DisplayMemberPath="DisplayName" SelectedValuePath="Value"
                                               SelectedValue="{Binding MouseClickType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </Grid>
                             </Grid>
 
-                            <Border Grid.Column="4"
-                                    Background="{StaticResource MutedBrush}"
-                                    BorderBrush="{StaticResource PanelBorderBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="8"
-                                    Padding="14">
+                            <Border Grid.Column="4" Style="{StaticResource SubtleCardStyle}">
                                 <StackPanel>
-                                    <TextBlock FontSize="16" FontWeight="SemiBold" Text="坐标采集" />
-                                    <TextBlock Margin="0,6,0,12"
+                                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="坐标采集" />
+                                    <TextBlock Margin="0,6,0,6" FontSize="12"
                                                Foreground="{StaticResource TextSecondaryBrush}"
                                                Text="{Binding CoordinateCaptureStatus}" />
-                                    <TextBlock FontWeight="SemiBold"
-                                               Foreground="{StaticResource AccentDarkBrush}"
+                                    <TextBlock FontSize="20" FontWeight="Bold"
+                                               Foreground="{StaticResource PrimaryBrush}"
+                                               Text="{Binding LiveCursorPosition}" Margin="0,0,0,6" />
+                                    <TextBlock FontWeight="SemiBold" FontSize="14"
+                                               Foreground="{StaticResource PrimaryBrush}"
                                                Text="{Binding MouseClickTypeText}" />
-                                    <Button Margin="0,16,0,0"
-                                            Command="{Binding CaptureCoordinateCommand}"
-                                            Content="选择坐标"
-                                            Style="{StaticResource SecondaryButtonStyle}" />
-                                    <Button Margin="0,8,0,0"
-                                            Command="{Binding TestMouseClickCommand}"
-                                            Content="测试点击一次"
-                                            Style="{StaticResource SecondaryButtonStyle}" />
+                                    <Button Margin="0,14,0,0" Command="{Binding CaptureCoordinateCommand}"
+                                            Content="选择坐标" Style="{StaticResource SecondaryButtonStyle}" />
+                                    <Button Margin="0,8,0,0" Command="{Binding TestMouseClickCommand}"
+                                            Content="测试点击一次" Style="{StaticResource SecondaryButtonStyle}" />
                                 </StackPanel>
                             </Border>
                         </Grid>
                     </Border>
 
-                    <Border Grid.Row="4" Style="{StaticResource PanelStyle}">
+                    <Border Grid.Row="4" Style="{StaticResource CardStyle}">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="260" />
                             </Grid.ColumnDefinitions>
-
                             <StackPanel>
-                                <TextBlock FontSize="18" FontWeight="SemiBold" Text="执行摘要" />
-                                <TextBlock Margin="0,8,0,0"
+                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="执行摘要" />
+                                <TextBlock Margin="0,8,0,0" FontSize="13"
                                            Foreground="{StaticResource TextSecondaryBrush}"
                                            Text="{Binding ExecutionSummary}" />
-                                <TextBlock Margin="0,12,0,0"
-                                           FontWeight="SemiBold"
+                                <TextBlock Margin="0,10,0,0" FontWeight="SemiBold" FontSize="13"
                                            Foreground="{StaticResource DangerBrush}"
                                            Text="{Binding ExecutionSafetyText}" />
                             </StackPanel>
-
                             <StackPanel Grid.Column="1">
-                                <Button Command="{Binding SaveTaskCommand}"
-                                        Content="保存任务"
+                                <Button Command="{Binding SaveTaskCommand}" Content="保存任务"
                                         Style="{StaticResource PrimaryButtonStyle}" />
                                 <WrapPanel Margin="0,12,0,0">
-                                    <Button Command="{Binding StartCommand}"
-                                            Content="开始执行"
-                                            Style="{StaticResource PrimaryButtonStyle}" />
-                                    <Button Command="{Binding PauseCommand}"
-                                            Content="暂停"
-                                            Style="{StaticResource SecondaryButtonStyle}" />
-                                    <Button Command="{Binding ResumeCommand}"
-                                            Content="继续"
-                                            Style="{StaticResource SecondaryButtonStyle}" />
-                                    <Button Command="{Binding StopCommand}"
-                                            Content="停止"
-                                            Style="{StaticResource DangerButtonStyle}" />
+                                    <Button Command="{Binding StartCommand}" Content="开始执行"
+                                            Style="{StaticResource PrimaryButtonStyle}"
+                                            Visibility="{Binding IsNotExecutionRunning, Converter={StaticResource BoolToVisibility}}" />
+                                    <Button Command="{Binding PauseCommand}" Content="暂停"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            Visibility="{Binding IsExecutionRunning, Converter={StaticResource BoolToVisibility}}" />
+                                    <Button Command="{Binding ResumeCommand}" Content="继续"
+                                            Style="{StaticResource PrimaryButtonStyle}"
+                                            Visibility="{Binding IsExecutionPaused, Converter={StaticResource BoolToVisibility}}" />
+                                    <Button Command="{Binding StopCommand}" Content="停止"
+                                            Style="{StaticResource DangerButtonStyle}"
+                                            Visibility="{Binding IsExecutionRunning, Converter={StaticResource BoolToVisibility}}" />
                                 </WrapPanel>
                             </StackPanel>
                         </Grid>

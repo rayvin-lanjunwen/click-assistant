@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
-using System.Windows;
 using ClickAssistant.App.Commands;
+using ClickAssistant.App.Helpers;
 using ClickAssistant.Application.Abstractions;
 using ClickAssistant.Application.Services;
 using ClickAssistant.Domain.Entities;
@@ -12,12 +12,13 @@ namespace ClickAssistant.App.ViewModels;
 /// <summary>
 /// 主窗口 ViewModel，负责任务列表、步骤编辑、执行控制和日志展示。
 /// </summary>
-public sealed class MainWindowViewModel : ObservableObject
+public sealed class MainWindowViewModel : ObservableObject, IDisposable
 {
     private readonly ClickTaskService taskService;
     private readonly IClickExecutionEngine executionEngine;
     private readonly IMouseClickService mouseClickService;
     private readonly IExecutionLogRepository executionLogRepository;
+    private readonly IDialogService dialogService;
     private ClickTask? selectedTask;
     private ClickStep? selectedStep;
     private ObservableCollection<ClickStep> currentSteps = [];
@@ -29,28 +30,31 @@ public sealed class MainWindowViewModel : ObservableObject
     private string executionSafetyText = "启动前请确认坐标、按键、执行轮数、点击次数和开始延迟。";
     private bool isTaskEditorEnabled = true;
     private int taskLibrarySelectedTabIndex;
-    private Visibility homePageVisibility = Visibility.Visible;
-    private Visibility newTaskTypePageVisibility = Visibility.Collapsed;
-    private Visibility taskLibraryPageVisibility = Visibility.Collapsed;
-    private Visibility executionLogsPageVisibility = Visibility.Collapsed;
-    private Visibility mouseClickEditorPageVisibility = Visibility.Collapsed;
-    private Visibility floatingWindowVisibility = Visibility.Collapsed;
-    private Visibility floatingExpandedVisibility = Visibility.Collapsed;
-    private Visibility floatingCollapsedVisibility = Visibility.Visible;
+    private bool isHomePageVisible = true;
+    private bool isNewTaskTypePageVisible;
+    private bool isTaskLibraryPageVisible;
+    private bool isExecutionLogsPageVisible;
+    private bool isMouseClickEditorPageVisible;
+    private bool isFloatingWindowVisible;
+    private bool isFloatingExpandedVisible;
+    private bool isFloatingCollapsedVisible = true;
     private bool isFloatingWindowExpanded;
     private bool isCoordinateCapturePending;
+    private string liveCursorPosition = "X=— , Y=—";
     private bool isBusy;
 
     public MainWindowViewModel(
         ClickTaskService taskService,
         IClickExecutionEngine executionEngine,
         IMouseClickService mouseClickService,
-        IExecutionLogRepository executionLogRepository)
+        IExecutionLogRepository executionLogRepository,
+        IDialogService dialogService)
     {
         this.taskService = taskService;
         this.executionEngine = executionEngine;
         this.mouseClickService = mouseClickService;
         this.executionLogRepository = executionLogRepository;
+        this.dialogService = dialogService;
 
         ShowHomeCommand = new RelayCommand(ShowHome);
         ShowNewTaskTypeCommand = new RelayCommand(ShowNewTaskType);
@@ -94,6 +98,11 @@ public sealed class MainWindowViewModel : ObservableObject
     public event EventHandler? CoordinateSelectionRequested;
 
     public ObservableCollection<ClickTask> Tasks { get; } = [];
+
+    /// <summary>
+    /// 最近任务（取前 3 个），供首页快速执行卡片使用。
+    /// </summary>
+    public IEnumerable<ClickTask> RecentTasks => Tasks.Take(3);
 
     public ObservableCollection<string> RuntimeLogs { get; } = [];
 
@@ -229,10 +238,43 @@ public sealed class MainWindowViewModel : ObservableObject
         private set => SetProperty(ref keyboardCaptureStatus, value);
     }
 
+    public string VersionText { get; } = "v" +
+        (System.Reflection.Assembly.GetExecutingAssembly()
+            .GetName().Version?.ToString(3) ?? "0.0.0");
+
+    public bool IsExecutionRunning => executionEngine.Status
+        is ExecutionStatus.Running or ExecutionStatus.Paused or ExecutionStatus.Starting;
+
+    public bool IsExecutionPaused => executionEngine.Status == ExecutionStatus.Paused;
+    public bool IsNotExecutionRunning => !IsExecutionRunning;
+
     public string CoordinateCaptureStatus
     {
         get => coordinateCaptureStatus;
-        private set => SetProperty(ref coordinateCaptureStatus, value);
+        private set
+        {
+            if (SetProperty(ref coordinateCaptureStatus, value))
+                OnPropertyChanged(nameof(LiveCursorPosition));
+        }
+    }
+
+    /// <summary>
+    /// 实时光标屏幕坐标（选择坐标时动态更新）。
+    /// </summary>
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool GetCursorPos(out POINT lpPoint);
+
+    private struct POINT { public int X; public int Y; }
+
+    public string LiveCursorPosition
+    {
+        get
+        {
+            if (!isCoordinateCapturePending) return "X=— , Y=—";
+            if (GetCursorPos(out var pt))
+                return $"X={pt.X} , Y={pt.Y}";
+            return "X=— , Y=—";
+        }
     }
 
     public string StopHotkeyInput
@@ -271,52 +313,52 @@ public sealed class MainWindowViewModel : ObservableObject
         set => SetProperty(ref taskLibrarySelectedTabIndex, value);
     }
 
-    public Visibility HomePageVisibility
+    public bool IsHomePageVisible
     {
-        get => homePageVisibility;
-        private set => SetProperty(ref homePageVisibility, value);
+        get => isHomePageVisible;
+        private set => SetProperty(ref isHomePageVisible, value);
     }
 
-    public Visibility NewTaskTypePageVisibility
+    public bool IsNewTaskTypePageVisible
     {
-        get => newTaskTypePageVisibility;
-        private set => SetProperty(ref newTaskTypePageVisibility, value);
+        get => isNewTaskTypePageVisible;
+        private set => SetProperty(ref isNewTaskTypePageVisible, value);
     }
 
-    public Visibility TaskLibraryPageVisibility
+    public bool IsTaskLibraryPageVisible
     {
-        get => taskLibraryPageVisibility;
-        private set => SetProperty(ref taskLibraryPageVisibility, value);
+        get => isTaskLibraryPageVisible;
+        private set => SetProperty(ref isTaskLibraryPageVisible, value);
     }
 
-    public Visibility ExecutionLogsPageVisibility
+    public bool IsExecutionLogsPageVisible
     {
-        get => executionLogsPageVisibility;
-        private set => SetProperty(ref executionLogsPageVisibility, value);
+        get => isExecutionLogsPageVisible;
+        private set => SetProperty(ref isExecutionLogsPageVisible, value);
     }
 
-    public Visibility MouseClickEditorPageVisibility
+    public bool IsMouseClickEditorPageVisible
     {
-        get => mouseClickEditorPageVisibility;
-        private set => SetProperty(ref mouseClickEditorPageVisibility, value);
+        get => isMouseClickEditorPageVisible;
+        private set => SetProperty(ref isMouseClickEditorPageVisible, value);
     }
 
-    public Visibility FloatingWindowVisibility
+    public bool IsFloatingWindowVisible
     {
-        get => floatingWindowVisibility;
-        private set => SetProperty(ref floatingWindowVisibility, value);
+        get => isFloatingWindowVisible;
+        private set => SetProperty(ref isFloatingWindowVisible, value);
     }
 
-    public Visibility FloatingExpandedVisibility
+    public bool IsFloatingExpandedVisible
     {
-        get => floatingExpandedVisibility;
-        private set => SetProperty(ref floatingExpandedVisibility, value);
+        get => isFloatingExpandedVisible;
+        private set => SetProperty(ref isFloatingExpandedVisible, value);
     }
 
-    public Visibility FloatingCollapsedVisibility
+    public bool IsFloatingCollapsedVisible
     {
-        get => floatingCollapsedVisibility;
-        private set => SetProperty(ref floatingCollapsedVisibility, value);
+        get => isFloatingCollapsedVisible;
+        private set => SetProperty(ref isFloatingCollapsedVisible, value);
     }
 
     public string MouseTaskName
@@ -330,7 +372,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             SelectedTask.Name = value;
-            NotifyEditorDerivedProperties();
+            NotifyTaskSummaryGroup();
         }
     }
 
@@ -345,7 +387,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             SelectedTask.Description = value;
-            NotifyEditorDerivedProperties();
+            NotifyTaskSummaryGroup();
         }
     }
 
@@ -360,7 +402,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             SelectedTask.RepeatCount = value;
-            NotifyEditorDerivedProperties();
+            NotifyTaskSummaryGroup();
         }
     }
 
@@ -375,7 +417,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             SelectedTask.StartDelayMs = value;
-            NotifyEditorDerivedProperties();
+            NotifyTaskSummaryGroup();
         }
     }
 
@@ -391,7 +433,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             step.X = value;
-            NotifyEditorDerivedProperties();
+            NotifyCoordinateGroup();
         }
     }
 
@@ -407,7 +449,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             step.Y = value;
-            NotifyEditorDerivedProperties();
+            NotifyCoordinateGroup();
         }
     }
 
@@ -423,7 +465,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             step.ClickIntervalMs = value;
-            NotifyEditorDerivedProperties();
+            NotifyMouseGroup();
         }
     }
 
@@ -439,7 +481,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             step.MouseClickCount = value;
-            NotifyEditorDerivedProperties();
+            NotifyMouseGroup();
         }
     }
 
@@ -455,7 +497,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             step.ClickType = value;
-            NotifyEditorDerivedProperties();
+            NotifyMouseGroup();
         }
     }
 
@@ -499,7 +541,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             SelectedStep.Name = value;
-            NotifyEditorDerivedProperties();
+            NotifyStepMetaGroup();
         }
     }
 
@@ -514,7 +556,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             SelectedStep.Enabled = value;
-            NotifyEditorDerivedProperties();
+            NotifyStepMetaGroup();
         }
     }
 
@@ -546,7 +588,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             SelectedStep.BeforeDelayMs = value;
-            NotifyEditorDerivedProperties();
+            NotifyStepMetaGroup();
         }
     }
 
@@ -561,7 +603,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             SelectedStep.ClickIntervalMs = value;
-            NotifyEditorDerivedProperties();
+            NotifyMouseGroup();
         }
     }
 
@@ -576,7 +618,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             SelectedStep.PressDurationMs = value;
-            NotifyEditorDerivedProperties();
+            NotifyMouseGroup();
         }
     }
 
@@ -591,7 +633,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             SelectedStep.AutoFocusBeforeInput = value;
-            NotifyEditorDerivedProperties();
+            NotifyTextGroup();
         }
     }
 
@@ -606,7 +648,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             SelectedStep.X = value;
-            NotifyEditorDerivedProperties();
+            NotifyCoordinateGroup();
         }
     }
 
@@ -621,7 +663,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             SelectedStep.Y = value;
-            NotifyEditorDerivedProperties();
+            NotifyCoordinateGroup();
         }
     }
 
@@ -636,7 +678,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             SelectedStep.ClickType = value;
-            NotifyEditorDerivedProperties();
+            NotifyMouseGroup();
         }
     }
 
@@ -651,7 +693,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             SelectedStep.MouseClickCount = value;
-            NotifyEditorDerivedProperties();
+            NotifyMouseGroup();
         }
     }
 
@@ -666,7 +708,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             SelectedStep.KeyName = value;
-            NotifyEditorDerivedProperties();
+            NotifyKeyboardGroup();
         }
     }
 
@@ -681,7 +723,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             SelectedStep.KeyPressCount = value;
-            NotifyEditorDerivedProperties();
+            NotifyKeyboardGroup();
         }
     }
 
@@ -696,7 +738,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             SelectedStep.KeyIntervalMs = value;
-            NotifyEditorDerivedProperties();
+            NotifyKeyboardGroup();
         }
     }
 
@@ -711,7 +753,7 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             SelectedStep.ShortcutKeys = value;
-            NotifyEditorDerivedProperties();
+            NotifyShortcutGroup();
         }
     }
 
@@ -726,29 +768,19 @@ public sealed class MainWindowViewModel : ObservableObject
             }
 
             SelectedStep.TextContent = value;
-            NotifyEditorDerivedProperties();
+            NotifyTextGroup();
         }
     }
 
-    public Visibility MouseStepFieldsVisibility => SelectedStep?.ActionType == InputActionType.MouseClick
-        ? Visibility.Visible
-        : Visibility.Collapsed;
+    public bool IsMouseStepFieldsVisible => SelectedStep?.ActionType == InputActionType.MouseClick;
 
-    public Visibility SwipeStepFieldsVisibility => SelectedStep?.ActionType == InputActionType.Swipe
-        ? Visibility.Visible
-        : Visibility.Collapsed;
+    public bool IsSwipeStepFieldsVisible => SelectedStep?.ActionType == InputActionType.Swipe;
 
-    public Visibility KeyboardStepFieldsVisibility => SelectedStep?.ActionType == InputActionType.KeyboardPress
-        ? Visibility.Visible
-        : Visibility.Collapsed;
+    public bool IsKeyboardStepFieldsVisible => SelectedStep?.ActionType == InputActionType.KeyboardPress;
 
-    public Visibility ShortcutStepFieldsVisibility => SelectedStep?.ActionType == InputActionType.KeyboardShortcut
-        ? Visibility.Visible
-        : Visibility.Collapsed;
+    public bool IsShortcutStepFieldsVisible => SelectedStep?.ActionType == InputActionType.KeyboardShortcut;
 
-    public Visibility TextInputStepFieldsVisibility => SelectedStep?.ActionType == InputActionType.TextInput
-        ? Visibility.Visible
-        : Visibility.Collapsed;
+    public bool IsTextInputStepFieldsVisible => SelectedStep?.ActionType == InputActionType.TextInput;
 
     // Swipe-specific properties
     public int SelectedStepEndX
@@ -758,7 +790,7 @@ public sealed class MainWindowViewModel : ObservableObject
         {
             if (SelectedStep is null || SelectedStep.EndX == value) return;
             SelectedStep.EndX = value;
-            NotifyEditorDerivedProperties();
+            NotifySwipeGroup();
         }
     }
 
@@ -769,7 +801,7 @@ public sealed class MainWindowViewModel : ObservableObject
         {
             if (SelectedStep is null || SelectedStep.EndY == value) return;
             SelectedStep.EndY = value;
-            NotifyEditorDerivedProperties();
+            NotifySwipeGroup();
         }
     }
 
@@ -780,7 +812,7 @@ public sealed class MainWindowViewModel : ObservableObject
         {
             if (SelectedStep is null || SelectedStep.SwipeDurationMs == value) return;
             SelectedStep.SwipeDurationMs = value;
-            NotifyEditorDerivedProperties();
+            NotifySwipeGroup();
         }
     }
 
@@ -804,7 +836,7 @@ public sealed class MainWindowViewModel : ObservableObject
             var clicksPerRound = enabledMouseSteps.Sum(step => step.MouseClickCount);
             var totalMouseClicks = clicksPerRound * SelectedTask.RepeatCount;
 
-            return $"开始后等待 {FormatMilliseconds(SelectedTask.StartDelayMs)}，每轮按顺序执行 {enabledSteps}/{totalSteps} 个启用步骤，" +
+            return $"开始后等待 {TimeFormattingHelper.FormatMilliseconds(SelectedTask.StartDelayMs)}，每轮按顺序执行 {enabledSteps}/{totalSteps} 个启用步骤，" +
                 $"其中鼠标位置 {enabledMouseSteps.Count}/{mouseSteps.Count} 个、点击 {clicksPerRound} 次；" +
                 $"执行 {SelectedTask.RepeatCount} 轮，总鼠标点击 {totalMouseClicks} 次。";
         }
@@ -985,11 +1017,11 @@ public sealed class MainWindowViewModel : ObservableObject
 
     private void SetCurrentPage(string pageName)
     {
-        HomePageVisibility = pageName == "Home" ? Visibility.Visible : Visibility.Collapsed;
-        NewTaskTypePageVisibility = pageName == "NewTaskType" ? Visibility.Visible : Visibility.Collapsed;
-        TaskLibraryPageVisibility = pageName == "TaskLibrary" ? Visibility.Visible : Visibility.Collapsed;
-        ExecutionLogsPageVisibility = pageName == "ExecutionLogs" ? Visibility.Visible : Visibility.Collapsed;
-        MouseClickEditorPageVisibility = pageName == "MouseClickEditor" ? Visibility.Visible : Visibility.Collapsed;
+        IsHomePageVisible = pageName == "Home";
+        IsNewTaskTypePageVisible = pageName == "NewTaskType";
+        IsTaskLibraryPageVisible = pageName == "TaskLibrary";
+        IsExecutionLogsPageVisible = pageName == "ExecutionLogs";
+        IsMouseClickEditorPageVisible = pageName == "MouseClickEditor";
         NotifyCommandStates();
     }
 
@@ -1140,13 +1172,7 @@ public sealed class MainWindowViewModel : ObservableObject
             return;
         }
 
-        var result = MessageBox.Show(
-            $"确认删除任务“{SelectedTask.Name}”吗？",
-            "删除任务",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
-
-        if (result != MessageBoxResult.Yes)
+        if (!dialogService.Confirm($"确认删除任务“{SelectedTask.Name}”吗？", "删除任务"))
         {
             return;
         }
@@ -1264,14 +1290,14 @@ public sealed class MainWindowViewModel : ObservableObject
         var step = GetEditableMouseStep();
         if (step is null)
         {
-            CancelCoordinateSelection();
+            CoordinatePickerClosed(false);
             return;
         }
 
         step.X = point.X;
         step.Y = point.Y;
         SelectedStep = step;
-        RefreshSelectedStepListItem();
+        step.RaisePropertyChanged(null);
 
         isCoordinateCapturePending = false;
         CoordinateCaptureStatus = $"已选择坐标：X={point.X}，Y={point.Y}。";
@@ -1281,14 +1307,15 @@ public sealed class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 坐标选择取消后恢复界面状态。
+    /// 坐标选择器关闭后恢复状态。若未变更坐标，则视为取消。
     /// </summary>
-    public void CancelCoordinateSelection()
+    public void CoordinatePickerClosed(bool coordinateChanged)
     {
         isCoordinateCapturePending = false;
-        CoordinateCaptureStatus = "已取消坐标选择。点击“选择坐标”可重新选择。";
+        CoordinateCaptureStatus = coordinateChanged
+            ? "已更新坐标，请记得保存任务。"
+            : "已取消坐标选择。点击“选择坐标”可重新选择。";
         NotifyCommandStates();
-        AddRuntimeLog("已取消坐标选择。");
     }
 
     private async Task TestMouseClickOnceAsync()
@@ -1299,13 +1326,9 @@ public sealed class MainWindowViewModel : ObservableObject
             return;
         }
 
-        var result = MessageBox.Show(
+        if (!dialogService.Confirm(
             $"即将在 X={step.X}、Y={step.Y} 执行一次{MouseClickTypeText}。\n\n确认测试点击吗？",
-            "测试点击一次",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
-
-        if (result != MessageBoxResult.Yes)
+            "测试点击一次"))
         {
             AddRuntimeLog("已取消测试点击。");
             return;
@@ -1347,7 +1370,7 @@ public sealed class MainWindowViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(StopHotkeyInput))
         {
-            MessageBox.Show("请填写停止快捷键。", "快捷键设置", MessageBoxButton.OK, MessageBoxImage.Warning);
+            dialogService.ShowWarning("请填写停止快捷键。", "快捷键设置");
             return Task.CompletedTask;
         }
 
@@ -1375,7 +1398,7 @@ public sealed class MainWindowViewModel : ObservableObject
         var shortcutSteps = SelectedTask.Steps.Count(step => step.Enabled && step.ActionType == InputActionType.KeyboardShortcut);
         var textInputSteps = SelectedTask.Steps.Count(step => step.Enabled && step.ActionType == InputActionType.TextInput);
 
-        var result = MessageBox.Show(
+        return dialogService.Confirm(
             $"即将执行任务“{SelectedTask.Name}”。\n\n" +
             $"执行轮数：{SelectedTask.RepeatCount}\n" +
             $"启用步骤：{enabledSteps} 个（鼠标位置 {enabledMouseSteps.Count} 个，按键 {keySteps} 个，组合键 {shortcutSteps} 个，文本 {textInputSteps} 个）\n" +
@@ -1383,11 +1406,7 @@ public sealed class MainWindowViewModel : ObservableObject
             $"开始延迟：{SelectedTask.StartDelayMs} 毫秒\n" +
             $"停止方式：点击停止按钮，或使用 {StopHotkeyInput}。\n\n" +
             "执行期间会产生真实鼠标点击或键盘输入，确认启动吗？",
-            "执行前确认",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
-
-        return result == MessageBoxResult.Yes;
+            "执行前确认");
     }
 
     /// <summary>
@@ -1490,64 +1509,117 @@ public sealed class MainWindowViewModel : ObservableObject
         return CurrentSteps.FirstOrDefault(step => step.ActionType == InputActionType.KeyboardPress);
     }
 
-    private void RefreshSelectedStepListItem()
+    /// <summary>
+    /// 全量通知：SelectedTask/SelectedStep 切换或任务加载后调用。
+    /// </summary>
+    private void NotifyEditorDerivedProperties()
     {
-        if (SelectedStep is null)
-        {
-            return;
-        }
-
-        var selectedIndex = CurrentSteps.IndexOf(SelectedStep);
-        if (selectedIndex >= 0)
-        {
-            CurrentSteps[selectedIndex] = SelectedStep;
-        }
+        NotifyStepMetaGroup();
+        NotifyCoordinateGroup();
+        NotifyMouseGroup();
+        NotifySwipeGroup();
+        NotifyKeyboardGroup();
+        NotifyShortcutGroup();
+        NotifyTextGroup();
+        NotifyTaskSummaryGroup();
+        SelectedStep?.RaisePropertyChanged(null);
     }
 
-    private void NotifyEditorDerivedProperties()
+    private void NotifyStepMetaGroup()
+    {
+        OnPropertyChanged(nameof(MouseSteps));
+        OnPropertyChanged(nameof(SelectedStepName));
+        OnPropertyChanged(nameof(SelectedStepEnabled));
+        OnPropertyChanged(nameof(SelectedStepActionType));
+        OnPropertyChanged(nameof(SelectedStepBeforeDelayMs));
+        NotifyStepVisibility();
+    }
+
+    private void NotifyCoordinateGroup()
+    {
+        OnPropertyChanged(nameof(MouseX));
+        OnPropertyChanged(nameof(MouseY));
+        OnPropertyChanged(nameof(MousePositionSummary));
+        OnPropertyChanged(nameof(SelectedStepX));
+        OnPropertyChanged(nameof(SelectedStepY));
+        NotifyStepVisibility();
+        NotifyTaskSummaryGroup();
+        SelectedStep?.RaisePropertyChanged(nameof(ClickStep.X));
+        SelectedStep?.RaisePropertyChanged(nameof(ClickStep.Y));
+    }
+
+    private void NotifyMouseGroup()
+    {
+        OnPropertyChanged(nameof(MouseClickType));
+        OnPropertyChanged(nameof(MouseClickTypeText));
+        OnPropertyChanged(nameof(MouseClickIntervalMs));
+        OnPropertyChanged(nameof(MouseClickCount));
+        OnPropertyChanged(nameof(SelectedStepClickType));
+        OnPropertyChanged(nameof(SelectedStepMouseClickCount));
+        OnPropertyChanged(nameof(SelectedStepClickIntervalMs));
+        OnPropertyChanged(nameof(SelectedStepPressDurationMs));
+        NotifyStepVisibility();
+        NotifyTaskSummaryGroup();
+        SelectedStep?.RaisePropertyChanged(null);
+    }
+
+    private void NotifySwipeGroup()
+    {
+        OnPropertyChanged(nameof(SelectedStepEndX));
+        OnPropertyChanged(nameof(SelectedStepEndY));
+        OnPropertyChanged(nameof(SelectedStepSwipeDurationMs));
+        NotifyStepVisibility();
+        NotifyTaskSummaryGroup();
+        SelectedStep?.RaisePropertyChanged(null);
+    }
+
+    private void NotifyKeyboardGroup()
+    {
+        OnPropertyChanged(nameof(SelectedStepKeyName));
+        OnPropertyChanged(nameof(SelectedStepKeyDisplayText));
+        OnPropertyChanged(nameof(SelectedStepKeyPressCount));
+        OnPropertyChanged(nameof(SelectedStepKeyIntervalMs));
+        NotifyStepVisibility();
+        SelectedStep?.RaisePropertyChanged(null);
+    }
+
+    private void NotifyShortcutGroup()
+    {
+        OnPropertyChanged(nameof(SelectedStepShortcutKeys));
+        NotifyStepVisibility();
+        SelectedStep?.RaisePropertyChanged(null);
+    }
+
+    private void NotifyTextGroup()
+    {
+        OnPropertyChanged(nameof(SelectedStepTextContent));
+        OnPropertyChanged(nameof(SelectedStepAutoFocusBeforeInput));
+        NotifyStepVisibility();
+        SelectedStep?.RaisePropertyChanged(null);
+    }
+
+    private void NotifyTaskSummaryGroup()
     {
         OnPropertyChanged(nameof(MouseTaskName));
         OnPropertyChanged(nameof(MouseTaskDescription));
         OnPropertyChanged(nameof(MouseRepeatCount));
         OnPropertyChanged(nameof(MouseStartDelayMs));
-        OnPropertyChanged(nameof(MouseSteps));
-        OnPropertyChanged(nameof(MouseX));
-        OnPropertyChanged(nameof(MouseY));
-        OnPropertyChanged(nameof(MouseClickIntervalMs));
-        OnPropertyChanged(nameof(MouseClickCount));
-        OnPropertyChanged(nameof(MouseClickType));
-        OnPropertyChanged(nameof(MouseClickTypeText));
-        OnPropertyChanged(nameof(MousePositionSummary));
-        OnPropertyChanged(nameof(SelectedStepName));
-        OnPropertyChanged(nameof(SelectedStepEnabled));
-        OnPropertyChanged(nameof(SelectedStepActionType));
-        OnPropertyChanged(nameof(SelectedStepBeforeDelayMs));
-        OnPropertyChanged(nameof(SelectedStepClickIntervalMs));
-        OnPropertyChanged(nameof(SelectedStepPressDurationMs));
-        OnPropertyChanged(nameof(SelectedStepAutoFocusBeforeInput));
-        OnPropertyChanged(nameof(SelectedStepX));
-        OnPropertyChanged(nameof(SelectedStepY));
-        OnPropertyChanged(nameof(SelectedStepEndX));
-        OnPropertyChanged(nameof(SelectedStepEndY));
-        OnPropertyChanged(nameof(SelectedStepSwipeDurationMs));
-        OnPropertyChanged(nameof(SelectedStepClickType));
-        OnPropertyChanged(nameof(SelectedStepMouseClickCount));
-        OnPropertyChanged(nameof(SelectedStepKeyName));
-        OnPropertyChanged(nameof(SelectedStepKeyDisplayText));
-        OnPropertyChanged(nameof(SelectedStepKeyPressCount));
-        OnPropertyChanged(nameof(SelectedStepKeyIntervalMs));
-        OnPropertyChanged(nameof(SelectedStepShortcutKeys));
-        OnPropertyChanged(nameof(SelectedStepTextContent));
-        OnPropertyChanged(nameof(MouseStepFieldsVisibility));
-        OnPropertyChanged(nameof(SwipeStepFieldsVisibility));
-        OnPropertyChanged(nameof(KeyboardStepFieldsVisibility));
-        OnPropertyChanged(nameof(ShortcutStepFieldsVisibility));
-        OnPropertyChanged(nameof(TextInputStepFieldsVisibility));
         OnPropertyChanged(nameof(ExecutionSummary));
         OnPropertyChanged(nameof(SelectedTaskMetaText));
         OnPropertyChanged(nameof(FloatingTaskName));
         OnPropertyChanged(nameof(FloatingTaskSummary));
-        RefreshSelectedStepListItem();
+    }
+
+    /// <summary>
+    /// 重新评估步骤字段可见性（鼠标/滑动/键盘/组合键/文本输入字段）。
+    /// </summary>
+    private void NotifyStepVisibility()
+    {
+        OnPropertyChanged(nameof(IsMouseStepFieldsVisible));
+        OnPropertyChanged(nameof(IsSwipeStepFieldsVisible));
+        OnPropertyChanged(nameof(IsKeyboardStepFieldsVisible));
+        OnPropertyChanged(nameof(IsShortcutStepFieldsVisible));
+        OnPropertyChanged(nameof(IsTextInputStepFieldsVisible));
     }
 
     /// <summary>
@@ -1576,7 +1648,7 @@ public sealed class MainWindowViewModel : ObservableObject
         }
         catch (Exception exception)
         {
-            MessageBox.Show(exception.Message, "操作失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            dialogService.ShowError(exception.Message, "操作失败");
             AddRuntimeLog($"操作失败：{exception.Message}");
         }
     }
@@ -1591,6 +1663,9 @@ public sealed class MainWindowViewModel : ObservableObject
             StatusText = ToStatusText(status);
             ExecutionSafetyText = ToExecutionSafetyText(status);
             UpdateFloatingWindowState(status);
+            OnPropertyChanged(nameof(IsExecutionRunning));
+            OnPropertyChanged(nameof(IsExecutionPaused));
+            OnPropertyChanged(nameof(IsNotExecutionRunning));
             NotifyCommandStates();
         });
     }
@@ -1628,21 +1703,19 @@ public sealed class MainWindowViewModel : ObservableObject
     private void ToggleFloatingWindow()
     {
         isFloatingWindowExpanded = !isFloatingWindowExpanded;
-        FloatingExpandedVisibility = isFloatingWindowExpanded ? Visibility.Visible : Visibility.Collapsed;
-        FloatingCollapsedVisibility = isFloatingWindowExpanded ? Visibility.Collapsed : Visibility.Visible;
+        IsFloatingExpandedVisible = isFloatingWindowExpanded;
+        IsFloatingCollapsedVisible = !isFloatingWindowExpanded;
     }
 
     private void UpdateFloatingWindowState(ExecutionStatus status)
     {
-        FloatingWindowVisibility = status is ExecutionStatus.Starting or ExecutionStatus.Running or ExecutionStatus.Paused
-            ? Visibility.Visible
-            : Visibility.Collapsed;
+        IsFloatingWindowVisible = status is ExecutionStatus.Starting or ExecutionStatus.Running or ExecutionStatus.Paused;
 
-        if (FloatingWindowVisibility == Visibility.Collapsed)
+        if (!IsFloatingWindowVisible)
         {
             isFloatingWindowExpanded = false;
-            FloatingExpandedVisibility = Visibility.Collapsed;
-            FloatingCollapsedVisibility = Visibility.Visible;
+            IsFloatingExpandedVisible = false;
+            IsFloatingCollapsedVisible = true;
         }
 
         NotifyEditorDerivedProperties();
@@ -1661,7 +1734,7 @@ public sealed class MainWindowViewModel : ObservableObject
             return;
         }
 
-        dispatcher.Invoke(action);
+        dispatcher.BeginInvoke(action);
     }
 
     /// <summary>
@@ -1791,13 +1864,6 @@ public sealed class MainWindowViewModel : ObservableObject
         };
     }
 
-    private static string FormatMilliseconds(int milliseconds)
-    {
-        return milliseconds >= 1000 && milliseconds % 1000 == 0
-            ? $"{milliseconds / 1000} 秒"
-            : $"{milliseconds} 毫秒";
-    }
-
     /// <summary>
     /// 根据动作类型生成默认步骤名称。
     /// </summary>
@@ -1812,5 +1878,14 @@ public sealed class MainWindowViewModel : ObservableObject
             InputActionType.TextInput => $"文本步骤 {index}",
             _ => $"输入步骤 {index}"
         };
+    }
+
+    /// <summary>
+    /// 取消执行引擎事件订阅，避免内存泄漏。
+    /// </summary>
+    public void Dispose()
+    {
+        executionEngine.StatusChanged -= HandleExecutionStatusChanged;
+        executionEngine.LogReceived -= HandleExecutionLogReceived;
     }
 }

@@ -48,7 +48,7 @@ public sealed class SqliteAppSettingsRepository : IAppSettingsRepository
             """;
         command.Parameters.AddWithValue("$key", key);
         command.Parameters.AddWithValue("$value", value);
-        command.Parameters.AddWithValue("$updatedAt", DateTime.Now.ToString("O"));
+        command.Parameters.AddWithValue("$updatedAt", DateTime.UtcNow.ToString("O"));
 
         await command.ExecuteNonQueryAsync(cancellationToken);
     }

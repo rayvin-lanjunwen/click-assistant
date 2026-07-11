@@ -136,6 +136,7 @@ public final class MarkerOverlayManager {
         wrapper.addView(typeIcon, iconParams);
 
         // 长按事件
+        wrapper.setClickable(true);
         wrapper.setOnLongClickListener(v -> {
             if (actionListener != null) {
                 MarkerEntry entry = markers.get(step.getId());
@@ -267,14 +268,15 @@ public final class MarkerOverlayManager {
         if (addedToWindow) return;
 
         overlayRoot = new FrameLayout(context);
+        // 让根容器不拦截触摸，但子 View（标记圆圈）可独立响应点击/长按
         overlayRoot.setClickable(false);
+        overlayRoot.setFocusable(false);
 
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                        | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
                         | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                 PixelFormat.TRANSLUCENT);
         params.gravity = Gravity.TOP | Gravity.START;
