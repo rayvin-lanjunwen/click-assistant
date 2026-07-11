@@ -11,35 +11,42 @@
         MinWidth="1080"
         MinHeight="680"
         WindowStartupLocation="CenterScreen"
-        Background="{StaticResource BgPrimaryBrush}">
+        Background="{DynamicResource BgPrimaryBrush}">
     <Window.Resources>
         <!-- 颜色与共享转换器已迁移到 App.xaml 的 Application.Resources，
              所有窗口（包括独立窗口）均可见。-->
 
         <!-- 基础 TextBlock -->
         <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
             <Setter Property="TextWrapping" Value="Wrap" />
             <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
         </Style>
 
+        <DropShadowEffect x:Key="GlassShadowEffect"
+                          BlurRadius="24" ShadowDepth="8" Direction="270"
+                          Color="#26334A" Opacity="0.13" />
+
         <!-- 卡片面板 -->
         <Style x:Key="CardStyle" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="Background" Value="{DynamicResource BgCardBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="CornerRadius" Value="16" />
             <Setter Property="Padding" Value="20" />
+            <Setter Property="Effect" Value="{DynamicResource GlassShadowEffect}" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
         </Style>
 
         <Style x:Key="SubtleCardStyle" TargetType="Border" BasedOn="{StaticResource CardStyle}">
-            <Setter Property="Background" Value="#F9FAFB" />
+            <Setter Property="Background" Value="{DynamicResource GlassSubtleBrush}" />
             <Setter Property="Padding" Value="16" />
+            <Setter Property="Effect" Value="{x:Null}" />
         </Style>
 
         <Style x:Key="HighlightCardStyle" TargetType="Border" BasedOn="{StaticResource CardStyle}">
-            <Setter Property="Background" Value="{StaticResource PrimaryLightBrush}" />
-            <Setter Property="BorderBrush" Value="#93C5FD" />
+            <Setter Property="Background" Value="#C9E4EEFF" />
+            <Setter Property="BorderBrush" Value="#D6FFFFFF" />
             <Setter Property="Padding" Value="16" />
         </Style>
 
@@ -49,7 +56,7 @@
             <Setter Property="Padding" Value="20,9" />
             <Setter Property="Margin" Value="0,0,8,0" />
             <Setter Property="Foreground" Value="White" />
-            <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+            <Setter Property="Background" Value="{DynamicResource PrimaryGradientBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource PrimaryDarkBrush}" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Cursor" Value="Hand" />
@@ -60,7 +67,7 @@
                         <Border Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="8"
+                                CornerRadius="10"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
@@ -69,7 +76,7 @@
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{StaticResource PrimaryDarkBrush}" />
+                    <Setter Property="Opacity" Value="0.9" />
                 </Trigger>
                 <Trigger Property="IsEnabled" Value="False">
                     <Setter Property="Opacity" Value="0.5" />
@@ -82,9 +89,9 @@
             <Setter Property="MinHeight" Value="40" />
             <Setter Property="Padding" Value="16,9" />
             <Setter Property="Margin" Value="0,0,8,0" />
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-            <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="Background" Value="#AFFFFFFF" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
@@ -93,7 +100,7 @@
                         <Border Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="8"
+                                CornerRadius="10"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
@@ -102,7 +109,7 @@
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#F9FAFB" />
+                    <Setter Property="Background" Value="#E6FFFFFF" />
                     <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
                 </Trigger>
                 <Trigger Property="IsEnabled" Value="False">
@@ -153,10 +160,10 @@
         <Style x:Key="NavButtonStyle" TargetType="Button">
             <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="Height" Value="44" />
+            <Setter Property="Height" Value="46" />
             <Setter Property="Margin" Value="12,2,12,2" />
             <Setter Property="Padding" Value="16,0,16,0" />
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Cursor" Value="Hand" />
@@ -165,7 +172,7 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border Background="{TemplateBinding Background}"
-                                CornerRadius="8"
+                                CornerRadius="11"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" />
                         </Border>
@@ -174,14 +181,14 @@
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#F3F4F6" />
+                    <Setter Property="Background" Value="#8FFFFFFF" />
                 </Trigger>
             </Style.Triggers>
         </Style>
 
         <Style x:Key="NavButtonActiveStyle" TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
             <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
-            <Setter Property="Background" Value="{StaticResource PrimaryLightBrush}" />
+            <Setter Property="Background" Value="#B8FFFFFF" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
@@ -196,7 +203,7 @@
             <Setter Property="MinHeight" Value="36" />
             <Setter Property="Padding" Value="16,8" />
             <Setter Property="Margin" Value="0,0,4,0" />
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
@@ -221,9 +228,9 @@
         <Style TargetType="TextBox">
             <Setter Property="MinHeight" Value="36" />
             <Setter Property="Padding" Value="10,8" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+            <Setter Property="Background" Value="{DynamicResource BgCardBrush}" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -231,7 +238,7 @@
                         <Border Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="6"
+                                CornerRadius="9"
                                 Padding="2,0">
                             <ScrollViewer Name="PART_ContentHost" />
                         </Border>
@@ -244,23 +251,23 @@
         <Style TargetType="ComboBox">
             <Setter Property="MinHeight" Value="36" />
             <Setter Property="Padding" Value="10,6" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+            <Setter Property="Background" Value="#BFFFFFFF" />
             <Setter Property="FontSize" Value="13" />
         </Style>
 
         <!-- CheckBox -->
         <Style TargetType="CheckBox">
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
             <Setter Property="FontSize" Value="13" />
         </Style>
 
         <!-- ListBox -->
         <Style TargetType="ListBox">
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+            <Setter Property="Background" Value="#A6FFFFFF" />
             <Setter Property="Padding" Value="4" />
         </Style>
 
@@ -271,17 +278,17 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
                         <Border Background="{TemplateBinding Background}"
-                                CornerRadius="6"
+                                CornerRadius="9"
                                 Padding="{TemplateBinding Padding}"
                                 Name="ItemBorder">
                             <ContentPresenter />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource PrimaryLightBrush}" />
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource PrimaryLightBrush}" />
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="#F3F4F6" />
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#A6FFFFFF" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -299,26 +306,26 @@
         <Style x:Key="PageTitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="24" />
             <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
             <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
         </Style>
 
         <Style x:Key="PageSubtitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="14" />
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
             <Setter Property="Margin" Value="0,4,0,0" />
         </Style>
 
         <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="16" />
             <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
             <Setter Property="Margin" Value="0,0,0,8" />
         </Style>
 
         <Style x:Key="FormLabelStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="13" />
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
             <Setter Property="Margin" Value="0,0,0,4" />
         </Style>
 
@@ -333,12 +340,13 @@
     <!-- 主布局：左侧导航 + 右侧内容 -->
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="240" />
+            <ColumnDefinition Width="228" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
         <!-- ===== 左侧导航栏 ===== -->
-        <Border Grid.Column="0" Background="{StaticResource BgCardBrush}">
+        <Border Grid.Column="0" Background="{DynamicResource GlassNavigationBrush}"
+                BorderBrush="#8FFFFFFF" BorderThickness="0,0,1,0">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -350,17 +358,12 @@
                 <!-- Logo -->
                 <StackPanel Grid.Row="0" Margin="24,28,24,32">
                     <StackPanel Orientation="Horizontal">
-                        <Border Width="36" Height="36"
-                                Background="{StaticResource PrimaryBrush}"
-                                CornerRadius="8"
-                                Margin="0,0,12,0">
-                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       FontSize="16" FontWeight="Bold"
-                                       Foreground="White" Text="CA" />
-                        </Border>
+                        <Image Source="Resources/Images/logo_app.png"
+                               Width="36" Height="36"
+                               Margin="0,0,12,0" />
                         <TextBlock VerticalAlignment="Center"
                                    FontSize="16" FontWeight="Bold"
-                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
                                    Text="Click Assistant" />
                     </StackPanel>
                 </StackPanel>
@@ -374,7 +377,7 @@
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsHomePageVisible}" Value="True">
                                         <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
-                                        <Setter Property="Background" Value="{StaticResource PrimaryLightBrush}" />
+                                        <Setter Property="Background" Value="{DynamicResource PrimaryLightBrush}" />
                                         <Setter Property="FontWeight" Value="SemiBold" />
                                     </DataTrigger>
                                 </Style.Triggers>
@@ -388,7 +391,7 @@
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsNewTaskTypePageVisible}" Value="True">
                                         <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
-                                        <Setter Property="Background" Value="{StaticResource PrimaryLightBrush}" />
+                                        <Setter Property="Background" Value="{DynamicResource PrimaryLightBrush}" />
                                         <Setter Property="FontWeight" Value="SemiBold" />
                                     </DataTrigger>
                                 </Style.Triggers>
@@ -402,7 +405,7 @@
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsTaskLibraryPageVisible}" Value="True">
                                         <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
-                                        <Setter Property="Background" Value="{StaticResource PrimaryLightBrush}" />
+                                        <Setter Property="Background" Value="{DynamicResource PrimaryLightBrush}" />
                                         <Setter Property="FontWeight" Value="SemiBold" />
                                     </DataTrigger>
                                 </Style.Triggers>
@@ -416,7 +419,7 @@
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsExecutionLogsPageVisible}" Value="True">
                                         <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
-                                        <Setter Property="Background" Value="{StaticResource PrimaryLightBrush}" />
+                                        <Setter Property="Background" Value="{DynamicResource PrimaryLightBrush}" />
                                         <Setter Property="FontWeight" Value="SemiBold" />
                                     </DataTrigger>
                                 </Style.Triggers>
@@ -428,18 +431,27 @@
                 <!-- 底部状态 -->
                 <Border Grid.Row="3" Margin="16,0,16,20" Padding="14"
                         Background="#F9FAFB" CornerRadius="10"
-                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                     <StackPanel>
-                        <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                        <TextBlock FontSize="12" Foreground="{DynamicResource TextMutedBrush}"
                                    Text="执行状态" />
                         <TextBlock FontSize="14" FontWeight="SemiBold"
                                    Foreground="{StaticResource PrimaryBrush}"
                                    Text="{Binding StatusText}" Margin="0,2,0,0" />
-                        <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
+                        <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="{Binding HotkeyStatus}" Margin="0,6,0,0"
                                    TextTrimming="CharacterEllipsis" />
-                        <TextBlock FontSize="10" Foreground="{StaticResource TextMutedBrush}"
+                        <TextBlock FontSize="10" Foreground="{DynamicResource TextMutedBrush}"
                                    Text="{Binding VersionText}" Margin="0,8,0,0" />
+                        <Button x:Name="ThemeToggleButton"
+                                Content="🌙 深色模式"
+                                FontSize="11"
+                                Margin="0,8,0,0"
+                                Padding="8,4"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Cursor="Hand"
+                                Click="HandleThemeToggleClick" />
                     </StackPanel>
                 </Border>
             </Grid>
@@ -454,20 +466,14 @@
                         <!-- Hero 区域 -->
                         <Border Margin="0,0,0,20" Style="{StaticResource CardStyle}" Padding="28">
                             <StackPanel HorizontalAlignment="Center">
-                                <Border HorizontalAlignment="Center"
-                                        Width="56" Height="56"
-                                        Background="{StaticResource PrimaryBrush}"
-                                        CornerRadius="14"
-                                        Margin="0,0,0,16">
-                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               FontSize="22" FontWeight="Bold"
-                                               Foreground="White" Text="CA" />
-                                </Border>
+                                <Image Source="Resources/Images/logo_app.png"
+                                       Width="56" Height="56"
+                                       Margin="0,0,0,16" />
                                 <TextBlock HorizontalAlignment="Center"
                                            FontSize="28" FontWeight="Bold"
                                            Text="Click Assistant" />
                                 <TextBlock HorizontalAlignment="Center"
-                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
                                            Text="点击与输入助手 — 自动化重复操作" Margin="0,6,0,0" />
                                 <WrapPanel HorizontalAlignment="Center" Margin="0,14,0,0">
                                     <Button Command="{Binding ShowNewTaskTypeCommand}" Content="新建任务"
@@ -482,7 +488,7 @@
 
                         <!-- 最近任务 -->
                         <TextBlock FontSize="18" FontWeight="Bold" Margin="0,8,0,12"
-                                   Text="最近任务" Foreground="{StaticResource TextPrimaryBrush}" />
+                                   Text="最近任务" Foreground="{DynamicResource TextPrimaryBrush}" />
                         <ItemsControl ItemsSource="{Binding RecentTasks}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
@@ -494,15 +500,14 @@
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             <Border Grid.Column="0" Width="36" Height="36"
-                                                    Background="{StaticResource PrimaryLightBrush}"
+                                                    Background="{DynamicResource PrimaryLightBrush}"
                                                     CornerRadius="8" Margin="0,0,10,0">
-                                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                           FontSize="16" Text="🎯" />
+                                                <Image Source="Resources/Images/icon_tap.png" Width="20" Height="20" />
                                             </Border>
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                 <TextBlock FontWeight="SemiBold" FontSize="14"
                                                            Text="{Binding Name}" />
-                                                <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
+                                                <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
                                                            Text="{Binding Description, StringFormat={}{0}}" />
                                             </StackPanel>
                                             <Button Grid.Column="2" Content="执行"
@@ -520,10 +525,10 @@
                             <StackPanel>
                                 <TextBlock FontSize="14" FontWeight="SemiBold" Text="执行状态" />
                                 <TextBlock Margin="0,6,0,0" FontSize="13"
-                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
                                            Text="{Binding ExecutionSafetyText}" />
                                 <TextBlock Margin="0,4,0,0" FontSize="12"
-                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Foreground="{DynamicResource TextMutedBrush}"
                                            Text="{Binding HotkeyStatus}" />
                             </StackPanel>
                         </Border>
@@ -561,13 +566,12 @@
                                 Style="{StaticResource ChoiceButtonStyle}">
                             <StackPanel>
                                 <Border Width="48" Height="48"
-                                        Background="{StaticResource PrimaryLightBrush}"
+                                        Background="{DynamicResource PrimaryLightBrush}"
                                         CornerRadius="10" Margin="0,0,0,12">
-                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               FontSize="22" Text="🖱️" />
+                                    <Image Source="Resources/Images/icon_tap.png" Width="28" Height="28" />
                                 </Border>
                                 <TextBlock FontSize="18" FontWeight="SemiBold" Text="鼠标点击" />
-                                <TextBlock Margin="0,8,0,0" Foreground="{StaticResource TextSecondaryBrush}"
+                                <TextBlock Margin="0,8,0,0" Foreground="{DynamicResource TextSecondaryBrush}"
                                            Text="固定坐标点击、重复点击、开始延迟和点击间隔。支持多位置顺序执行。" />
                                 <TextBlock Margin="0,14,0,0" FontWeight="SemiBold"
                                            Foreground="{StaticResource PrimaryBrush}"
@@ -581,13 +585,12 @@
                                 Style="{StaticResource ChoiceButtonStyle}">
                             <StackPanel>
                                 <Border Width="48" Height="48"
-                                        Background="{StaticResource WarningLightBrush}"
+                                        Background="{DynamicResource WarningLightBrush}"
                                         CornerRadius="10" Margin="0,0,0,12">
-                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               FontSize="22" Text="⌨️" />
+                                    <Image Source="Resources/Images/icon_keyboard.png" Width="28" Height="28" />
                                 </Border>
                                 <TextBlock FontSize="18" FontWeight="SemiBold" Text="键盘按键" />
-                                <TextBlock Margin="0,8,0,0" Foreground="{StaticResource TextSecondaryBrush}"
+                                <TextBlock Margin="0,8,0,0" Foreground="{DynamicResource TextSecondaryBrush}"
                                            Text="单键或连续按键任务，适合重复触发快捷操作。支持按键捕获。" />
                                 <TextBlock Margin="0,14,0,0" FontWeight="SemiBold"
                                            Foreground="{StaticResource WarningBrush}"
@@ -601,13 +604,12 @@
                                 Style="{StaticResource ChoiceButtonStyle}">
                             <StackPanel>
                                 <Border Width="48" Height="48"
-                                        Background="{StaticResource SecondaryLightBrush}"
+                                        Background="{DynamicResource SecondaryLightBrush}"
                                         CornerRadius="10" Margin="0,0,0,12">
-                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               FontSize="22" Text="📝" />
+                                    <Image Source="Resources/Images/icon_text_input.png" Width="28" Height="28" />
                                 </Border>
                                 <TextBlock FontSize="18" FontWeight="SemiBold" Text="文本输入" />
-                                <TextBlock Margin="0,8,0,0" Foreground="{StaticResource TextSecondaryBrush}"
+                                <TextBlock Margin="0,8,0,0" Foreground="{DynamicResource TextSecondaryBrush}"
                                            Text="保存常用文本并可配置字符间隔自动输入。支持自动聚焦目标输入框。" />
                                 <TextBlock Margin="0,14,0,0" FontWeight="SemiBold"
                                            Foreground="{StaticResource SecondaryBrush}"
@@ -621,13 +623,12 @@
                                 Style="{StaticResource ChoiceButtonStyle}">
                             <StackPanel>
                                 <Border Width="48" Height="48"
-                                        Background="{StaticResource CyanLightBrush}"
+                                        Background="{DynamicResource CyanLightBrush}"
                                         CornerRadius="10" Margin="0,0,0,12">
-                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               FontSize="22" Text="🔀" />
+                                    <Image Source="Resources/Images/icon_combo.png" Width="28" Height="28" />
                                 </Border>
                                 <TextBlock FontSize="18" FontWeight="SemiBold" Text="组合任务" />
-                                <TextBlock Margin="0,8,0,0" Foreground="{StaticResource TextSecondaryBrush}"
+                                <TextBlock Margin="0,8,0,0" Foreground="{DynamicResource TextSecondaryBrush}"
                                            Text="把鼠标、按键和文本组合成一组执行流程，按顺序自动执行。" />
                                 <TextBlock Margin="0,14,0,0" FontWeight="SemiBold"
                                            Foreground="{StaticResource CyanBrush}"
@@ -640,13 +641,12 @@
                                 Style="{StaticResource ChoiceButtonStyle}">
                             <StackPanel>
                                 <Border Width="48" Height="48"
-                                        Background="{StaticResource SuccessLightBrush}"
+                                        Background="{DynamicResource SuccessLightBrush}"
                                         CornerRadius="10" Margin="0,0,0,12">
-                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               FontSize="22" Text="↔️" />
+                                    <Image Source="Resources/Images/icon_swipe.png" Width="28" Height="28" />
                                 </Border>
                                 <TextBlock FontSize="18" FontWeight="SemiBold" Text="滑动手势" />
-                                <TextBlock Margin="0,8,0,0" Foreground="{StaticResource TextSecondaryBrush}"
+                                <TextBlock Margin="0,8,0,0" Foreground="{DynamicResource TextSecondaryBrush}"
                                            Text="配置屏幕滑动轨迹，适合触控设备或模拟滑动操作。" />
                             </StackPanel>
                         </Button>
@@ -704,7 +704,7 @@
                                                 <TextBlock FontWeight="SemiBold" FontSize="14"
                                                            Text="{Binding Name}" />
                                                 <TextBlock Margin="0,4,0,0" FontSize="12"
-                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}"
                                                            TextTrimming="CharacterEllipsis"
                                                            Text="{Binding Description}" />
                                             </StackPanel>
@@ -721,13 +721,15 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="12" />
                                     <RowDefinition Height="*" />
+                                    <RowDefinition Height="10" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
                                 <StackPanel Grid.Row="0">
                                     <TextBlock FontSize="20" FontWeight="Bold"
                                                Text="{Binding SelectedTask.Name}" />
                                     <TextBlock Margin="0,4,0,0" FontSize="13"
-                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
                                                Text="{Binding SelectedTaskMetaText}" />
                                 </StackPanel>
 
@@ -746,7 +748,7 @@
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="12" />
+                                                    <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
                                                 </Grid.RowDefinitions>
@@ -761,8 +763,8 @@
                                                          Text="{Binding SelectedTask.RepeatCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                                 <TextBox Grid.Row="1" Grid.Column="4" Margin="0,4,0,0"
                                                          Text="{Binding SelectedTask.StartDelayMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                <TextBlock Grid.Row="2" Grid.Column="4" Margin="0,2,0,0" FontSize="11"
-                                                           Foreground="{StaticResource TextMutedBrush}"
+                                                <TextBlock Grid.Row="2" Grid.Column="4" Margin="0,4,0,8" FontSize="11"
+                                                           Foreground="{DynamicResource TextMutedBrush}"
                                                            Text="点开始后，等待多久再执行第一步。" />
 
                                                 <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource FormLabelStyle}" Text="任务说明" />
@@ -805,7 +807,7 @@
                                                     <StackPanel>
                                                         <TextBlock Style="{StaticResource SectionTitleStyle}" Text="步骤配置" />
                                                         <TextBlock FontSize="12"
-                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                                                    Text="已保存任务可在这里直接编辑步骤，保存后生效。" />
                                                     </StackPanel>
                                                 </DockPanel>
@@ -839,7 +841,7 @@
                                                                                Text="{Binding Name}" />
                                                                 </StackPanel>
                                                                 <TextBlock Margin="8,2,0,0" FontSize="11"
-                                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                                           Foreground="{DynamicResource TextSecondaryBrush}"
                                                                            Text="{Binding Converter={StaticResource StepSummaryConverter}}" />
                                                             </StackPanel>
                                                         </DataTemplate>
@@ -901,7 +903,7 @@
                                                         <TextBox Grid.Row="1" Grid.Column="0" Margin="0,4,0,0"
                                                                  Text="{Binding SelectedStepBeforeDelayMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                                         <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,2,0,0" FontSize="11"
-                                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                                   Foreground="{DynamicResource TextMutedBrush}"
                                                                    Text="步骤间等待由下一步骤的前等待控制。" />
                                                     </Grid>
 
@@ -1009,10 +1011,10 @@
                                                         </Grid.RowDefinitions>
                                                         <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="0"
                                                                 Padding="14" CornerRadius="8"
-                                                                Background="{StaticResource PrimaryLightBrush}"
+                                                                Background="{DynamicResource PrimaryLightBrush}"
                                                                 BorderBrush="#93C5FD" BorderThickness="1">
                                                             <StackPanel>
-                                                                <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Text="按键捕获" />
+                                                                <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Text="按键捕获" />
                                                                 <TextBlock Margin="0,8,0,0" FontSize="20" FontWeight="Bold"
                                                                            Foreground="{StaticResource PrimaryDarkBrush}"
                                                                            Text="{Binding SelectedStepKeyDisplayText}" />
@@ -1025,7 +1027,7 @@
                                                                          PreviewMouseLeftButtonDown="HandleKeyboardCapturePreviewMouseLeftButtonDown"
                                                                          Text="{Binding SelectedStepKeyName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                                                 <TextBlock Margin="0,6,0,0" FontSize="11"
-                                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                                           Foreground="{DynamicResource TextSecondaryBrush}"
                                                                            Text="{Binding KeyboardCaptureStatus}" />
                                                             </StackPanel>
                                                         </Border>
@@ -1081,11 +1083,10 @@
                                 </TabControl>
 
                                 <!-- 执行操作栏（底部固定） -->
-                                <Border Margin="0,10,0,0" Padding="12" CornerRadius="8"
-                                        Background="{StaticResource SubtleCardStyle}">
+                                <Border Grid.Row="4" Style="{StaticResource SubtleCardStyle}">
                                     <WrapPanel>
                                         <TextBlock VerticalAlignment="Center" FontSize="12"
-                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                                    Text="{Binding ExecutionSummary}"
                                                    MaxWidth="400" TextTrimming="CharacterEllipsis"
                                                    Margin="0,0,12,0" />
@@ -1152,7 +1153,7 @@
 
                     <StackPanel Grid.Row="0">
                         <TextBlock Style="{StaticResource PageTitleStyle}" Text="鼠标点击任务编辑" />
-                        <TextBlock FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"
+                        <TextBlock FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0"
                                    Text="配置固定坐标、点击次数、开始延迟和点击间隔。运行中请用悬浮窗暂停或停止。" />
                     </StackPanel>
 
@@ -1168,7 +1169,7 @@
 
                             <StackPanel Grid.Column="0">
                                 <TextBlock Style="{StaticResource SectionTitleStyle}" Text="点击位置（按顺序执行）" />
-                                <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                                <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
                                            TextWrapping="Wrap" Text="{Binding MousePositionSummary}" />
                                 <ListBox x:Name="MouseStepListBox" Margin="0,10,0,0" MinHeight="220"
                                          ItemsSource="{Binding MouseSteps}"
@@ -1183,7 +1184,7 @@
                                                                Text="{Binding Name}" />
                                                 </StackPanel>
                                                 <TextBlock Margin="0,4,0,0" FontSize="11"
-                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}"
                                                            Text="{Binding Converter={StaticResource StepSummaryConverter}}" />
                                             </StackPanel>
                                         </DataTemplate>
@@ -1277,7 +1278,7 @@
                                 <StackPanel>
                                     <TextBlock Style="{StaticResource SectionTitleStyle}" Text="坐标采集" />
                                     <TextBlock Margin="0,6,0,6" FontSize="12"
-                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
                                                Text="{Binding CoordinateCaptureStatus}" />
                                     <TextBlock FontSize="20" FontWeight="Bold"
                                                Foreground="{StaticResource PrimaryBrush}"
@@ -1303,7 +1304,7 @@
                             <StackPanel>
                                 <TextBlock Style="{StaticResource SectionTitleStyle}" Text="执行摘要" />
                                 <TextBlock Margin="0,8,0,0" FontSize="13"
-                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
                                            Text="{Binding ExecutionSummary}" />
                                 <TextBlock Margin="0,10,0,0" FontWeight="SemiBold" FontSize="13"
                                            Foreground="{StaticResource DangerBrush}"

@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.ComponentModel;
 using ClickAssistant.App.Services;
 using ClickAssistant.App.ViewModels;
 using ClickAssistant.Application.Abstractions;
@@ -17,6 +18,10 @@ namespace ClickAssistant.App;
 public partial class MainWindow : Window
 {
     private const string StopHotkeySettingKey = "StopHotkey";
+    private const string ThemeSettingKey = "Theme";
+    private const string ThemeDark = "Dark";
+    private const string ThemeLight = "Light";
+    private ResourceDictionary? darkThemeDictionary;
     private MainWindowViewModel? viewModel;
     private IGlobalHotkeyService? globalHotkeyService;
     private IAppSettingsRepository? appSettingsRepository;
@@ -81,7 +86,7 @@ public partial class MainWindow : Window
                 Left = Left + Width - 330,
                 Top = Top + 92
             };
-            floatingWindow.Show();
+            viewModel.PropertyChanged += HandleViewModelPropertyChanged;
             mouseClickVisualWindow = new MouseClickVisualWindow();
             executionEngine.MouseClickVisualRequested += HandleMouseClickVisualRequested;
 
@@ -95,11 +100,86 @@ public partial class MainWindow : Window
                 : savedStopHotkey;
             viewModel.SetStopHotkeyInput(stopHotkeyText);
             RegisterGlobalHotkeys(stopHotkeyText);
+
+            // 恢复保存的主题设置
+            await RestoreThemeAsync(settingsRepository);
         }
         catch (Exception exception)
         {
             dialogService?.ShowError(exception.Message, "启动失败");
             Close();
+        }
+    }
+
+    /// <summary>
+    /// 主题切换按钮点击：切换深浅色模式并更新按钮文案。
+    /// </summary>
+    private async void HandleThemeToggleClick(object sender, RoutedEventArgs e)
+    {
+        await ToggleThemeAsync();
+        var currentTheme = Application.Current.Resources["ThemeName"] as string ?? ThemeLight;
+        ThemeToggleButton.Content = string.Equals(currentTheme, ThemeDark, System.StringComparison.OrdinalIgnoreCase)
+            ? "☀️ 浅色模式"
+            : "🌙 深色模式";
+    }
+
+    /// <summary>
+    /// 从数据库恢复上次的主题设置。
+    /// </summary>
+    private async System.Threading.Tasks.Task RestoreThemeAsync(IAppSettingsRepository settingsRepo)
+    {
+        var savedTheme = await settingsRepo.GetValueAsync(ThemeSettingKey);
+        if (string.Equals(savedTheme, ThemeDark, System.StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyTheme(ThemeDark);
+        }
+    }
+
+    /// <summary>
+    /// 切换深浅色主题，并持久化到数据库。
+    /// </summary>
+    public async System.Threading.Tasks.Task ToggleThemeAsync()
+    {
+        var currentTheme = Application.Current.Resources["ThemeName"] as string ?? ThemeLight;
+        var newTheme = string.Equals(currentTheme, ThemeDark, System.StringComparison.OrdinalIgnoreCase)
+            ? ThemeLight
+            : ThemeDark;
+        ApplyTheme(newTheme);
+
+        if (appSettingsRepository != null)
+        {
+            await appSettingsRepository.SetValueAsync(ThemeSettingKey, newTheme);
+        }
+    }
+
+    /// <summary>
+    /// 应用指定主题：将深色字典注入/移出 Application.Resources.MergedDictionaries。
+    /// 深色字典通过覆盖默认值实现主题切换，不再时浅色默认值生效。
+    /// </summary>
+    private void ApplyTheme(string theme)
+    {
+        var appResources = Application.Current.Resources;
+        var mergedDictionaries = appResources.MergedDictionaries;
+
+        // 获取深色主题字典引用（App.xaml 中以 x:Key="DarkThemeDictionary" 存储在根资源中）
+        if (darkThemeDictionary == null)
+        {
+            darkThemeDictionary = appResources["DarkThemeDictionary"] as ResourceDictionary;
+        }
+
+        if (string.Equals(theme, ThemeDark, System.StringComparison.OrdinalIgnoreCase))
+        {
+            if (darkThemeDictionary != null && !mergedDictionaries.Contains(darkThemeDictionary))
+            {
+                mergedDictionaries.Insert(0, darkThemeDictionary);
+            }
+        }
+        else
+        {
+            if (darkThemeDictionary != null && mergedDictionaries.Contains(darkThemeDictionary))
+            {
+                mergedDictionaries.Remove(darkThemeDictionary);
+            }
         }
     }
 
@@ -121,6 +201,30 @@ public partial class MainWindow : Window
 
         viewModel?.CaptureKeyboardStepKey(keyName);
         e.Handled = true;
+    }
+
+    /// <summary>
+    /// 仅在任务启动、运行或暂停时显示悬浮控制窗，避免空闲窗口遮挡主界面。
+    /// </summary>
+    private void HandleViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(MainWindowViewModel.IsFloatingWindowVisible) ||
+            viewModel is null || floatingWindow is null)
+        {
+            return;
+        }
+
+        if (viewModel.IsFloatingWindowVisible)
+        {
+            if (!floatingWindow.IsVisible)
+            {
+                floatingWindow.Show();
+            }
+        }
+        else if (floatingWindow.IsVisible)
+        {
+            floatingWindow.Hide();
+        }
     }
 
     private void HandleKeyboardCapturePreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -262,6 +366,7 @@ public partial class MainWindow : Window
     {
         if (viewModel is not null)
         {
+            viewModel.PropertyChanged -= HandleViewModelPropertyChanged;
             viewModel.StopHotkeyChangeRequested -= HandleStopHotkeyChangeRequested;
             viewModel.CoordinateSelectionRequested -= HandleCoordinateSelectionRequested;
             viewModel.Dispose();

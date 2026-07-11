@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Click Assistant 液态玻璃色彩定义（深色主题）
+     与 WPF 端深色主题保持语义一致 -->
+<resources>
+    <!-- 品牌主色（保持不变，暗色背景下对比度自然增强） -->
+    <color name="primary">#3978F6</color>
+    <color name="primary_dark">#5B9BFF</color>
+    <color name="primary_light">#1E3A6B</color>
+    <color name="primary_gradient_start">#5B9BFF</color>
+    <color name="primary_gradient_end">#6B78E8</color>
+
+    <!-- 辅助色 -->
+    <color name="secondary">#0F9FA4</color>
+    <color name="secondary_light">#123A3C</color>
+    <color name="cyan">#168DA4</color>
+    <color name="cyan_light">#0F2A30</color>
+
+    <!-- 深色文字 -->
+    <color name="text_primary">#E2E8F0</color>
+    <color name="text_secondary">#94A3B8</color>
+    <color name="text_muted">#64748B</color>
+
+    <!-- 深色背景与玻璃材质 -->
+    <color name="bg_page_start">#0F111A</color>
+    <color name="bg_page_mid">#1A1D2E</color>
+    <color name="bg_page_end">#151720</color>
+    <color name="bg_page">#151A24</color>
+    <color name="glass_card_top">#18FFFFFF</color>
+    <color name="glass_card_bottom">#0AFFFFFF</color>
+    <color name="glass_nav_top">#14FFFFFF</color>
+    <color name="glass_nav_bottom">#08EEF2F7</color>
+    <color name="glass_subtle_top">#0CFFFFFF</color>
+    <color name="glass_subtle_bottom">#06FFFFFF</color>
+    <color name="card_bg">#10FFFFFF</color>
+    <color name="gray_bg">#08FFFFFF</color>
+    <color name="border">#1EFFFFFF</color>
+    <color name="border_light">#0CFFFFFF</color>
+
+    <!-- 语义状态色（保持不变） -->
+    <color name="success">#169B72</color>
+    <color name="success_light">#14352A</color>
+    <color name="warning">#E98732</color>
+    <color name="warning_light">#3A2210</color>
+    <color name="danger">#D84D5F</color>
+    <color name="danger_light">#3A1418</color>
+    <color name="purple">#7067D8</color>
+    <color name="purple_light">#1E1A3A</color>
+
+    <!-- 深色系统栏 -->
+    <color name="status_bar">#0F111A</color>
+    <color name="nav_bar">#0F111A</color>
+    <color name="window_bg">#151A24</color>
+
+    <!-- 白色（暗色模式中用于极少场景） -->
+    <color name="white">#FFFFFF</color>
+</resources>

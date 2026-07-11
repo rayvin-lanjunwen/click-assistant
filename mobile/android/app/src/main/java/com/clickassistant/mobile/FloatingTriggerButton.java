@@ -47,11 +47,9 @@ public final class FloatingTriggerButton {
     private boolean pickMode = false;
 
     // 颜色定义
-    private static final int BG_COLOR = Color.parseColor("#FFFFFF");
-    private static final int ACCENT = Color.parseColor("#2563EB");
-    private static final int TEXT_PRIMARY = Color.parseColor("#1F2937");
-    private static final int TEXT_SECONDARY = Color.parseColor("#6B7280");
-    private static final int SHADOW_COLOR = Color.argb(30, 0, 0, 0);
+    private static final int ACCENT = Color.parseColor("#3978F6");
+    private static final int TEXT_PRIMARY = Color.parseColor("#17233A");
+    private static final int TEXT_SECONDARY = Color.parseColor("#526176");
 
     public FloatingTriggerButton(Context context) {
         this.context = context;
@@ -99,9 +97,11 @@ public final class FloatingTriggerButton {
         drawerRoot.setOrientation(LinearLayout.HORIZONTAL);
         drawerRoot.setGravity(Gravity.CENTER_VERTICAL);
 
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(BG_COLOR);
+        GradientDrawable bg = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{Color.parseColor("#F2FFFFFF"), Color.parseColor("#D9EEF4F7")});
         bg.setCornerRadii(new float[]{0, dp(12), dp(12), 0, 0, 0, 0, 0});
+        bg.setStroke(dp(1), Color.parseColor("#B8FFFFFF"));
         drawerRoot.setBackground(bg);
         drawerRoot.setElevation(dp(6));
 
@@ -140,7 +140,7 @@ public final class FloatingTriggerButton {
 
         // «收起 分隔线
         View divider = new View(context);
-        divider.setBackgroundColor(Color.parseColor("#E5E7EB"));
+        divider.setBackgroundColor(Color.parseColor("#80FFFFFF"));
         LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(1));
         dividerParams.setMargins(dp(4), dp(4), dp(4), dp(4));
@@ -164,7 +164,11 @@ public final class FloatingTriggerButton {
         collapseArrow.setTextSize(16);
         collapseArrow.setTextColor(Color.WHITE);
         collapseArrow.setGravity(Gravity.CENTER);
-        collapseArrow.setBackgroundColor(ACCENT);
+        GradientDrawable arrowBackground = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{Color.parseColor("#4C8DFF"), Color.parseColor("#5668D8")});
+        arrowBackground.setCornerRadii(new float[]{0, dp(12), dp(12), 0, 0, 0, 0, 0});
+        collapseArrow.setBackground(arrowBackground);
         collapseArrow.setPadding(dp(6), dp(18), dp(6), dp(18));
         collapseArrow.setOnClickListener(v -> {
             if (expanded) {

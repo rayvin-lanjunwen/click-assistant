@@ -15,8 +15,12 @@
     <Window.Resources>
         <!-- 颜色与共享转换器已迁移到 App.xaml -->
 
+        <DropShadowEffect x:Key="FloatingGlassShadow"
+                          BlurRadius="28" ShadowDepth="8" Direction="270"
+                          Color="#253248" Opacity="0.22" />
+
         <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
             <Setter Property="TextWrapping" Value="Wrap" />
             <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
         </Style>
@@ -25,9 +29,9 @@
             <Setter Property="MinHeight" Value="34" />
             <Setter Property="Padding" Value="12,6" />
             <Setter Property="Margin" Value="0,0,6,0" />
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-            <Setter Property="Background" Value="White" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="Background" Value="#BFFFFFFF" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
@@ -36,7 +40,7 @@
                         <Border Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="8"
+                                CornerRadius="10"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
@@ -47,7 +51,7 @@
 
         <Style x:Key="PrimaryFloatingButtonStyle" TargetType="Button" BasedOn="{StaticResource FloatingButtonStyle}">
             <Setter Property="Foreground" Value="White" />
-            <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+            <Setter Property="Background" Value="{DynamicResource PrimaryGradientBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource PrimaryDarkBrush}" />
             <Setter Property="BorderThickness" Value="0" />
         </Style>
@@ -60,10 +64,10 @@
 
     <Grid MouseLeftButtonDown="HandleMouseLeftButtonDown">
         <!-- 收起态 -->
-        <Border Padding="12" CornerRadius="12"
-                Background="#FFFFFF" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+        <Border Padding="12" CornerRadius="16"
+                Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                 Visibility="{Binding IsFloatingCollapsedVisible, Converter={StaticResource BoolToVisibility}}"
-                Effect="{x:Null}">
+                Effect="{DynamicResource FloatingGlassShadow}">
             <DockPanel LastChildFill="True">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <Button Command="{Binding StopCommand}" Content="⏹"
@@ -74,7 +78,7 @@
                             Content="展开" Style="{StaticResource PrimaryFloatingButtonStyle}" />
                 </StackPanel>
                 <StackPanel Margin="0,0,8,0">
-                    <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
+                    <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
                                Text="Click Assistant" />
                     <TextBlock FontSize="15" FontWeight="SemiBold"
                                Foreground="{StaticResource PrimaryBrush}"
@@ -84,16 +88,17 @@
         </Border>
 
         <!-- 展开态 -->
-        <Border Padding="16" CornerRadius="12"
-                Background="#FFFFFF" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                Visibility="{Binding IsFloatingExpandedVisible, Converter={StaticResource BoolToVisibility}}">
+        <Border Padding="16" CornerRadius="16"
+                Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                Visibility="{Binding IsFloatingExpandedVisible, Converter={StaticResource BoolToVisibility}}"
+                Effect="{DynamicResource FloatingGlassShadow}">
             <StackPanel>
                 <DockPanel>
                     <Button DockPanel.Dock="Right"
                             Command="{Binding ToggleFloatingWindowCommand}"
                             Content="收起" Style="{StaticResource FloatingButtonStyle}" />
                     <StackPanel>
-                        <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
+                        <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="Click Assistant 控制" />
                         <TextBlock FontSize="18" FontWeight="SemiBold"
                                    Foreground="{StaticResource PrimaryBrush}"
@@ -101,12 +106,12 @@
                     </StackPanel>
                 </DockPanel>
 
-                <Border Margin="0,10,0,10" Padding="12" CornerRadius="8"
-                        Background="#F9FAFB" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                <Border Margin="0,10,0,10" Padding="12" CornerRadius="10"
+                        Background="{DynamicResource GlassSubtleBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                     <StackPanel>
                         <TextBlock FontWeight="SemiBold" Text="{Binding FloatingTaskName}" />
                         <TextBlock Margin="0,4,0,0" FontSize="12"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="{Binding FloatingTaskSummary}" />
                     </StackPanel>
                 </Border>

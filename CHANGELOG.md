@@ -2,6 +2,31 @@
 
 本文档用于记录项目中值得追踪的版本、功能、修复和重要变更，并与 GitHub Releases（GitHub 发布页面）保持同步。
 
+## v0.16.0 - 2026-07-12 01:30
+
+- 新增: 全套 AI 生成图片素材（14 张 PNG），包括应用 Logo、5 个任务类型图标、4 个导航图标、4 个状态图标，统一蓝紫渐变玻璃质感几何风格，分别部署到 WPF `Resources/Images/` 和 Android `res/drawable/` 目录。
+- 新增: WPF 端深色主题支持：App.xaml 增加 DarkTheme 资源字典（深色背景渐变、深色玻璃材质、深色文字色共 25+ Brush），MainWindow.xaml.cs 实现主题切换逻辑并持久化到 `app_settings` 表。
+- 新增: Android 端深色主题支持：新建 `res/values/colors.xml`（35+ 颜色资源）和 `res/values-night/colors.xml`（自动跟随系统切换），新建 `themes.xml` 和 `values-night/themes.xml`，MainActivity.java 新增 `getThemeColor()` 动态颜色获取方法。
+- 新增: 图片素材规格说明文档 `docs/design/ASSETS_SPECIFICATION.md`，记录每张图片的尺寸、色值、生成提示词和使用位置。
+- 变更: 升级 `LIQUID_GLASS_DESIGN.md` 至 v2.0.0，补全色彩体系（深浅色令牌）、字体排版层级、响应式断点逻辑、组件五态规范（默认/悬停/按下/聚焦/禁用）和深浅色主题适配对比表。
+- 变更: WPF 端 MainWindow.xaml 和 FloatingControlWindow.xaml 中所有主题敏感画笔从 StaticResource 改为 DynamicResource，支持运行时主题切换。
+- 变更: WPF 端任务类型选择卡片和导航 Logo 从 emoji 文字替换为 PNG 图片素材。
+- 变更: Android 端 styles.xml 更新为引用 `@color/` 资源方式，支持日夜模式跟随。
+- 变更: Android 端 `glassDrawable()` 和 `pageBackgroundDrawable()` 改为通过 ContextCompat.getColor() 动态获取颜色。
+- 变更: 项目版本提升至 v0.16.0，Android 端版本提升至 v0.6.1。
+- docs: 新增 `docs/design/ASSETS_SPECIFICATION.md` 素材规格说明文档。
+
+## v0.15.0 - 2026-07-12 01:00
+
+- 变更: Android 与 WPF 统一采用液态玻璃视觉体系，覆盖背景、卡片、导航、按钮、输入控件、状态色、任务页、日志页与悬浮控制界面。
+- 变更: Android 端版本提升至 `0.6.0`，系统栏、底部导航、取点标记和悬浮抽屉同步使用跨端设计令牌。
+- 优化: 使用原生渐变、半透明亮边和平台阴影实现玻璃材质，保持 Android 7+ 兼容并避免静态背景图片在不同尺寸下失真。
+- 修复: 桌面任务库底部操作栏因缺少 Grid 行定位而覆盖任务摘要，调整栅格结构并修复开始延迟提示与任务说明重叠。
+- 修复: 桌面悬浮控制窗在空闲状态被 `Show()` 强制显示并遮挡主界面，改为仅在启动、运行或暂停期间显示。
+- 修复: 桌面执行日志将英文枚举状态直接显示给用户，改为统一中文执行状态。
+- 修复: Windows 发布脚本在 Windows PowerShell 5.1 下因 UTF-8 中文注释误解析而失败，改用兼容的 ASCII 注释。
+- docs: 新增双端液态玻璃设计规范，并同步更新 README、版本信息与项目记录。
+
 - 修复: 移动端辅助功能检测 Android 13+ 长/短格式匹配失败导致引导页不跳转，增加 flattenToShortString + ResolveInfo 兜底三层匹配。
 - 修复: 桌面端启动 StaticResourceExtension 异常，App.xaml 集中管理 19 个共享 Brush + BoolToVisibility 等转换器。
 - 新增: 移动端编辑器退出返回来源页（不再固定跳任务库）。

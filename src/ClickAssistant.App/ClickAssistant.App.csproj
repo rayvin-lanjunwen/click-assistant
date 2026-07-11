@@ -12,10 +12,18 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <Version>0.13.0</Version>
+    <Version>0.15.0</Version>
     <AssemblyName>ClickAssistantApp</AssemblyName>
     <Title>Click Assistant</Title>
     <Description>点击与输入助手 - 桌面端</Description>
   </PropertyGroup>
+
+  <!-- 图片素材：复制到输出目录供 XAML Image 控件引用 -->
+  <ItemGroup>
+    <Content Include="Resources\Images\*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+    </Content>
+  </ItemGroup>
 
 </Project>

@@ -40,7 +40,6 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     private bool isFloatingCollapsedVisible = true;
     private bool isFloatingWindowExpanded;
     private bool isCoordinateCapturePending;
-    private string liveCursorPosition = "X=— , Y=—";
     private bool isBusy;
 
     public MainWindowViewModel(
@@ -1633,7 +1632,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         foreach (var log in logs)
         {
             var endedAt = log.EndedAt?.ToString("HH:mm:ss") ?? "未结束";
-            RecentLogs.Add($"{log.StartedAt:MM-dd HH:mm:ss} - {endedAt} | {log.Status} | {log.Message}");
+            RecentLogs.Add($"{log.StartedAt:MM-dd HH:mm:ss} - {endedAt} | {ToStatusText(log.Status)} | {log.Message}");
         }
     }
 

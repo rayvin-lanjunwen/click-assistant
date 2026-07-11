@@ -1,34 +1,104 @@
 ﻿<Application x:Class="ClickAssistant.App.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
              xmlns:local="clr-namespace:ClickAssistant.App"
              xmlns:converters="clr-namespace:ClickAssistant.App.Converters"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
         <ResourceDictionary>
-            <!-- 共享颜色资源：所有窗口可见 -->
-            <SolidColorBrush x:Key="PrimaryBrush" Color="#2563EB" />
-            <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#1D4ED8" />
-            <SolidColorBrush x:Key="PrimaryLightBrush" Color="#DBEAFE" />
-            <SolidColorBrush x:Key="SecondaryBrush" Color="#8B5CF6" />
-            <SolidColorBrush x:Key="SecondaryLightBrush" Color="#F3E8FF" />
-            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1F2937" />
-            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#6B7280" />
-            <SolidColorBrush x:Key="TextMutedBrush" Color="#9CA3AF" />
-            <SolidColorBrush x:Key="BgPrimaryBrush" Color="#F5F7FA" />
-            <SolidColorBrush x:Key="BgCardBrush" Color="#FFFFFF" />
-            <SolidColorBrush x:Key="BorderBrush" Color="#E5E7EB" />
-            <SolidColorBrush x:Key="BorderLightBrush" Color="#F3F4F6" />
-            <SolidColorBrush x:Key="SuccessBrush" Color="#22C55E" />
-            <SolidColorBrush x:Key="SuccessLightBrush" Color="#DCFCE7" />
-            <SolidColorBrush x:Key="WarningBrush" Color="#F97316" />
-            <SolidColorBrush x:Key="WarningLightBrush" Color="#FFEDD5" />
-            <SolidColorBrush x:Key="DangerBrush" Color="#EF4444" />
-            <SolidColorBrush x:Key="DangerLightBrush" Color="#FEE2E2" />
-            <SolidColorBrush x:Key="CyanBrush" Color="#06B6D4" />
-            <SolidColorBrush x:Key="CyanLightBrush" Color="#CFFAFE" />
+            <!-- ===== 浅色主题（默认，直接作为根资源的默认值） ===== -->
+            <!-- 双端共享的液态玻璃色彩语义 -->
+            <SolidColorBrush x:Key="PrimaryBrush" Color="#3978F6" />
+            <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#245CC7" />
+            <SolidColorBrush x:Key="PrimaryLightBrush" Color="#DDEAFF" />
+            <SolidColorBrush x:Key="SecondaryBrush" Color="#0F9FA4" />
+            <SolidColorBrush x:Key="SecondaryLightBrush" Color="#D8F3F1" />
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#17233A" />
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#526176" />
+            <SolidColorBrush x:Key="TextMutedBrush" Color="#8290A3" />
+            <LinearGradientBrush x:Key="BgPrimaryBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Offset="0" Color="#E8F2F7" />
+                <GradientStop Offset="0.52" Color="#F4F7FA" />
+                <GradientStop Offset="1" Color="#EEEAF6" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="BgCardBrush" StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Offset="0" Color="#E8FFFFFF" />
+                <GradientStop Offset="1" Color="#BFFFFFFF" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="GlassNavigationBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Offset="0" Color="#F2FFFFFF" />
+                <GradientStop Offset="1" Color="#CBEAF3F8" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="GlassSubtleBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Offset="0" Color="#BFFFFFFF" />
+                <GradientStop Offset="1" Color="#8FEAF4F7" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="PrimaryGradientBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Offset="0" Color="#4C8DFF" />
+                <GradientStop Offset="0.62" Color="#3978F6" />
+                <GradientStop Offset="1" Color="#5668D8" />
+            </LinearGradientBrush>
+            <SolidColorBrush x:Key="BorderBrush" Color="#B8FFFFFF" />
+            <SolidColorBrush x:Key="BorderLightBrush" Color="#80FFFFFF" />
+            <SolidColorBrush x:Key="SuccessBrush" Color="#169B72" />
+            <SolidColorBrush x:Key="SuccessLightBrush" Color="#D8F4E8" />
+            <SolidColorBrush x:Key="WarningBrush" Color="#E98732" />
+            <SolidColorBrush x:Key="WarningLightBrush" Color="#FFF0DB" />
+            <SolidColorBrush x:Key="DangerBrush" Color="#D84D5F" />
+            <SolidColorBrush x:Key="DangerLightBrush" Color="#FCE4E8" />
+            <SolidColorBrush x:Key="CyanBrush" Color="#168DA4" />
+            <SolidColorBrush x:Key="CyanLightBrush" Color="#DDF3F6" />
 
-            <!-- 共享转换器 -->
+            <!-- 主题名称 -->
+            <sys:String x:Key="ThemeName">Light</sys:String>
+
+            <!-- ===== 深色主题字典（按需通过代码注入 MergedDictionaries） ===== -->
+            <ResourceDictionary x:Key="DarkThemeDictionary">
+                <SolidColorBrush x:Key="PrimaryBrush" Color="#3978F6" />
+                <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#5B9BFF" />
+                <SolidColorBrush x:Key="PrimaryLightBrush" Color="#1E3A6B" />
+                <SolidColorBrush x:Key="SecondaryBrush" Color="#0F9FA4" />
+                <SolidColorBrush x:Key="SecondaryLightBrush" Color="#123A3C" />
+                <SolidColorBrush x:Key="TextPrimaryBrush" Color="#E2E8F0" />
+                <SolidColorBrush x:Key="TextSecondaryBrush" Color="#94A3B8" />
+                <SolidColorBrush x:Key="TextMutedBrush" Color="#64748B" />
+                <LinearGradientBrush x:Key="BgPrimaryBrush" StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Offset="0" Color="#0F111A" />
+                    <GradientStop Offset="0.52" Color="#1A1D2E" />
+                    <GradientStop Offset="1" Color="#151720" />
+                </LinearGradientBrush>
+                <LinearGradientBrush x:Key="BgCardBrush" StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Offset="0" Color="#18FFFFFF" />
+                    <GradientStop Offset="1" Color="#0AFFFFFF" />
+                </LinearGradientBrush>
+                <LinearGradientBrush x:Key="GlassNavigationBrush" StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Offset="0" Color="#14FFFFFF" />
+                    <GradientStop Offset="1" Color="#08EEF2F7" />
+                </LinearGradientBrush>
+                <LinearGradientBrush x:Key="GlassSubtleBrush" StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Offset="0" Color="#0CFFFFFF" />
+                    <GradientStop Offset="1" Color="#06FFFFFF" />
+                </LinearGradientBrush>
+                <LinearGradientBrush x:Key="PrimaryGradientBrush" StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Offset="0" Color="#5B9BFF" />
+                    <GradientStop Offset="0.62" Color="#3978F6" />
+                    <GradientStop Offset="1" Color="#6B78E8" />
+                </LinearGradientBrush>
+                <SolidColorBrush x:Key="BorderBrush" Color="#1EFFFFFF" />
+                <SolidColorBrush x:Key="BorderLightBrush" Color="#0CFFFFFF" />
+                <SolidColorBrush x:Key="SuccessBrush" Color="#169B72" />
+                <SolidColorBrush x:Key="SuccessLightBrush" Color="#14352A" />
+                <SolidColorBrush x:Key="WarningBrush" Color="#E98732" />
+                <SolidColorBrush x:Key="WarningLightBrush" Color="#3A2210" />
+                <SolidColorBrush x:Key="DangerBrush" Color="#D84D5F" />
+                <SolidColorBrush x:Key="DangerLightBrush" Color="#3A1418" />
+                <SolidColorBrush x:Key="CyanBrush" Color="#168DA4" />
+                <SolidColorBrush x:Key="CyanLightBrush" Color="#0F2A30" />
+                <sys:String x:Key="ThemeName">Dark</sys:String>
+            </ResourceDictionary>
+
+            <!-- 共享转换器（不随主题变化） -->
             <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
             <converters:StepSummaryConverter x:Key="StepSummaryConverter" />
         </ResourceDictionary>

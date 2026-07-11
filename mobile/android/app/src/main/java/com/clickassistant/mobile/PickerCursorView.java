@@ -18,7 +18,7 @@ public final class PickerCursorView extends View {
     private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     private String stepNumber = "";
-    private int actionColor = Color.parseColor("#2563EB"); // 默认蓝色
+    private int actionColor = Color.parseColor("#3978F6"); // 默认使用品牌蓝
     private boolean highlighted = false; // 长按拖动定位时的高亮状态
 
     public PickerCursorView(Context context) {

@@ -5,8 +5,10 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ComponentName;
 import androidx.appcompat.widget.SwitchCompat;
+import androidx.core.content.ContextCompat;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -39,7 +41,7 @@ import java.util.List;
 import java.util.Locale;
 
 /// <summary>
-/// 主界面，采用底部导航 + 现代浅色卡片式 UI。
+/// 主界面，采用底部导航 + 跨端一致的液态玻璃 UI。
 /// 包含权限引导页、首页、新建任务页、任务库、执行日志、个人中心和任务编辑器。
 /// </summary>
 public final class MainActivity extends Activity {
@@ -52,25 +54,25 @@ public final class MainActivity extends Activity {
         EDITOR        // 任务编辑
     }
 
-    // iOS 风格浅色配色
-    private static final int BG = Color.parseColor("#F5F7FA");
-    private static final int CARD_BG = Color.WHITE;
-    private static final int PRIMARY = Color.parseColor("#2563EB");
-    private static final int PRIMARY_LIGHT = Color.parseColor("#DBEAFE");
-    private static final int TEXT_PRIMARY = Color.parseColor("#1F2937");
-    private static final int TEXT_SECONDARY = Color.parseColor("#6B7280");
-    private static final int BORDER = Color.parseColor("#E5E7EB");
-    private static final int SUCCESS = Color.parseColor("#22C55E");
-    private static final int SUCCESS_LIGHT = Color.parseColor("#DCFCE7");
-    private static final int ORANGE = Color.parseColor("#F97316");
-    private static final int ORANGE_LIGHT = Color.parseColor("#FFEDD5");
-    private static final int PURPLE = Color.parseColor("#8B5CF6");
-    private static final int PURPLE_LIGHT = Color.parseColor("#F3E8FF");
-    private static final int CYAN = Color.parseColor("#06B6D4");
-    private static final int CYAN_LIGHT = Color.parseColor("#CFFAFE");
-    private static final int RED = Color.parseColor("#EF4444");
-    private static final int RED_LIGHT = Color.parseColor("#FEE2E2");
-    private static final int GRAY_BG = Color.parseColor("#F3F4F6");
+    // 与 WPF 端同语义的液态玻璃配色
+    private static final int BG = Color.parseColor("#EEF4F7");
+    private static final int CARD_BG = Color.parseColor("#D9FFFFFF");
+    private static final int PRIMARY = Color.parseColor("#3978F6");
+    private static final int PRIMARY_LIGHT = Color.parseColor("#DDEAFF");
+    private static final int TEXT_PRIMARY = Color.parseColor("#17233A");
+    private static final int TEXT_SECONDARY = Color.parseColor("#526176");
+    private static final int BORDER = Color.parseColor("#B8FFFFFF");
+    private static final int SUCCESS = Color.parseColor("#169B72");
+    private static final int SUCCESS_LIGHT = Color.parseColor("#D8F4E8");
+    private static final int ORANGE = Color.parseColor("#E98732");
+    private static final int ORANGE_LIGHT = Color.parseColor("#FFF0DB");
+    private static final int PURPLE = Color.parseColor("#7067D8");
+    private static final int PURPLE_LIGHT = Color.parseColor("#E9E7FA");
+    private static final int CYAN = Color.parseColor("#168DA4");
+    private static final int CYAN_LIGHT = Color.parseColor("#DDF3F6");
+    private static final int RED = Color.parseColor("#D84D5F");
+    private static final int RED_LIGHT = Color.parseColor("#FCE4E8");
+    private static final int GRAY_BG = Color.parseColor("#A6FFFFFF");
 
     private Page currentPage = Page.ONBOARDING;
     private String currentFilter = "全部";
@@ -187,7 +189,7 @@ public final class MainActivity extends Activity {
         // 首次调用时创建持久根容器和底部导航
         if (rootView == null) {
             rootView = new FrameLayout(this);
-            rootView.setBackgroundColor(BG);
+            rootView.setBackground(pageBackgroundDrawable());
             bottomNav = buildBottomNav();
             FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -269,7 +271,7 @@ public final class MainActivity extends Activity {
 
     private View buildContentView() {
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(BG);
+        root.setBackground(pageBackgroundDrawable());
 
         View content = buildPageContent(currentPage);
         root.addView(content, new FrameLayout.LayoutParams(
@@ -314,9 +316,9 @@ public final class MainActivity extends Activity {
     private LinearLayout buildBottomNav() {
         LinearLayout nav = new LinearLayout(this);
         nav.setOrientation(LinearLayout.HORIZONTAL);
-        nav.setBackgroundColor(CARD_BG);
-        nav.setElevation(dp(8));
-        nav.setPadding(dp(8), dp(4), dp(8), dp(4));
+        nav.setBackground(glassDrawable(dp(20)));
+        nav.setElevation(dp(12));
+        nav.setPadding(dp(10), dp(6), dp(10), dp(8));
 
         homeNavItem = createNavItem("🏠", "首页", Page.HOME);
         libraryNavItem = createNavItem("📂", "任务库", Page.LIBRARY);
@@ -338,6 +340,7 @@ public final class MainActivity extends Activity {
         item.setTextSize(11);
         item.setGravity(Gravity.CENTER);
         item.setPadding(0, dp(6), 0, dp(6));
+        item.setMinHeight(dp(50));
         item.setOnClickListener(v -> showPage(targetPage));
         return item;
     }
@@ -348,6 +351,14 @@ public final class MainActivity extends Activity {
         libraryNavItem.setTextColor(currentPage == Page.LIBRARY ? PRIMARY : TEXT_SECONDARY);
         logsNavItem.setTextColor(currentPage == Page.LOGS ? PRIMARY : TEXT_SECONDARY);
         profileNavItem.setTextColor(currentPage == Page.PROFILE ? PRIMARY : TEXT_SECONDARY);
+        homeNavItem.setBackground(currentPage == Page.HOME
+                ? roundedDrawable(Color.parseColor("#AFFFFFFF"), dp(12)) : null);
+        libraryNavItem.setBackground(currentPage == Page.LIBRARY
+                ? roundedDrawable(Color.parseColor("#AFFFFFFF"), dp(12)) : null);
+        logsNavItem.setBackground(currentPage == Page.LOGS
+                ? roundedDrawable(Color.parseColor("#AFFFFFFF"), dp(12)) : null);
+        profileNavItem.setBackground(currentPage == Page.PROFILE
+                ? roundedDrawable(Color.parseColor("#AFFFFFFF"), dp(12)) : null);
     }
 
     // ---------- 权限引导页 ----------
@@ -355,7 +366,7 @@ public final class MainActivity extends Activity {
     private ScrollView buildOnboardingPage() {
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
-        scroll.setBackgroundColor(BG);
+        scroll.setBackground(pageBackgroundDrawable());
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -475,7 +486,7 @@ public final class MainActivity extends Activity {
 
     private ScrollView buildHomePage() {
         ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(BG);
+        scroll.setBackground(pageBackgroundDrawable());
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -837,7 +848,7 @@ public final class MainActivity extends Activity {
 
     private View buildLibraryPage() {
         ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(BG);
+        scroll.setBackground(pageBackgroundDrawable());
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -1123,7 +1134,7 @@ public final class MainActivity extends Activity {
 
     private ScrollView buildProfilePage() {
         ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(BG);
+        scroll.setBackground(pageBackgroundDrawable());
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -1243,7 +1254,7 @@ public final class MainActivity extends Activity {
 
     private ScrollView buildExecutionLogPage() {
         ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(BG);
+        scroll.setBackground(pageBackgroundDrawable());
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -1344,7 +1355,7 @@ public final class MainActivity extends Activity {
 
     private ScrollView buildTaskEditorPage() {
         ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(BG);
+        scroll.setBackground(pageBackgroundDrawable());
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -2418,16 +2429,60 @@ public final class MainActivity extends Activity {
 
     private LinearLayout createCard(int radius) {
         LinearLayout card = new LinearLayout(this);
-        card.setBackground(roundedDrawable(CARD_BG, radius));
-        card.setElevation(dp(2));
+        card.setBackground(glassDrawable(radius));
+        card.setElevation(dp(5));
+        card.setClipToOutline(true);
         return card;
     }
 
     private GradientDrawable roundedDrawable(int color, int radius) {
-        GradientDrawable drawable = new GradientDrawable();
-        drawable.setColor(color);
+        GradientDrawable drawable;
+        if (color == PRIMARY) {
+            drawable = new GradientDrawable(
+                    GradientDrawable.Orientation.TL_BR,
+                    new int[]{Color.parseColor("#4C8DFF"), PRIMARY, Color.parseColor("#5668D8")});
+        } else {
+            drawable = new GradientDrawable();
+            drawable.setColor(color);
+        }
         drawable.setCornerRadius(radius);
         return drawable;
+    }
+
+    /// <summary>
+    /// 通过透明渐变、亮边和阴影模拟玻璃材质，Android 7+ 均可稳定显示。
+    /// 支持深色模式：通过 ContextCompat.getColor 动态获取颜色资源。
+    /// </summary>
+    private GradientDrawable glassDrawable(int radius) {
+        int topColor = getThemeColor(R.color.glass_card_top, Color.parseColor("#EEFFFFFF"));
+        int bottomColor = getThemeColor(R.color.glass_card_bottom, Color.parseColor("#BFFFFFFF"));
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{topColor, bottomColor});
+        drawable.setCornerRadius(radius);
+        drawable.setStroke(dp(1), BORDER);
+        return drawable;
+    }
+
+    private GradientDrawable pageBackgroundDrawable() {
+        int startColor = getThemeColor(R.color.bg_page_start, Color.parseColor("#E8F2F7"));
+        int midColor = getThemeColor(R.color.bg_page_mid, Color.parseColor("#F4F7FA"));
+        int endColor = getThemeColor(R.color.bg_page_end, Color.parseColor("#EEEAF6"));
+        return new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{startColor, midColor, endColor});
+    }
+
+    /// <summary>
+    /// 动态获取颜色资源，自动适配深色模式（values-night/colors.xml）。
+    /// 如果资源未找到则回退到硬编码颜色。
+    /// </summary>
+    private int getThemeColor(int colorResId, int fallbackColor) {
+        try {
+            return ContextCompat.getColor(this, colorResId);
+        } catch (Resources.NotFoundException e) {
+            return fallbackColor;
+        }
     }
 
     private GradientDrawable circleDrawable(int color, int strokeWidth) {

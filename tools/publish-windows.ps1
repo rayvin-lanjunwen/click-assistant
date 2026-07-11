@@ -67,7 +67,7 @@ Write-Host ""
 Write-Host "Publish completed."
 Write-Host "Executable: $(Join-Path $OutputPath 'ClickAssistantApp.exe')"
 
-# 创建 ZIP 压缩包用于发布
+# Create the optional release ZIP package.
 if ($CreateZip) {
     $zipPath = Join-Path $repositoryRoot "dist\ClickAssistant-windows-$version-$RuntimeIdentifier.zip"
     if (Test-Path $zipPath) {

@@ -26,20 +26,20 @@ public enum TaskActionType {
 
     /// <summary>
     /// 返回本类型对应的标记颜色。
-    /// TAP=蓝 #2563EB / SWIPE=绿 #16A064 / TEXT_INPUT=橙 #F97316。
+    /// 使用与主界面一致的状态色：点击=蓝、长按=橙、滑动=绿、文本输入=紫。
     /// </summary>
     public int getColor() {
         switch (this) {
             case TAP:
-                return Color.parseColor("#2563EB");
+                return Color.parseColor("#3978F6");
             case LONG_PRESS:
-                return Color.parseColor("#F97316");
+                return Color.parseColor("#E98732");
             case SWIPE:
-                return Color.parseColor("#16A064");
+                return Color.parseColor("#169B72");
             case TEXT_INPUT:
-                return Color.parseColor("#8B5CF6");
+                return Color.parseColor("#7067D8");
             default:
-                return Color.parseColor("#2563EB");
+                return Color.parseColor("#3978F6");
         }
     }
 
