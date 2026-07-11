@@ -27,21 +27,6 @@
 - 修复: Windows 发布脚本在 Windows PowerShell 5.1 下因 UTF-8 中文注释误解析而失败，改用兼容的 ASCII 注释。
 - docs: 新增双端液态玻璃设计规范，并同步更新 README、版本信息与项目记录。
 
-- 修复: 移动端辅助功能检测 Android 13+ 长/短格式匹配失败导致引导页不跳转，增加 flattenToShortString + ResolveInfo 兜底三层匹配。
-- 修复: 桌面端启动 StaticResourceExtension 异常，App.xaml 集中管理 19 个共享 Brush + BoolToVisibility 等转换器。
-- 新增: 移动端编辑器退出返回来源页（不再固定跳任务库）。
-- 变更: 移动端+桌面端执行按钮改为按状态 Visibility 切换（未运行仅显示"开始"，运行中切换暂停/继续/停止）。
-- 变更: 移动端弹窗 CheckBox → SwitchCompat，与其他页面统一。
-- 变更: 移动端辅助功能 Switch 方向区分：拨向 ON 且已开启不跳转；onResume 自动刷新 Switch 状态。
-- 变更: 桌面端导航按钮 DataTrigger 活跃态高亮（蓝色文字+蓝色背景+加粗）。
-- 变更: 桌面端版本号从硬编码改为 Assembly Version 动态读取。
-- 变更: 桌面端悬浮窗按钮按执行状态 Visibility 切换，收起态暂停/停止仅在运行时可见。
-- 新增: 桌面端任务库左栏增加 ▶快捷执行 和 复制选中任务 按钮。
-- test: 修复 D5 setter 即时校验导致的 2 个测试失败（改为断言 setter 抛异常）。
-- 修复: README.md 版本号从 v0.13.0 更新为 v0.14.0。
-
-- docs: `RULE.md` 重命名为 `AGENTS.md`，同步更新 README/STYLEGUIDE/WORKLOG 中所有引用。
-
 ## v0.14.0 - 2026-07-11 22:30
 
 ### 移动端 Bug 修复

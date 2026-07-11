@@ -2,6 +2,26 @@
 
 本文档记录开发过程中遇到的典型编译错误、运行时错误及其修复方式，供后续开发和 AI 辅助时参考。
 
+## 2026-07-12
+
+### 编译错误
+
+#### 10. CS0234 — ClickAssistant.Application 命名空间与 System.Windows.Application 冲突
+- **现象**：WPF 编译报 `命名空间"ClickAssistant.Application"中不存在类型或命名空间名"Current"`，共 3 处（MainWindow.xaml.cs:120/143/161）。
+- **原因**：文件所在命名空间为 `ClickAssistant.App`，同时导入了 `ClickAssistant.Application.Abstractions` 和 `ClickAssistant.Application.Services`。C# 向上查找命名空间时匹配到 `ClickAssistant.Application`（命名空间），导致 `Application.Current` 被解析为 `ClickAssistant.Application.Current` 而非 `System.Windows.Application.Current`。
+- **修复**：将 3 处 `Application.Current` 改为全限定名称 `System.Windows.Application.Current`。
+
+#### 11. Android 资源合并错误 — styles.xml 与 themes.xml 重复 AppTheme
+- **现象**：`packageReleaseResources` 任务报 `Duplicate resources: [style/AppTheme]`。
+- **原因**：`res/values/styles.xml` 和 `res/values/themes.xml` 中同时定义了 `AppTheme`，内容完全重复。
+- **修复**：从 `styles.xml` 移除 `AppTheme` 定义，由 `themes.xml` 统一管理主题。
+
+### Windows 发布脚本 UTF-8 注释解析失败
+
+- **现象**：执行 `tools/publish-windows.ps1` 时，Windows PowerShell 5.1 报 `Unexpected token '}'`，但脚本括号结构肉眼检查正常。
+- **原因**：脚本为无 BOM 的 UTF-8 编码，PowerShell 5.1 按系统代码页读取中文注释，注释末尾字符被错误解码并吞入下一行 `if`，导致解析器认为末尾右括号多余。
+- **修复**：将触发问题的发布 ZIP 注释改为 ASCII，重新解析和执行后自包含发布成功。
+
 ## 2026-07-11
 
 ### 桌面端编译错误

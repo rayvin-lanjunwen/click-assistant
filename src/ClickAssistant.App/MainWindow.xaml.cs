@@ -117,7 +117,7 @@ public partial class MainWindow : Window
     private async void HandleThemeToggleClick(object sender, RoutedEventArgs e)
     {
         await ToggleThemeAsync();
-        var currentTheme = Application.Current.Resources["ThemeName"] as string ?? ThemeLight;
+        var currentTheme = System.Windows.Application.Current.Resources["ThemeName"] as string ?? ThemeLight;
         ThemeToggleButton.Content = string.Equals(currentTheme, ThemeDark, System.StringComparison.OrdinalIgnoreCase)
             ? "☀️ 浅色模式"
             : "🌙 深色模式";
@@ -140,7 +140,7 @@ public partial class MainWindow : Window
     /// </summary>
     public async System.Threading.Tasks.Task ToggleThemeAsync()
     {
-        var currentTheme = Application.Current.Resources["ThemeName"] as string ?? ThemeLight;
+        var currentTheme = System.Windows.Application.Current.Resources["ThemeName"] as string ?? ThemeLight;
         var newTheme = string.Equals(currentTheme, ThemeDark, System.StringComparison.OrdinalIgnoreCase)
             ? ThemeLight
             : ThemeDark;
@@ -158,7 +158,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void ApplyTheme(string theme)
     {
-        var appResources = Application.Current.Resources;
+        var appResources = System.Windows.Application.Current.Resources;
         var mergedDictionaries = appResources.MergedDictionaries;
 
         // 获取深色主题字典引用（App.xaml 中以 x:Key="DarkThemeDictionary" 存储在根资源中）
