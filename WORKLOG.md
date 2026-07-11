@@ -4,8 +4,13 @@
 
 ## 2026-07-11
 
+- 2026-07-11 19:40 移动端取点体验全面重构：新增常驻悬浮触发按钮 FloatingTriggerButton（右下角「取点」/「完成」）；取点改为手指跟随光标 + 松手弹出 ✓ 确认气泡；新增 MarkerOverlayManager 独立管理持久化标记圆圈（支持长按菜单、执行脉冲动效）；重构 ClickAssistantAccessibilityService 从一次性取点改为多步连续取点模式；TaskStore 新增 activeTaskId/activeStepId 读写；MainActivity 取点流程改为设定活动步骤；保存任务自动清除标记。
+- 2026-07-11 19:20 移动端取点与执行优化：硬编码按压时长改为使用 pressDurationMs；取点倒计时 5→3 秒；取点覆盖层增加"测试点击"按钮；取点确认/取消后不强制切回 App（改用 Toast）；版本号 v0.12.0 → v0.13.0。
+- 2026-07-11 19:15 修复"选择坐标"功能未实现问题：CoordinatePickerWindow 支持点击空白区域直接采集坐标；标记拖动后自动跟踪变更状态；关闭后正确重置 isCoordinateCapturePending；修复 MainWindow.xaml 底部版本号仍显示 v0.12.0 的问题。
+- 2026-07-11 18:46 完成双端 UI 重设计与打包：桌面端 WPF 全面升级为蓝色主色左侧导航 Dashboard 布局；移动端底部导航扩展为 4 标签并优化执行日志页；Windows 自包含 .exe 发布到 dist/ 目录；Android debug APK 构建成功。
 - 2026-07-11 17:54 完成手机端与电脑端操作点选及步骤编排交互全面优化，包括：移除 AfterDelayMs/WAIT 步骤、新增可视化步骤标记覆盖层、拖拽坐标调整、步骤序号显示、ClickIntervalMs/PressDurationMs/AutoFocusBeforeInput 字段、彩色序号圆圈和桌面端滑动步骤支持。
 - 2026-07-11 17:50 完成工程治理收口：修复 Android allowBackup=false、缩小无障碍服务事件范围、添加 Android CI 工作流和单元测试、建立版本化数据库迁移框架、统一项目版本号（v0.12.0）、创建 GitHub Issue/PR 模板、更新发布脚本。
+- 2026-07-11 18:13 按提供的 iOS 风格设计稿完成 Android 端 UI 重设计：浅色卡片风格、底部导航、权限引导页、首页卡片入口、新建任务类型选择页、任务库搜索筛选与悬浮按钮、个人中心。
 - 2026-07-11 00:22 将 Android 单页界面拆分为简化多页面结构，新增点击与文本组合任务模板和可拖动光标坐标拾取，并准备 v0.4.0 真机验证。
 - 2026-07-11 00:01 通过 USB 将 Android v0.3.0 debug APK 安装到真机，确认冷启动、版本号、辅助功能服务绑定、首页关键入口和无启动崩溃均正常。
 

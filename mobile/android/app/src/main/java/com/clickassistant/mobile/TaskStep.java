@@ -178,6 +178,14 @@ public final class TaskStep {
     }
 
     /// <summary>
+    /// 便捷方法：从屏幕坐标点设置步骤的点击位置。
+    /// </summary>
+    public void setFromScreenPoint(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    /// <summary>
     /// 序列化为 JSON，用于本地持久化。
     /// </summary>
     public JSONObject toJson() throws JSONException {

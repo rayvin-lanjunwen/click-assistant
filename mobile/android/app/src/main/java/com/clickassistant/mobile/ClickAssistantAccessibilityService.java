@@ -2,9 +2,7 @@ package com.clickassistant.mobile;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
-import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PixelFormat;
 import android.os.Bundle;
@@ -19,7 +17,9 @@ import android.content.Intent;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.Toast;
 import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 import android.widget.TextView;
 
 import org.json.JSONException;
@@ -37,12 +37,26 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
     private static volatile ClickAssistantAccessibilityService activeService;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
+
+    // 常驻悬浮按钮
+    private FloatingTriggerButton floatingTriggerButton;
+
+    // 标记覆盖层管理器（持久化标记圆圈 + 执行动效）
+    private MarkerOverlayManager markerOverlayManager;
+
+    // 取点覆盖层（手指跟踪 + 确认气泡）
     private View coordinatePickerOverlay;
-    private TextView pickerGuideText;
     private PickerCursorView pickerCursorView;
-    private Button pickerConfirmButton;
     private int pickerX;
     private int pickerY;
+
+    // 当前取点目标
+    private String pickTaskId;
+    private String pickStepId;
+    private TaskActionType pickMode = TaskActionType.TAP;
+    private int pickPhase = 1;
+
+    // 执行控制窗
     private View executionControlOverlay;
     private TextView executionOverlayStatusText;
     private LinearLayout executionOverlayActions;
@@ -57,12 +71,6 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
     private ClickTask currentTask;
     private int repeatIndex;
     private int stepIndex;
-
-    // 坐标拾取状态
-    private String pickTaskId;
-    private String pickStepId;
-    private TaskActionType pickMode = TaskActionType.TAP;
-    private int pickPhase = 1;
 
     public static boolean isActive() {
         return activeService != null;
@@ -108,12 +116,68 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
         return true;
     }
 
+    /// <summary>
+    /// 清除所有标记（供 MainActivity 保存任务后调用）。
+    /// </summary>
+    public static void clearMarkers() {
+        ClickAssistantAccessibilityService service = activeService;
+        if (service != null && service.markerOverlayManager != null) {
+            service.markerOverlayManager.clearAll();
+            service.markerOverlayManager.hide();
+        }
+    }
+
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
         activeService = this;
+
+        // 创建标记覆盖层
+        markerOverlayManager = new MarkerOverlayManager(this);
+        markerOverlayManager.setOnMarkerActionListener(new MarkerOverlayManager.OnMarkerActionListener() {
+            @Override
+            public void onMove(MarkerOverlayManager.MarkerEntry entry) {
+                // 暂不实现拖动，后续迭代
+                showToast("移动功能开发中");
+            }
+
+            @Override
+            public void onEdit(MarkerOverlayManager.MarkerEntry entry) {
+                openMainActivity();
+                showToast("请回到 App 编辑步骤数据");
+            }
+
+            @Override
+            public void onDelete(MarkerOverlayManager.MarkerEntry entry) {
+                markerOverlayManager.removeMarker(entry.step.getId());
+                // 同步删除步骤坐标（设为零）
+                entry.step.setX(0);
+                entry.step.setY(0);
+                ClickTask task = TaskStore.getTask(ClickAssistantAccessibilityService.this,
+                        TaskStore.loadActiveTaskId(ClickAssistantAccessibilityService.this));
+                if (task != null) {
+                    TaskStore.upsertTask(ClickAssistantAccessibilityService.this, task);
+                }
+                showToast("已删除标记");
+            }
+        });
+
+        // 创建悬浮触发按钮
+        floatingTriggerButton = new FloatingTriggerButton(this);
+        floatingTriggerButton.setOnTriggerListener(new FloatingTriggerButton.OnTriggerListener() {
+            @Override
+            public void onStartPick() {
+                enterPickMode();
+            }
+
+            @Override
+            public void onFinishPick() {
+                exitPickMode();
+            }
+        });
+        floatingTriggerButton.show();
+
         if (TaskStore.loadPickTarget(this) != null) {
-            // 某些系统在应用退到后台后会重连辅助功能服务，需恢复尚未完成的取点请求。
             prepareCoordinatePick();
         } else {
             TaskStore.saveLastStatus(this, "辅助功能服务已连接");
@@ -134,6 +198,13 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
     @Override
     public boolean onUnbind(android.content.Intent intent) {
         removeCoordinatePickerOverlay();
+        if (floatingTriggerButton != null) {
+            floatingTriggerButton.hide();
+        }
+        if (markerOverlayManager != null) {
+            markerOverlayManager.clearAll();
+            markerOverlayManager.hide();
+        }
         stop(ExecutionState.STOPPED.getDisplayName(), "辅助功能服务已断开");
         activeService = null;
         return super.onUnbind(intent);
@@ -163,6 +234,17 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
         handler.removeCallbacksAndMessages(null);
         removeCoordinatePickerOverlay();
         showExecutionControlOverlay();
+
+        // 显示所有步骤标记
+        if (markerOverlayManager != null) {
+            markerOverlayManager.clearAll();
+            for (TaskStep step : executionTask.getSteps()) {
+                if (step.isEnabled()) {
+                    markerOverlayManager.addMarker(step);
+                }
+            }
+            markerOverlayManager.show();
+        }
 
         logAndStatus(ExecutionState.PREPARING.getDisplayName(), "准备执行：" + executionTask.getName());
         handler.postDelayed(this::runLoop, Math.max(0, executionTask.getStartDelayMs()));
@@ -212,6 +294,7 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
         stopRequested = false;
         logAndStatus(ExecutionState.COMPLETED.getDisplayName(), "已完成：" + task.getName());
         removeExecutionControlOverlay();
+        // 执行完毕后保留标记，不调用 clearAll()
         currentTask = null;
     }
 
@@ -292,6 +375,11 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
 
         logAndStatus(ExecutionState.RUNNING.getDisplayName(), "执行步骤：" + step.getSummary());
 
+        // 当前步骤标记脉冲动效
+        if (markerOverlayManager != null) {
+            markerOverlayManager.pulseMarker(step.getId());
+        }
+
         switch (step.getActionType()) {
             case TAP:
                 dispatchTapSequence(step, 0);
@@ -310,6 +398,7 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
 
     /// <summary>
     /// 点击序列：按 tapCount 重复点击同一坐标，步间使用 clickIntervalMs 间隔。
+    /// 按压时长使用 pressDurationMs 控制，为 0 时使用默认 80ms。
     /// </summary>
     private void dispatchTapSequence(TaskStep step, int tapIndex) {
         if (stopRequested || !running) {
@@ -327,10 +416,14 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
             return;
         }
 
+        long pressDuration = step.getPressDurationMs() > 0
+                ? step.getPressDurationMs()
+                : 80;
+
         Path path = new Path();
         path.moveTo(step.getX(), step.getY());
         GestureDescription.StrokeDescription stroke =
-                new GestureDescription.StrokeDescription(path, 0, 80);
+                new GestureDescription.StrokeDescription(path, 0, pressDuration);
         GestureDescription gesture = new GestureDescription.Builder().addStroke(stroke).build();
 
         boolean accepted = dispatchGesture(gesture, new GestureResultCallback() {
@@ -676,6 +769,10 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
 
     // ---------- 坐标拾取 ----------
 
+    /// <summary>
+    /// 准备取点（兼容旧接口）：从 MainActivity 接收到取点目标后，
+    /// 直接进入取点模式（不再有倒计时，用户通过悬浮按钮触发）。
+    /// </summary>
     private void prepareCoordinatePick() {
         JSONObject target = TaskStore.loadPickTarget(this);
         if (target == null) {
@@ -683,39 +780,87 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
             return;
         }
 
-        long requestedAt = target.optLong("requestedAt", 0);
-        long requestAgeMs = System.currentTimeMillis() - requestedAt;
-        if (requestedAt <= 0 || requestAgeMs < 0 || requestAgeMs > 120000) {
-            TaskStore.clearPickTarget(this);
-            TaskStore.saveLastStatus(this, "取点请求已过期，请重新选择位置");
-            return;
-        }
-
-        if (running || paused || currentTask != null) {
-            stop(ExecutionState.STOPPED.getDisplayName(), "已停止当前任务并进入坐标拾取");
-        } else {
-            stopRequested = true;
-            handler.removeCallbacksAndMessages(null);
-            removeCoordinatePickerOverlay();
-            removeExecutionControlOverlay();
-        }
-
         try {
             pickTaskId = target.getString("taskId");
             pickStepId = target.getString("stepId");
             pickMode = TaskActionType.fromName(target.optString("mode", "TAP"));
             pickPhase = 1;
-            int delayMs = Math.max(0, target.optInt("delayMs", 5000));
-            int seconds = Math.max(1, delayMs / 1000);
-            TaskStore.saveLastStatus(this,
-                    String.format(Locale.ROOT, "%d 秒后显示取点层，请切到目标界面", seconds));
-            handler.postDelayed(this::showCoordinatePickerOverlay, delayMs);
+            TaskStore.clearPickTarget(this);
+            // 自动进入取点模式
+            enterPickMode();
         } catch (JSONException e) {
             TaskStore.saveLastStatus(this, "取点失败：取点目标格式错误");
         }
     }
 
-    private void showCoordinatePickerOverlay() {
+    /// <summary>
+    /// 进入取点模式：显示透明取点覆盖层 + 手指跟随光标 + 确认气泡。
+    /// 读取 TaskStore 中的 activeTaskId/activeStepId 作为取点目标。
+    /// </summary>
+    private void enterPickMode() {
+        // 检查是否有活动任务和步骤
+        String activeTaskId = TaskStore.loadActiveTaskId(this);
+        String activeStepId = TaskStore.loadActiveStepId(this);
+        if (activeTaskId == null || activeStepId == null) {
+            showToast("请先在 App 中打开任务编辑页");
+            return;
+        }
+
+        ClickTask task = TaskStore.getTask(this, activeTaskId);
+        if (task == null) {
+            showToast("取点失败：任务不存在");
+            return;
+        }
+
+        TaskStep targetStep = null;
+        for (TaskStep s : task.getSteps()) {
+            if (s.getId().equals(activeStepId)) {
+                targetStep = s;
+                break;
+            }
+        }
+        if (targetStep == null) {
+            showToast("取点失败：步骤不存在");
+            return;
+        }
+
+        pickTaskId = activeTaskId;
+        pickStepId = activeStepId;
+        pickMode = targetStep.getActionType();
+        pickPhase = 1;
+
+        if (running || paused || currentTask != null) {
+            stop(ExecutionState.STOPPED.getDisplayName(), "已停止当前任务并进入坐标拾取");
+        }
+
+        // 显示已存在的标记
+        if (markerOverlayManager != null) {
+            markerOverlayManager.clearAll();
+            for (TaskStep step : task.getSteps()) {
+                if (step.isEnabled() && step.getX() > 0 && step.getY() > 0) {
+                    markerOverlayManager.addMarker(step);
+                }
+            }
+            markerOverlayManager.show();
+        }
+
+        showNewPickerOverlay(targetStep);
+        floatingTriggerButton.setPickMode(true);
+    }
+
+    /// <summary>
+    /// 退出取点模式：移除取点覆盖层，保留标记圆圈和悬浮按钮。
+    /// </summary>
+    private void exitPickMode() {
+        removeCoordinatePickerOverlay();
+        floatingTriggerButton.setPickMode(false);
+        TaskStore.saveLastStatus(this, "取点完成，标记已保留。回 App 保存任务后清除。");
+    }
+
+    /// <summary>
+    /// 新版取点覆盖层：透明背景 + 手指跟随 + 松手弹出确认气泡。
+    /// </summary>
+    private void showNewPickerOverlay(TaskStep targetStep) {
         WindowManager windowManager = getSystemService(WindowManager.class);
         if (windowManager == null) {
             TaskStore.saveLastStatus(this, "取点失败：无法创建屏幕取点层");
@@ -725,91 +870,53 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
         removeCoordinatePickerOverlay();
 
         FrameLayout overlay = new FrameLayout(this);
-        overlay.setBackgroundColor(Color.argb(48, 0, 0, 0));
-        overlay.setOnTouchListener((view, event) -> {
-            int action = event.getAction();
-            if (action == MotionEvent.ACTION_DOWN
-                    || action == MotionEvent.ACTION_MOVE
-                    || action == MotionEvent.ACTION_UP) {
-                updatePickerCursor(Math.round(event.getRawX()), Math.round(event.getRawY()));
-            }
+        overlay.setBackgroundColor(Color.argb(24, 0, 0, 0));
 
-            return true;
-        });
-
-        TaskStep targetStep = loadPickStep();
         int screenWidth = getResources().getDisplayMetrics().widthPixels;
         int screenHeight = getResources().getDisplayMetrics().heightPixels;
-        if (targetStep == null) {
-            pickerX = screenWidth / 2;
-            pickerY = screenHeight / 2;
-        } else if (pickMode == TaskActionType.SWIPE && pickPhase == 2) {
-            pickerX = targetStep.getEndX();
-            pickerY = targetStep.getEndY();
-        } else {
-            pickerX = targetStep.getX();
-            pickerY = targetStep.getY();
-        }
-
-        if (pickerX < 0 || pickerX > screenWidth) {
-            pickerX = screenWidth / 2;
-        }
-        if (pickerY < 0 || pickerY > screenHeight) {
-            pickerY = screenHeight / 2;
-        }
+        pickerX = targetStep.getX() > 0 ? targetStep.getX() : screenWidth / 2;
+        pickerY = targetStep.getY() > 0 ? targetStep.getY() : screenHeight / 2;
 
         int cursorSize = dp(72);
         pickerCursorView = new PickerCursorView(this);
-        // 显示目标步骤的序号
-        if (targetStep != null) {
-            pickerCursorView.setStepNumber(String.valueOf(targetStep.getOrder() + 1));
-        }
+        pickerCursorView.setStepNumber(String.valueOf(targetStep.getOrder() + 1));
+        pickerCursorView.setActionType(targetStep.getActionType());
         FrameLayout.LayoutParams cursorParams = new FrameLayout.LayoutParams(cursorSize, cursorSize);
         overlay.addView(pickerCursorView, cursorParams);
 
-        pickerGuideText = new TextView(this);
-        pickerGuideText.setText(pickGuideTextWithPosition());
-        pickerGuideText.setTextColor(Color.WHITE);
-        pickerGuideText.setTextSize(16);
-        pickerGuideText.setGravity(Gravity.CENTER);
-        pickerGuideText.setPadding(24, 24, 24, 24);
-        pickerGuideText.setBackgroundColor(Color.argb(220, 0, 0, 0));
-        overlay.addView(pickerGuideText, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
+        // 手指跟踪
+        overlay.setOnTouchListener((view, event) -> {
+            int action = event.getAction();
+            if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_MOVE) {
+                updatePickerCursor(Math.round(event.getRawX()), Math.round(event.getRawY()));
+            }
+            if (action == MotionEvent.ACTION_UP) {
+                // 松手时在光标旁边显示确认气泡
+                updatePickerCursor(Math.round(event.getRawX()), Math.round(event.getRawY()));
+                showConfirmBubble(overlay, pickerX, pickerY);
+            }
+            return true;
+        });
+
+        // 右上角提示文字
+        TextView hintText = new TextView(this);
+        hintText.setText("滑动手指定位，松手后点击 \u2713 确认");
+        hintText.setTextColor(Color.WHITE);
+        hintText.setTextSize(14);
+        hintText.setPadding(dp(16), dp(8), dp(16), dp(8));
+        hintText.setBackgroundColor(Color.argb(200, 0, 0, 0));
+        FrameLayout.LayoutParams hintParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.TOP));
-
-        LinearLayout actions = new LinearLayout(this);
-        actions.setOrientation(LinearLayout.HORIZONTAL);
-        actions.setPadding(dp(12), dp(8), dp(12), dp(16));
-        actions.setBackgroundColor(Color.argb(220, 0, 0, 0));
-
-        Button cancelButton = new Button(this);
-        cancelButton.setText("取消取点");
-        cancelButton.setOnClickListener(view -> cancelPick());
-        pickerConfirmButton = new Button(this);
-        pickerConfirmButton.setText(pickConfirmText());
-        pickerConfirmButton.setOnClickListener(view -> onPickerTouch(pickerX, pickerY));
-
-        LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(
-                0,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
-                1);
-        actions.addView(cancelButton, actionParams);
-        actions.addView(pickerConfirmButton, new LinearLayout.LayoutParams(actionParams));
-
-        FrameLayout.LayoutParams actionBarParams = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.BOTTOM);
-        overlay.addView(actions, actionBarParams);
+                Gravity.TOP | Gravity.END);
+        hintParams.topMargin = dp(40);
+        overlay.addView(hintText, hintParams);
 
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                 PixelFormat.TRANSLUCENT);
         params.gravity = Gravity.TOP | Gravity.START;
 
@@ -818,37 +925,98 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
             windowManager.addView(overlay, params);
         } catch (RuntimeException ex) {
             coordinatePickerOverlay = null;
-            pickerGuideText = null;
             pickerCursorView = null;
-            pickerConfirmButton = null;
-            TaskStore.saveLastStatus(this,
-                    "取点失败：无法显示取点层（" + ex.getClass().getSimpleName() + "）");
-            openMainActivity();
+            TaskStore.saveLastStatus(this, "取点失败：无法显示取点层");
             return;
         }
         overlay.post(() -> updatePickerCursor(pickerX, pickerY));
-        TaskStore.saveLastStatus(this, "取点中：拖动光标后确认位置");
     }
 
-    private String pickGuideText() {
-        if (pickMode == TaskActionType.SWIPE) {
-            return pickPhase == 1
-                    ? "拖动蓝色光标到滑动起点，然后确认"
-                    : "拖动蓝色光标到滑动终点，然后确认";
+    /// <summary>
+    /// 在光标旁边显示确认气泡（PopupWindow）。
+    /// </summary>
+    private void showConfirmBubble(FrameLayout parent, int x, int y) {
+        LinearLayout bubble = new LinearLayout(this);
+        bubble.setOrientation(LinearLayout.HORIZONTAL);
+        bubble.setBackgroundColor(Color.parseColor("#2563EB"));
+        bubble.setPadding(dp(4), dp(2), dp(4), dp(2));
+        bubble.setGravity(Gravity.CENTER);
+
+        TextView checkText = new TextView(this);
+        checkText.setText("\u2713");
+        checkText.setTextColor(Color.WHITE);
+        checkText.setTextSize(20);
+        checkText.setPadding(dp(8), dp(4), dp(8), dp(4));
+        bubble.addView(checkText);
+
+        PopupWindow popup = new PopupWindow(bubble,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        popup.setBackgroundDrawable(null);
+
+        bubble.setOnClickListener(v -> {
+            popup.dismiss();
+            onPickConfirm(pickerX, pickerY);
+        });
+
+        popup.showAtLocation(parent, Gravity.TOP | Gravity.START,
+                x + dp(40), y - dp(14));
+    }
+
+    private void onPickConfirm(int x, int y) {
+        ClickTask task = TaskStore.getTask(this, pickTaskId);
+        if (task == null) {
+            TaskStore.saveLastStatus(this, "取点失败：任务不存在");
+            return;
         }
 
-        return "拖动蓝色光标到需要点击的位置，然后确认";
-    }
-
-    private String pickGuideTextWithPosition() {
-        return String.format(Locale.ROOT, "%s\n当前坐标：%d, %d", pickGuideText(), pickerX, pickerY);
-    }
-
-    private String pickConfirmText() {
-        if (pickMode == TaskActionType.SWIPE) {
-            return pickPhase == 1 ? "确认起点" : "确认终点";
+        TaskStep step = null;
+        for (TaskStep candidate : task.getSteps()) {
+            if (candidate.getId().equals(pickStepId)) {
+                step = candidate;
+                break;
+            }
         }
-        return "确认位置";
+
+        if (step == null) {
+            TaskStore.saveLastStatus(this, "取点失败：步骤不存在");
+            return;
+        }
+
+        // 支持滑动取点的两阶段确认
+        if (pickMode == TaskActionType.SWIPE && pickPhase == 1) {
+            step.setX(x);
+            step.setY(y);
+            pickPhase = 2;
+            pickerX = step.getEndX();
+            pickerY = step.getEndY();
+            updatePickerCursor(pickerX, pickerY);
+            if (pickerCursorView != null) {
+                pickerCursorView.setStepNumber((step.getOrder() + 1) + "→");
+            }
+            TaskStore.upsertTask(this, task);
+            TaskStore.saveLastStatus(this,
+                    String.format(Locale.ROOT, "已选起点：%d,%d，请滑动到终点确认", x, y));
+            return;
+        }
+
+        if (pickMode == TaskActionType.SWIPE) {
+            step.setEndX(x);
+            step.setEndY(y);
+        } else {
+            step.setX(x);
+            step.setY(y);
+        }
+
+        TaskStore.upsertTask(this, task);
+        TaskStore.saveLastStatus(this, String.format(Locale.ROOT, "已保存坐标：%d,%d", x, y));
+
+        // 将标记添加到覆盖层
+        if (markerOverlayManager != null) {
+            markerOverlayManager.addMarker(step);
+        }
+
+        showToast("坐标已保存：" + x + "," + y);
     }
 
     private void updatePickerCursor(int x, int y) {
@@ -864,89 +1032,11 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
             pickerCursorView.setX(pickerX - half);
             pickerCursorView.setY(pickerY - half);
         }
-        if (pickerGuideText != null) {
-            pickerGuideText.setText(pickGuideTextWithPosition());
-        }
     }
 
-    private TaskStep loadPickStep() {
-        ClickTask task = TaskStore.getTask(this, pickTaskId);
-        if (task == null) {
-            return null;
-        }
-        for (TaskStep step : task.getSteps()) {
-            if (step.getId().equals(pickStepId)) {
-                return step;
-            }
-        }
-        return null;
-    }
-
-    private void onPickerTouch(int x, int y) {
-        ClickTask task = TaskStore.getTask(this, pickTaskId);
-        if (task == null) {
-            TaskStore.saveLastStatus(this, "取点失败：任务不存在");
-            cancelPick();
-            return;
-        }
-
-        TaskStep step = null;
-        for (TaskStep candidate : task.getSteps()) {
-            if (candidate.getId().equals(pickStepId)) {
-                step = candidate;
-                break;
-            }
-        }
-
-        if (step == null) {
-            TaskStore.saveLastStatus(this, "取点失败：步骤不存在");
-            cancelPick();
-            return;
-        }
-
-        if (pickMode == TaskActionType.SWIPE && pickPhase == 1) {
-            step.setX(x);
-            step.setY(y);
-            pickPhase = 2;
-            if (pickerGuideText != null) {
-                pickerGuideText.setText(pickGuideTextWithPosition());
-            }
-            if (pickerConfirmButton != null) {
-                pickerConfirmButton.setText(pickConfirmText());
-            }
-
-            pickerX = step.getEndX();
-            pickerY = step.getEndY();
-            updatePickerCursor(pickerX, pickerY);
-
-            TaskStore.upsertTask(this, task);
-            TaskStore.saveLastStatus(this,
-                    String.format(Locale.ROOT, "已选起点：%d,%d，请点终点", x, y));
-            return;
-        }
-
-        if (pickMode == TaskActionType.SWIPE) {
-            step.setEndX(x);
-            step.setEndY(y);
-        } else {
-            step.setX(x);
-            step.setY(y);
-        }
-
-        TaskStore.upsertTask(this, task);
-        TaskStore.saveLastStatus(this, String.format(Locale.ROOT, "已保存坐标：%d,%d", x, y));
-        TaskStore.clearPickTarget(this);
-        removeCoordinatePickerOverlay();
-        openMainActivity();
-    }
-
-    private void cancelPick() {
-        removeCoordinatePickerOverlay();
-        TaskStore.clearPickTarget(this);
-        TaskStore.saveLastStatus(this, "已取消坐标拾取");
-        openMainActivity();
-    }
-
+    /// <summary>
+    /// 移除取点覆盖层，保留标记和悬浮按钮。
+    /// </summary>
     private void removeCoordinatePickerOverlay() {
         if (coordinatePickerOverlay == null) {
             return;
@@ -957,60 +1047,15 @@ public final class ClickAssistantAccessibilityService extends AccessibilityServi
             try {
                 windowManager.removeView(coordinatePickerOverlay);
             } catch (IllegalArgumentException ignored) {
-                // 视图可能已被系统移除，清空引用即可。
             }
         }
 
         coordinatePickerOverlay = null;
-        pickerGuideText = null;
         pickerCursorView = null;
-        pickerConfirmButton = null;
     }
 
-    /// <summary>
-    /// 可视化取点光标，圆圈中央显示步骤序号，便于直接识别当前编辑的步骤。
-    /// </summary>
-    private final class PickerCursorView extends View {
-        private final Paint circlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private String stepNumber = "";
-
-        PickerCursorView(android.content.Context context) {
-            super(context);
-            circlePaint.setColor(Color.rgb(54, 184, 255));
-            circlePaint.setStrokeWidth(5f);
-            circlePaint.setStyle(Paint.Style.STROKE);
-            textPaint.setColor(Color.rgb(54, 184, 255));
-            textPaint.setTextSize(dp(22));
-            textPaint.setTextAlign(Paint.Align.CENTER);
-            textPaint.setFakeBoldText(true);
-            setClickable(false);
-        }
-
-        void setStepNumber(String number) {
-            stepNumber = number;
-            invalidate();
-        }
-
-        @Override
-        protected void onDraw(Canvas canvas) {
-            super.onDraw(canvas);
-            float centerX = getWidth() / 2f;
-            float centerY = getHeight() / 2f;
-            float radius = Math.min(getWidth(), getHeight()) * 0.28f;
-            canvas.drawCircle(centerX, centerY, radius, circlePaint);
-            canvas.drawLine(centerX, 0, centerX, getHeight(), circlePaint);
-            canvas.drawLine(0, centerY, getWidth(), centerY, circlePaint);
-
-            circlePaint.setStyle(Paint.Style.FILL);
-            canvas.drawCircle(centerX, centerY, 7f, circlePaint);
-            circlePaint.setStyle(Paint.Style.STROKE);
-
-            if (!stepNumber.isEmpty()) {
-                float textOffset = (textPaint.descent() + textPaint.ascent()) / 2f;
-                canvas.drawText(stepNumber, centerX, centerY - textOffset + dp(10), textPaint);
-            }
-        }
+    private void showToast(String message) {
+        handler.post(() -> Toast.makeText(this, message, Toast.LENGTH_SHORT).show());
     }
 
     private void openMainActivity() {

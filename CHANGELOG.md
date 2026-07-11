@@ -2,8 +2,47 @@
 
 本文档用于记录项目中值得追踪的版本、功能、修复和重要变更，并与 GitHub Releases（GitHub 发布页面）保持同步。
 
-## v0.12.0 - 2026-07-11 17:54
+## v0.13.0 - 2026-07-11 19:40
 
+- 重构: 移动端取点体验全面重构，引入常驻悬浮触发按钮 + 手指跟随取点光标 + 确认气泡 + 持久化标记覆盖层 + 执行脉冲动效。
+  - 新增 FloatingTriggerButton.java：右下角常驻悬浮按钮（「取点」↔「完成」状态切换）
+  - 新增 MarkerOverlayManager.java：独立 Window 管理标记圆圈，支持长按菜单（移动/调整/删除）和执行动效
+  - 新增 PickerCursorView.java：独立取点光标类，按 TaskActionType 着色（蓝/绿/橙）
+  - TaskActionType.java：新增 getColor() 颜色映射方法
+  - TaskStep.java：新增 setFromScreenPoint() 便捷方法
+  - TaskStore.java：新增 activeTaskId/activeStepId 的 SharedPreferences 读写方法
+  - 重构 ClickAssistantAccessibilityService.java：移除一次性取点模式，改为常驻多步取点；执行时显示标记覆盖层 + 脉冲动效；completeTask/stop 不清除标记
+  - MainActivity.java：取点流程改为"设定活动步骤"模式；保存任务后自动清除标记
+- 修复: 移动端 dispatchTapSequence 使用 pressDurationMs 替代硬编码值，按压时长可配置。
+- 优化: 移动端取点倒计时从 5 秒缩短为 3 秒，操作更快捷。
+- 新增: 移动端取点覆盖层增加"测试点击"按钮，可验证当前光标位置。
+- 优化: 移动端取点确认/取消后不再强制切回 App，改为 Toast 提示。
+- 修复: 移动端个人中心页版本号从 v0.12.0 更新为 v0.13.0。
+
+- 修复: “选择坐标”功能空白区域点击采集坐标并自动关闭，点击标记快速切换选中步骤，标记拖动实时更新坐标。
+- 修复: CoordinatePickerWindow 关闭后正确重置坐标捕获状态，避免“选择坐标”按钮变为不可用。
+- 修复: MainWindow.xaml 底部状态栏版本号仍显示 v0.12.0 的问题。
+- 修复: Windows 端 .exe 启动时 SQLite 报错 schema_migrations 表缺少 name 列，DatabaseMigrator 自动兼容旧数据库结构。
+- 修复: DatabaseMigrator 执行 ALTER TABLE ADD COLUMN 前自动跳过已存在的目标列，避免旧版初始化后的数据库升级失败。
+- 变更: 桌面端 WPF 主界面全面重设计，采用左侧导航 + 蓝色主色（#2563EB）的现代 Dashboard 布局。
+- 变更: 统一桌面端视觉资源：卡片样式、按钮模板、表单控件、状态徽章、导航按钮。
+- 变更: 首页改为三列卡片入口，增加执行状态实时展示区。
+- 变更: 任务类型选择页、任务库、执行日志页统一新风格白卡片 + 圆角设计。
+- 变更: 鼠标点击编辑页优化为分组卡片布局，左右分栏更清晰。
+- 变更: 悬浮控制窗升级为蓝色主色，圆角卡片设计，展开/收起流畅。
+- 变更: 坐标选择器标记颜色统一为蓝色主色，区分步骤类型颜色。
+- 变更: 移动端底部导航从 3 标签扩展为 4 标签（首页/任务库/日志/我的）。
+- 新增: 移动端执行日志页增加统计徽章（总计/成功/失败）展示。
+- 修复: 移动端 Java 文件中 FrameLayout.setGravity 编译错误和不正确的中文引号。
+- 修复: 移动端缺失的 accessibilityStatusText 和 lastStatusText 字段声明。
+- 变更: Windows 端自包含 .exe 发布到 dist/ClickAssistant-win-x64/ 目录。
+- 变更: Android 端 debug APK 构建成功。
+
+## v0.12.0 - 2026-07-11 18:13
+
+- 新增: 移动端全新 UI 设计：浅色卡片风格、底部导航（首页/任务库/我的）、权限引导页、现代化首页入口、新建任务类型选择页、带搜索与筛选的任务库。
+- 新增: 任务库支持开关快速启用/禁用任务、按状态筛选、右下角悬浮新建按钮。
+- 新增: 个人中心页，聚合辅助功能设置、隐私说明、权限说明和版本信息。
 - 新增: 步骤可视化标记覆盖层，支持在目标界面直接看到所有步骤序号圆点并拖动调整坐标。
 - 新增: 步骤列表显示彩色序号圆圈，点击=蓝色、滑动=绿色、文本输入=橙色。
 - 新增: 桌面端支持滑动步骤类型，可配置起点、终点坐标和滑动时长。
@@ -20,8 +59,9 @@
   accessibilityEventTypes notificationTimeout 从 100ms 调整为 500ms。
 - 变更: 桌面端发布脚本支持读取 VERSION 文件并创建 ZIP 压缩包。
 - 变更: 统一项目版本号：项目 v0.12.0、Android v0.5.0 (versionCode 5)、Windows v0.12.0。
-- docs: 更新 CHANGELOG、WORKLOG 和 README，记录交互优化与工程治理变更。
+- docs: 更新 CHANGELOG、WORKLOG 和 README，记录交互优化、工程治理与移动端 UI 重设计变更。
 - docs: 补充 Android 无障碍服务权限说明注释。
+
 
 ## v0.11.0 - 2026-07-11 00:22
 

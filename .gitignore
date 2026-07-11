@@ -31,6 +31,9 @@ captures/
 *.tmp
 *.temp
 
+# IDE 工具数据
+.codebuddy/
+
 # 操作系统生成文件
 Thumbs.db
 Desktop.ini

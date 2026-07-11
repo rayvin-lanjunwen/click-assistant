@@ -1,5 +1,7 @@
 package com.clickassistant.mobile;
 
+import android.graphics.Color;
+
 /// <summary>
 /// 步骤动作类型，对应电脑端 InputActionType 在移动端的可用子集。
 /// 移动端不支持全局键盘注入，因此用"文本输入"对应电脑端文本输入能力，
@@ -19,6 +21,23 @@ public enum TaskActionType {
 
     public String getDisplayName() {
         return displayName;
+    }
+
+    /// <summary>
+    /// 返回本类型对应的标记颜色。
+    /// TAP=蓝 #2563EB / SWIPE=绿 #16A064 / TEXT_INPUT=橙 #F97316。
+    /// </summary>
+    public int getColor() {
+        switch (this) {
+            case TAP:
+                return Color.parseColor("#2563EB");
+            case SWIPE:
+                return Color.parseColor("#16A064");
+            case TEXT_INPUT:
+                return Color.parseColor("#F97316");
+            default:
+                return Color.parseColor("#2563EB");
+        }
     }
 
     /// <summary>

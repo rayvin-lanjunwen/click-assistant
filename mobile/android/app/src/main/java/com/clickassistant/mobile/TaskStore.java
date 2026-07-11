@@ -19,6 +19,8 @@ public final class TaskStore {
     private static final String KEY_TASKS = "tasks";
     private static final String KEY_LAST_STATUS = "last_status";
     private static final String KEY_PICK_TARGET = "pick_target";
+    private static final String KEY_ACTIVE_TASK_ID = "active_task_id";
+    private static final String KEY_ACTIVE_STEP_ID = "active_step_id";
 
     private static final String LEGACY_PREFERENCES_NAME = "click_assistant_android_prototype";
 
@@ -195,5 +197,47 @@ public final class TaskStore {
     /// </summary>
     public static void clearPickTarget(Context context) {
         preferences(context).edit().remove(KEY_PICK_TARGET).apply();
+    }
+
+    /// <summary>
+    /// 保存当前正在编辑的任务标识，供取点模式读取。
+    /// </summary>
+    public static void saveActiveTaskId(Context context, String taskId) {
+        preferences(context).edit().putString(KEY_ACTIVE_TASK_ID, taskId).apply();
+    }
+
+    /// <summary>
+    /// 读取当前正在编辑的任务标识，无则返回 null。
+    /// </summary>
+    public static String loadActiveTaskId(Context context) {
+        return preferences(context).getString(KEY_ACTIVE_TASK_ID, null);
+    }
+
+    /// <summary>
+    /// 清除当前正在编辑的任务标识。
+    /// </summary>
+    public static void clearActiveTaskId(Context context) {
+        preferences(context).edit().remove(KEY_ACTIVE_TASK_ID).apply();
+    }
+
+    /// <summary>
+    /// 保存当前正在编辑的步骤标识，供取点模式读取。
+    /// </summary>
+    public static void saveActiveStepId(Context context, String stepId) {
+        preferences(context).edit().putString(KEY_ACTIVE_STEP_ID, stepId).apply();
+    }
+
+    /// <summary>
+    /// 读取当前正在编辑的步骤标识，无则返回 null。
+    /// </summary>
+    public static String loadActiveStepId(Context context) {
+        return preferences(context).getString(KEY_ACTIVE_STEP_ID, null);
+    }
+
+    /// <summary>
+    /// 清除当前正在编辑的步骤标识。
+    /// </summary>
+    public static void clearActiveStepId(Context context) {
+        preferences(context).edit().remove(KEY_ACTIVE_STEP_ID).apply();
     }
 }
