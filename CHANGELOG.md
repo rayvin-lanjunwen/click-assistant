@@ -2,6 +2,36 @@
 
 本文档用于记录项目中值得追踪的版本、功能、修复和重要变更，并与 GitHub Releases（GitHub 发布页面）保持同步。
 
+## v0.20.0 - 2026-07-12 06:00
+
+- 新增: Phase E 逐元素精修 — 19 处 Android + 1 处 WPF 视觉元素深度玻璃化。Android 端：首页/编辑器/个人中心标题增加品牌渐变填色 + 阴影发光（LinearGradient #3978F6→#7067D8）；编辑器添加步骤按钮改为虚线边框玻璃卡片（＋图标 + "添加步骤"提示）；步骤编号从纯色圆形改为半透白底 + 颜色边框玻璃圆形；任务库空状态从纯文字改为大玻璃空白卡片（📋图标 + 标题 + 提示并可点击创建）；任务库筛选标签改为玻璃胶囊（选中品牌色 / 未选中半透白 + 白边框）；返回按钮改为玻璃胶囊样式（半透白底 + 圆角）；输入框统一改为玻璃内嵌样式（addTextInput 增加圆角内陷背景）；任务卡片图标从纯色圆形升级为玻璃圆形（白底 + 颜色边框 + elevation）；快捷执行按钮改为玻璃圆形（成功色半透 + 边框）；任务卡片新增步骤类型图标行；统计徽章改为半透白底 + 颜色边框；个人中心箭头改为玻璃圆形；FloatingTriggerButton 面板按钮改为半透白玻璃 + elevation。WPF 端：TabItem 样式升级为玻璃胶囊选项卡（选中态背景/边框 ColorAnimation 过渡）。涉及文件：MainActivity.java、FloatingTriggerButton.java、MainWindow.xaml。
+- 变更: 升级 `LIQUID_GLASS_DESIGN.md` 至 v2.5.0，新增逐元素精修规范。
+- 变更: 项目版本提升至 v0.20.0。
+
+- 新增: Phase D WPF 桌面端液态玻璃动效系统 — 为桌面端所有主要交互增加 Storyboard 动画反馈：(1) 导航按钮 hover 背景色平滑过渡（150ms EaseOutQuad）；(2) 页面切换时内容淡入 + 上移弹入（Opacity 0→1 200ms + Margin 20→0 250ms），同时导航按钮前景/背景色动画过渡到激活态（150ms ColorAnimation）；(3) 主按钮 PrimaryButtonStyle 增加光泽扫过 ControlTemplate（hover 时白色光泽从左侧扫向右侧 600ms 循环 + 背景暗化 0.85×）；(4) 选择卡片 ChoiceButtonStyle hover 上浮 4px（200ms EaseOutQuad）；(5) 步骤列表 StepListBox 选中项背景色平滑过渡（150ms EaseOutQuad）；(6) FloatingControlWindow 展开面板从 ScaleY=0 弹性展开（200ms EaseOutBack + 淡入）；(7) 新增 4 个共享 EasingFunction 资源（EaseOutQuad/EaseInOutQuad/EaseOutBack/EaseOutElastic）。App.xaml 增补 6 个 Color 纯色资源支持 ColorAnimation。
+- 变更: 升级 `LIQUID_GLASS_DESIGN.md` 至 v2.4.0，新增 WPF 动画规范附录（Storyboard 参数、缓动函数、导航过渡时序）。
+- 变更: 项目版本提升至 v0.19.0。
+
+## v0.18.0 - 2026-07-12 04:00
+
+- 新增: Phase C 移动端液态玻璃动效系统 — 为 Android 端所有主要交互增加动画反馈，包括页面切换 SlideUp 过渡、2×2 网格/任务库/步骤/日志四组错位弹入（Staggered PopIn 40-60ms 间隔）、6 处卡片/按钮点击缩放反馈（PressFeedback 0.96→1.0 回弹）、3 个弹窗缩放淡入动画（DialogEntrance 0.85→1.0）、FloatingTriggerButton 展开/收起平移滑入动画（TranslationX -40dp）、底部导航选中项轻弹反馈（1.05→1.0），以及取点返回后步骤列表自动错位弹入。在 MainActivity.java 新增 5 个动效辅助方法（animatePopIn/animateSlideUp/animatePressFeedback/animateStaggeredPopIn/animateDialogEntrance），共新增约 160 行纯 Java 动效代码，使用 ViewPropertyAnimator + OvershootInterpolator/DecelerateInterpolator 实现弹簧弹性效果，零 Kotlin/Compose 依赖。
+- 变更: 升级 `LIQUID_GLASS_DESIGN.md` 至 v2.3.0，新增第 10 节动效系统规范（5 种动画类型、时序参数、实现方式）。
+- 变更: 项目版本提升至 v0.18.0。
+
+## v0.17.0 - 2026-07-12 03:00
+
+- 新增: Phase B 深色主题光晕泄漏 — Android 端 `glassDrawable()` 改为 TOP_BOTTOM 三停渐变（顶部玻璃 → 中部半透 → 底部品牌蓝 `#123978F6`/`#303978F6`），WPF 端 CardStyle 第④层从深灰褐色暗化替换为 `GlassBleedBrush` 品牌蓝渐变（浅色 7% / 深色 19%），模拟环境光在天蓝玻璃底部的物理折射。
+- 新增: Android 端背景光晕颜色从硬编码改为 `getThemeColor()` 动态获取（`bg_glow_warm` / `bg_glow_cool`），新增 `glass_bleed`、`bg_glow_warm`、`bg_glow_cool` 颜色资源各 3 个到浅色和深色两套 `colors.xml`，深色模式自动切换为更强的暖色/蓝冷色光晕。
+- 新增: WPF 端 `App.xaml` 浅色和深色主题各增加 `GlassBleedBrush`（LinearGradientBrush 顶部透明→底部品牌蓝），通过 `DynamicResource` 随主题切换。
+- 变更: 升级 `LIQUID_GLASS_DESIGN.md` 至 v2.2.0，补充光晕泄漏参数（`glass_bleed` 浅色 7% / 深色 19%）和背景光晕动态颜色规范。
+
+- 新增: Phase A 液态玻璃 Specular 高光层 — Android 端 `glassDrawable()` 增加 4 停白→透明渐变高光叠加层（`#60FFFFFF` → `#20FFFFFF` → 透明），WPF 端 CardStyle ControlTemplate 增加内高光白边（`#60FFFFFF` 1px 左上）和底部暗化（`#1A17233A` 3px @40%），模拟玻璃边缘捕获光源的物理厚度感。
+- 新增: 三阶阴影系统 — Android 端 `SHADOW_L1/L2/L3`（3dp/6dp/14dp），WPF 端 ShadowSm/ShadowMd/ShadowLg（BlurRadius 8/16/32、ShadowDepth 3/6/14），替代原单一 GlassShadowEffect。`createCard()` 增加 `shadowLevel` 参数，导航栏和 FAB 升至 L3 深层阴影。
+- 新增: Android 端 `pageBackgroundDrawable()` 增加双径向光晕（右上暖光 `#25FFF0E0` + 左下冷光 `#18E0F0FF`），营造背景环境光照深度感。
+- 新增: WPF 端左侧导航栏底部叠加品牌蓝氛围光渐变（`#183978F6`），FloatingControlWindow 阴影统一升级为 ShadowLg。
+- 变更: 升级 `LIQUID_GLASS_DESIGN.md` 至 v2.1.0，同步更新阴影参数为三阶系统实现值（L1: 8px/3px/8%, L2: 16px/6px/13%, L3: 32px/14px/18%），补充 Specular 高光层和背景光晕设计说明。
+- 变更: 项目版本提升至 v0.17.0（Android 端保持 v0.6.1，本次仅涉及 UI 层次升级）。
+
 ## v0.16.0 - 2026-07-12 01:30
 
 - 修复: 移动端 NullPointerException 闪退（"因应用自身空指针异常，造成闪退"）。`saveTaskFromInputs()` 在用户未打开编辑器页面时被 `executeRecentTask()` → `startTask()` 调用，触发 `taskNameInput.getText()` NPE。增加 EditText null 检查后从"最近任务"等入口执行不再闪退；`updateBottomNav` 也补全四个 nav item 联合 null 保护。

@@ -10,17 +10,24 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Color;
+import android.graphics.LinearGradient;
+import android.graphics.Shader;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityManager;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.OvershootInterpolator;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
@@ -73,6 +80,11 @@ public final class MainActivity extends Activity {
     private static final int RED = Color.parseColor("#D84D5F");
     private static final int RED_LIGHT = Color.parseColor("#FCE4E8");
     private static final int GRAY_BG = Color.parseColor("#A6FFFFFF");
+
+    // 液态玻璃三阶阴影深度层级（模拟 Apple Light / Light Medium / Light Heavy）
+    private static final int SHADOW_L1 = 3;   // 表层：小控件、Switch、Badge
+    private static final int SHADOW_L2 = 6;   // 中景：普通卡片（当前默认）
+    private static final int SHADOW_L3 = 14;  // 深层：导航栏、弹窗、FAB
 
     private Page currentPage = Page.ONBOARDING;
     private String currentFilter = "全部";
@@ -155,6 +167,11 @@ public final class MainActivity extends Activity {
                     selectedTask = t;
                     editorSourcePage = Page.HOME;
                     showPage(Page.EDITOR);
+                    // 取点返回后步骤列表错位弹入
+                    findViewById(android.R.id.content).post(() -> {
+                        if (stepsContainer != null)
+                            animateStaggeredPopIn(stepsContainer, 40);
+                    });
                     return;
                 }
             }
@@ -230,6 +247,9 @@ public final class MainActivity extends Activity {
 
         loadTasks();
         refreshPageContent();
+
+        // 页面切换动画：从下方 24dp 弹入
+        animateSlideUp(targetView);
     }
 
     private void refreshPageContent() {
@@ -317,7 +337,7 @@ public final class MainActivity extends Activity {
         LinearLayout nav = new LinearLayout(this);
         nav.setOrientation(LinearLayout.HORIZONTAL);
         nav.setBackground(glassDrawable(dp(20)));
-        nav.setElevation(dp(12));
+        nav.setElevation(dp(SHADOW_L3));
         nav.setPadding(dp(10), dp(6), dp(10), dp(8));
 
         homeNavItem = createNavItem("🏠", "首页", Page.HOME);
@@ -362,6 +382,25 @@ public final class MainActivity extends Activity {
                 ? roundedDrawable(Color.parseColor("#AFFFFFFF"), dp(12)) : null);
         profileNavItem.setBackground(currentPage == Page.PROFILE
                 ? roundedDrawable(Color.parseColor("#AFFFFFFF"), dp(12)) : null);
+
+        // 导航栏选中项轻弹反馈
+        View activeItem = null;
+        if (currentPage == Page.HOME) activeItem = homeNavItem;
+        else if (currentPage == Page.LIBRARY) activeItem = libraryNavItem;
+        else if (currentPage == Page.LOGS) activeItem = logsNavItem;
+        else if (currentPage == Page.PROFILE) activeItem = profileNavItem;
+
+        if (activeItem != null) {
+            final View item = activeItem;
+            item.animate()
+                    .scaleX(1.05f).scaleY(1.05f)
+                    .setDuration(80)
+                    .withEndAction(() -> item.animate()
+                            .scaleX(1f).scaleY(1f)
+                            .setDuration(120)
+                            .start())
+                    .start();
+        }
     }
 
     // ---------- 权限引导页 ----------
@@ -504,8 +543,13 @@ public final class MainActivity extends Activity {
         TextView title = new TextView(this);
         title.setText("Click Assistant");
         title.setTextSize(28);
-        title.setTextColor(TEXT_PRIMARY);
+        title.setTextColor(PRIMARY);
         title.setTypeface(null, Typeface.BOLD);
+        // 品牌渐变填色 + 微弱发光阴影
+        title.getPaint().setShader(new LinearGradient(0, 0, dp(320), 0,
+                new int[]{Color.parseColor("#3978F6"), Color.parseColor("#7067D8")},
+                null, Shader.TileMode.CLAMP));
+        title.setShadowLayer(dp(4), 0, dp(2), Color.parseColor("#203978F6"));
         header.addView(title);
 
         TextView subtitle = new TextView(this);
@@ -598,7 +642,10 @@ public final class MainActivity extends Activity {
 
         LinearLayout recentCard = createCard(dp(12));
         recentCard.setPadding(dp(16), dp(16), dp(16), dp(16));
-        recentCard.setOnClickListener(v -> showPage(Page.LOGS));
+        recentCard.setOnClickListener(v -> {
+            animatePressFeedback(recentCard);
+            showPage(Page.LOGS);
+        });
         lastStatusText = new TextView(this);
         lastStatusText.setText("暂无执行记录");
         lastStatusText.setTextSize(14);
@@ -608,6 +655,10 @@ public final class MainActivity extends Activity {
         root.addView(recentCard, blockParams());
 
         scroll.addView(root);
+
+        // 2×2 网格卡片错位弹入
+        root.post(() -> animateStaggeredPopIn(grid, 60));
+
         return scroll;
     }
 
@@ -652,6 +703,13 @@ public final class MainActivity extends Activity {
         card.setPadding(dp(16), dp(16), dp(16), dp(16));
         card.setGravity(Gravity.CENTER);
         card.setOnClickListener(item.listener);
+        // 点击按压反馈
+        card.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                animatePressFeedback(v);
+            }
+            return false;
+        });
 
         FrameLayout iconFrame = new FrameLayout(this);
         iconFrame.setLayoutParams(new LinearLayout.LayoutParams(dp(44), dp(44)));
@@ -794,11 +852,12 @@ public final class MainActivity extends Activity {
             container.addView(row);
         }
 
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("选择操作模式")
                 .setView(container)
                 .setNegativeButton("取消", null)
                 .show();
+        animateDialogEntrance(dialog);
     }
 
     /// <summary>
@@ -918,7 +977,7 @@ public final class MainActivity extends Activity {
         fab.setLayoutParams(new FrameLayout.LayoutParams(dp(56), dp(56), Gravity.BOTTOM | Gravity.END));
         ((FrameLayout.MarginLayoutParams) fab.getLayoutParams()).setMargins(0, 0, dp(20), dp(84));
         fab.setBackground(circleDrawable(PRIMARY, 0));
-        fab.setElevation(dp(6));
+        fab.setElevation(dp(SHADOW_L3));
         fab.setOnClickListener(v -> showNewTaskDialog());
 
         TextView fabIcon = new TextView(this);
@@ -946,7 +1005,17 @@ public final class MainActivity extends Activity {
             tab.setPadding(dp(16), dp(8), dp(16), dp(8));
             boolean active = filter.equals(currentFilter);
             tab.setTextColor(active ? Color.WHITE : TEXT_SECONDARY);
-            tab.setBackground(active ? roundedDrawable(PRIMARY, dp(16)) : roundedDrawable(GRAY_BG, dp(16)));
+            // 玻璃胶囊标签：选中时品牌色填充，未选中时半透白玻璃
+            GradientDrawable capsuleBg = new GradientDrawable();
+            capsuleBg.setShape(GradientDrawable.RECTANGLE);
+            capsuleBg.setCornerRadius(dp(16));
+            if (active) {
+                capsuleBg.setColor(PRIMARY);
+            } else {
+                capsuleBg.setColor(GRAY_BG);
+                capsuleBg.setStroke(dp(1), Color.parseColor("#B8FFFFFF"));
+            }
+            tab.setBackground(capsuleBg);
             tab.setOnClickListener(v -> {
                 currentFilter = filter;
                 refreshFilterTabs();
@@ -978,19 +1047,44 @@ public final class MainActivity extends Activity {
         }
 
         if (filtered.isEmpty()) {
-            TextView empty = new TextView(this);
-            empty.setText("暂无任务，点击右下角 + 创建");
-            empty.setTextColor(TEXT_SECONDARY);
-            empty.setTextSize(14);
-            empty.setGravity(Gravity.CENTER);
-            empty.setPadding(0, dp(40), 0, dp(40));
-            libraryTaskList.addView(empty);
+            LinearLayout emptyCard = createCard(dp(16));
+            emptyCard.setOrientation(LinearLayout.VERTICAL);
+            emptyCard.setPadding(dp(40), dp(36), dp(40), dp(36));
+            emptyCard.setGravity(Gravity.CENTER);
+            emptyCard.setOnClickListener(v -> showNewTaskDialog());
+
+            TextView emptyIcon = new TextView(this);
+            emptyIcon.setText("📋");
+            emptyIcon.setTextSize(36);
+            emptyIcon.setGravity(Gravity.CENTER);
+            emptyCard.addView(emptyIcon);
+
+            TextView emptyTitle = new TextView(this);
+            emptyTitle.setText("暂无任务");
+            emptyTitle.setTextSize(16);
+            emptyTitle.setTextColor(TEXT_PRIMARY);
+            emptyTitle.setTypeface(null, Typeface.BOLD);
+            emptyTitle.setGravity(Gravity.CENTER);
+            emptyTitle.setPadding(0, dp(12), 0, dp(4));
+            emptyCard.addView(emptyTitle);
+
+            TextView emptyHint = new TextView(this);
+            emptyHint.setText("点击此处或右下角 + 创建第一个任务");
+            emptyHint.setTextSize(13);
+            emptyHint.setTextColor(TEXT_SECONDARY);
+            emptyHint.setGravity(Gravity.CENTER);
+            emptyCard.addView(emptyHint);
+
+            libraryTaskList.addView(emptyCard);
             return;
         }
 
         for (ClickTask task : filtered) {
             libraryTaskList.addView(buildLibraryTaskCard(task));
         }
+
+        // 任务库卡片错位弹入
+        libraryTaskList.post(() -> animateStaggeredPopIn(libraryTaskList, 50));
     }
 
     private boolean matchesFilter(ClickTask task) {
@@ -1023,8 +1117,15 @@ public final class MainActivity extends Activity {
         String icon = getTaskTypeIcon(task);
         int iconColor = getTaskTypeColor(task);
         FrameLayout iconFrame = new FrameLayout(this);
-        iconFrame.setLayoutParams(new LinearLayout.LayoutParams(dp(48), dp(48)));
-        iconFrame.setBackground(circleDrawable(Color.argb(20, Color.red(iconColor), Color.green(iconColor), Color.blue(iconColor)), 0));
+        iconFrame.setLayoutParams(new LinearLayout.LayoutParams(dp(50), dp(50)));
+        // 玻璃圆形容器：半透白底 + 颜色边框
+        GradientDrawable glassIcon = new GradientDrawable();
+        glassIcon.setShape(GradientDrawable.OVAL);
+        glassIcon.setColor(Color.parseColor("#D9FFFFFF"));
+        glassIcon.setStroke(dp(1), Color.argb(96, Color.red(iconColor), Color.green(iconColor), Color.blue(iconColor)));
+        iconFrame.setBackground(glassIcon);
+        iconFrame.setElevation(dp(SHADOW_L1));
+        iconFrame.setClipToOutline(true);
         TextView iconView = new TextView(this);
         iconView.setText(icon);
         iconView.setTextSize(24);
@@ -1042,6 +1143,7 @@ public final class MainActivity extends Activity {
         textCol.setLayoutParams(new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         textCol.setOnClickListener(v -> {
+            animatePressFeedback(card);
             selectedTask = task;
             editorSourcePage = currentPage;
             showPage(Page.EDITOR);
@@ -1061,6 +1163,31 @@ public final class MainActivity extends Activity {
         desc.setMaxLines(1);
         textCol.addView(desc);
 
+        // 步骤类型图标行
+        java.util.Set<String> typeSet = new java.util.HashSet<>();
+        for (TaskStep s : task.getSteps()) {
+            typeSet.add(s.getActionType().getDisplayName());
+        }
+        if (!typeSet.isEmpty()) {
+            LinearLayout typeRow = new LinearLayout(this);
+            typeRow.setOrientation(LinearLayout.HORIZONTAL);
+            typeRow.setPadding(0, dp(6), 0, 0);
+            for (String type : typeSet) {
+                TextView typeBadge = new TextView(this);
+                typeBadge.setText(type);
+                typeBadge.setTextSize(10);
+                typeBadge.setTextColor(Color.WHITE);
+                typeBadge.setPadding(dp(6), dp(2), dp(6), dp(2));
+                typeBadge.setBackground(roundedDrawable(
+                        Color.parseColor("#8090A4B8"), dp(6)));
+                LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                badgeParams.setMargins(0, 0, dp(6), 0);
+                typeRow.addView(typeBadge, badgeParams);
+            }
+            textCol.addView(typeRow);
+        }
+
         TextView meta = new TextView(this);
         int stepCount = task.getSteps().size();
         meta.setText(String.format(Locale.ROOT, "%d 个步骤 · 重复 %d 次", stepCount, task.getRepeatCount()));
@@ -1071,14 +1198,23 @@ public final class MainActivity extends Activity {
 
         card.addView(textCol);
 
-        // 快捷执行按钮
+        // 快捷执行按钮 —— 玻璃圆形
         TextView execBtn = new TextView(this);
         execBtn.setText("▶");
-        execBtn.setTextSize(16);
+        execBtn.setTextSize(15);
         execBtn.setTextColor(SUCCESS);
         execBtn.setGravity(Gravity.CENTER);
-        execBtn.setPadding(dp(4), dp(4), dp(4), dp(4));
+        execBtn.setPadding(dp(8), dp(6), dp(8), dp(6));
+        // 玻璃圆形背景
+        GradientDrawable execGlass = new GradientDrawable();
+        execGlass.setShape(GradientDrawable.OVAL);
+        execGlass.setColor(Color.argb(30, Color.red(SUCCESS), Color.green(SUCCESS), Color.blue(SUCCESS)));
+        execGlass.setStroke(dp(1), Color.argb(80, Color.red(SUCCESS), Color.green(SUCCESS), Color.blue(SUCCESS)));
+        execBtn.setBackground(execGlass);
+        execBtn.setElevation(dp(SHADOW_L1));
+        execBtn.setClipToOutline(true);
         execBtn.setOnClickListener(v -> {
+            animatePressFeedback(execBtn);
             selectedTask = task;
             startTask();
         });
@@ -1146,8 +1282,12 @@ public final class MainActivity extends Activity {
         TextView title = new TextView(this);
         title.setText("我的");
         title.setTextSize(28);
-        title.setTextColor(TEXT_PRIMARY);
+        title.setTextColor(PRIMARY);
         title.setTypeface(null, Typeface.BOLD);
+        // 品牌渐变填色
+        title.getPaint().setShader(new LinearGradient(0, 0, dp(200), 0,
+                new int[]{Color.parseColor("#3978F6"), Color.parseColor("#7067D8")},
+                null, Shader.TileMode.CLAMP));
         title.setPadding(0, dp(8), 0, dp(16));
         root.addView(title);
 
@@ -1224,8 +1364,17 @@ public final class MainActivity extends Activity {
 
         TextView arrow = new TextView(this);
         arrow.setText("›");
-        arrow.setTextSize(28);
+        arrow.setTextSize(24);
         arrow.setTextColor(TEXT_SECONDARY);
+        arrow.setGravity(Gravity.CENTER);
+        // 玻璃圆形箭头
+        GradientDrawable arrowBg = new GradientDrawable();
+        arrowBg.setShape(GradientDrawable.OVAL);
+        arrowBg.setColor(Color.parseColor("#B8FFFFFF"));
+        arrowBg.setStroke(dp(1), Color.parseColor("#D0FFFFFF"));
+        arrow.setBackground(arrowBg);
+        arrow.setWidth(dp(32));
+        arrow.setHeight(dp(32));
         row.addView(arrow);
 
         root.addView(row);
@@ -1315,7 +1464,15 @@ public final class MainActivity extends Activity {
         LinearLayout badge = new LinearLayout(this);
         badge.setOrientation(LinearLayout.VERTICAL);
         badge.setPadding(dp(12), dp(8), dp(12), dp(8));
-        badge.setBackground(roundedDrawable(Color.argb(20, Color.red(color), Color.green(color), Color.blue(color)), dp(10)));
+        // 玻璃统计徽章：半透白底 + 颜色边框
+        GradientDrawable statGlass = new GradientDrawable();
+        statGlass.setShape(GradientDrawable.RECTANGLE);
+        statGlass.setCornerRadius(dp(10));
+        statGlass.setColor(Color.argb(30, Color.red(color), Color.green(color), Color.blue(color)));
+        statGlass.setStroke(dp(1), Color.argb(60, Color.red(color), Color.green(color), Color.blue(color)));
+        badge.setBackground(statGlass);
+        badge.setElevation(dp(1));
+        badge.setClipToOutline(true);
         badge.setGravity(Gravity.CENTER);
 
         TextView countView = new TextView(this);
@@ -1364,12 +1521,13 @@ public final class MainActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(20), dp(16), dp(20), dp(32));
 
-        // 返回按钮
+        // 返回按钮 —— 玻璃胶囊样式
         TextView backButton = new TextView(this);
         backButton.setText("‹ 返回");
-        backButton.setTextSize(16);
-        backButton.setTextColor(PRIMARY);
-        backButton.setPadding(0, dp(8), 0, dp(8));
+        backButton.setTextSize(14);
+        backButton.setTextColor(TEXT_SECONDARY);
+        backButton.setPadding(dp(12), dp(6), dp(12), dp(6));
+        backButton.setBackground(glassCapsuleDrawable(Color.parseColor("#A6FFFFFF")));
         backButton.setOnClickListener(v -> exitEditor());
         root.addView(backButton);
 
@@ -1393,8 +1551,12 @@ public final class MainActivity extends Activity {
         TextView title = new TextView(this);
         title.setText(selectedTask != null ? selectedTask.getName() : "编辑任务");
         title.setTextSize(24);
-        title.setTextColor(TEXT_PRIMARY);
+        title.setTextColor(PRIMARY);
         title.setTypeface(null, Typeface.BOLD);
+        // 品牌渐变填色
+        title.getPaint().setShader(new LinearGradient(0, 0, dp(280), 0,
+                new int[]{Color.parseColor("#3978F6"), Color.parseColor("#7067D8")},
+                null, Shader.TileMode.CLAMP));
         root.addView(title);
 
         TextView subtitle = new TextView(this);
@@ -1442,14 +1604,35 @@ public final class MainActivity extends Activity {
         stepsContainer.setOrientation(LinearLayout.VERTICAL);
         stepsCard.addView(stepsContainer);
 
-        Button addStepButton = new Button(this);
-        addStepButton.setText("添加步骤");
-        addStepButton.setTextColor(PRIMARY);
-        addStepButton.setAllCaps(false);
-        addStepButton.setBackground(roundedDrawable(PRIMARY_LIGHT, dp(12)));
-        addStepButton.setPadding(dp(16), dp(14), dp(16), dp(14));
-        addStepButton.setOnClickListener(v -> showAddStepDialog());
-        stepsCard.addView(addStepButton, blockParams());
+        // 添加步骤 —— 虚线边框玻璃卡片
+        LinearLayout addStepGlass = new LinearLayout(this);
+        addStepGlass.setOrientation(LinearLayout.VERTICAL);
+        addStepGlass.setGravity(Gravity.CENTER);
+        addStepGlass.setPadding(dp(20), dp(18), dp(20), dp(18));
+        GradientDrawable dashBg = new GradientDrawable();
+        dashBg.setShape(GradientDrawable.RECTANGLE);
+        dashBg.setCornerRadius(dp(12));
+        dashBg.setColor(Color.argb(40, Color.red(PRIMARY), Color.green(PRIMARY), Color.blue(PRIMARY)));
+        dashBg.setStroke(dp(1), Color.argb(80, Color.red(PRIMARY), Color.green(PRIMARY), Color.blue(PRIMARY)));
+        addStepGlass.setBackground(dashBg);
+        addStepGlass.setOnClickListener(v -> showAddStepDialog());
+
+        TextView plusIcon = new TextView(this);
+        plusIcon.setText("＋");
+        plusIcon.setTextSize(22);
+        plusIcon.setTextColor(PRIMARY);
+        plusIcon.setGravity(Gravity.CENTER);
+        addStepGlass.addView(plusIcon);
+
+        TextView addHint = new TextView(this);
+        addHint.setText("添加步骤");
+        addHint.setTextSize(14);
+        addHint.setTextColor(PRIMARY);
+        addHint.setTypeface(null, Typeface.BOLD);
+        addHint.setPadding(0, dp(4), 0, 0);
+        addStepGlass.addView(addHint);
+
+        stepsCard.addView(addStepGlass, blockParams());
 
         root.addView(stepsCard, blockParams());
 
@@ -1666,6 +1849,9 @@ public final class MainActivity extends Activity {
             stepsContainer.addView(emptyCard, blockParams());
             return;
         }
+
+        // 步骤列表错位弹入
+        stepsContainer.post(() -> animateStaggeredPopIn(stepsContainer, 40));
     }
 
     private void renderLog() {
@@ -1774,6 +1960,9 @@ public final class MainActivity extends Activity {
             });
             logContainer.addView(loadMore, blockParams());
         }
+
+        // 日志条目错位弹入
+        logContainer.post(() -> animateStaggeredPopIn(logContainer, 30));
     }
 
     private int getStatusColor(String status) {
@@ -1810,11 +1999,12 @@ public final class MainActivity extends Activity {
         int circleColor = getStepColor(step.getActionType());
         GradientDrawable circleBg = new GradientDrawable();
         circleBg.setShape(GradientDrawable.OVAL);
-        circleBg.setColor(circleColor);
-        circleBg.setSize(dp(28), dp(28));
+        circleBg.setColor(Color.argb(30, Color.red(circleColor), Color.green(circleColor), Color.blue(circleColor)));
+        circleBg.setStroke(dp(1), Color.argb(80, Color.red(circleColor), Color.green(circleColor), Color.blue(circleColor)));
+        circleBg.setSize(dp(30), dp(30));
         numberView.setBackground(circleBg);
         numberView.setText(String.valueOf(index + 1));
-        numberView.setTextColor(Color.WHITE);
+        numberView.setTextColor(circleColor);
         numberView.setTextSize(13);
         numberView.setGravity(Gravity.CENTER);
         numberView.setPadding(0, 0, 0, 0);
@@ -2172,10 +2362,10 @@ public final class MainActivity extends Activity {
             addPickButton(container, step, TaskActionType.SWIPE, beforePick);
         }
 
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("编辑步骤：" + step.getActionType().getDisplayName())
                 .setView(scroll)
-                .setPositiveButton("保存", (dialog, which) -> {
+                .setPositiveButton("保存", (d, which) -> {
                     try {
                         step.setName(nameInput.getText().toString().trim());
                         step.setEnabled(enabledBox.isChecked());
@@ -2207,6 +2397,7 @@ public final class MainActivity extends Activity {
                 })
                 .setNegativeButton("取消", null)
                 .show();
+        animateDialogEntrance(dialog);
     }
 
     private void addPickButton(LinearLayout container, TaskStep step, TaskActionType mode) {
@@ -2332,10 +2523,10 @@ public final class MainActivity extends Activity {
         dialogLayout.addView(msgView);
         dialogLayout.addView(rememberBox);
 
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("执行前确认")
                 .setView(dialogLayout)
-                .setPositiveButton("确认执行", (dialog, which) -> {
+                .setPositiveButton("确认执行", (d, which) -> {
                     if (rememberBox.isChecked()) {
                         getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
                                 .edit().putBoolean("skip_execution_confirm", true).apply();
@@ -2344,6 +2535,7 @@ public final class MainActivity extends Activity {
                 })
                 .setNegativeButton("取消", null)
                 .show();
+        animateDialogEntrance(dialog);
     }
 
     private void doStartTask(ClickTask task) {
@@ -2439,9 +2631,13 @@ public final class MainActivity extends Activity {
     }
 
     private LinearLayout createCard(int radius) {
+        return createCard(radius, SHADOW_L2);
+    }
+
+    private LinearLayout createCard(int radius, int shadowLevel) {
         LinearLayout card = new LinearLayout(this);
         card.setBackground(glassDrawable(radius));
-        card.setElevation(dp(5));
+        card.setElevation(dp(shadowLevel));
         card.setClipToOutline(true);
         return card;
     }
@@ -2462,26 +2658,78 @@ public final class MainActivity extends Activity {
 
     /// <summary>
     /// 通过透明渐变、亮边和阴影模拟玻璃材质，Android 7+ 均可稳定显示。
+    /// 返回 LayerDrawable：底层为玻璃渐变基底，上层为 Specular 高光层，
+    /// 模拟玻璃表面左上角捕获环境光源的效果。
     /// 支持深色模式：通过 ContextCompat.getColor 动态获取颜色资源。
     /// </summary>
-    private GradientDrawable glassDrawable(int radius) {
+    private Drawable glassDrawable(int radius) {
         int topColor = getThemeColor(R.color.glass_card_top, Color.parseColor("#EEFFFFFF"));
         int bottomColor = getThemeColor(R.color.glass_card_bottom, Color.parseColor("#BFFFFFFF"));
-        GradientDrawable drawable = new GradientDrawable(
+        int bleedColor = getThemeColor(R.color.glass_bleed, Color.parseColor("#123978F6"));
+
+        // ① 底层：TOP_BOTTOM 三停渐变（顶部玻璃 → 中部半透 → 底部品牌蓝光晕泄漏）
+        GradientDrawable base = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{topColor, bottomColor, bleedColor});
+        base.setCornerRadius(radius);
+        base.setStroke(dp(1), BORDER);
+
+        // ② 上层：Specular 高光层 — 左上角白色渐变至透明，模拟玻璃边缘捕获光源
+        GradientDrawable specular = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                new int[]{topColor, bottomColor});
-        drawable.setCornerRadius(radius);
-        drawable.setStroke(dp(1), BORDER);
-        return drawable;
+                new int[]{
+                        Color.parseColor("#60FFFFFF"),  // 左上 38% 白
+                        Color.parseColor("#20FFFFFF"),  // 中上 12% 白
+                        Color.TRANSPARENT,              // 中下 全透
+                        Color.TRANSPARENT               // 右下 全透
+                });
+        specular.setCornerRadius(radius);
+
+        return new LayerDrawable(new Drawable[]{base, specular});
     }
 
-    private GradientDrawable pageBackgroundDrawable() {
+    /// <summary>
+    /// 页面背景：底层保持现有三色渐变，叠加两处径向光晕（右上暖光模拟环境光散射，
+    /// 左下冷光模拟屏幕环境补光），营造空间深度感。
+    /// 光晕颜色从 color 资源动态获取，自动适配深色模式。
+    /// </summary>
+    private Drawable pageBackgroundDrawable() {
         int startColor = getThemeColor(R.color.bg_page_start, Color.parseColor("#E8F2F7"));
         int midColor = getThemeColor(R.color.bg_page_mid, Color.parseColor("#F4F7FA"));
         int endColor = getThemeColor(R.color.bg_page_end, Color.parseColor("#EEEAF6"));
-        return new GradientDrawable(
+        int warmColor = getThemeColor(R.color.bg_glow_warm, Color.parseColor("#2DFFF0E0"));
+        int coolColor = getThemeColor(R.color.bg_glow_cool, Color.parseColor("#18E0F0FF"));
+
+        // ① 底层：现有三色线性渐变
+        GradientDrawable base = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
                 new int[]{startColor, midColor, endColor});
+
+        // ② 右上角暖色光晕（模拟窗外暖色环境光散射）
+        GradientDrawable warmGlow = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{
+                        warmColor,                      // 动态获取，适配深色模式
+                        Color.TRANSPARENT,
+                        Color.TRANSPARENT
+                });
+        warmGlow.setGradientType(GradientDrawable.RADIAL_GRADIENT);
+        warmGlow.setGradientCenter(0.85f, 0.15f);
+        warmGlow.setGradientRadius(dp(500));
+
+        // ③ 左下角冷色补光（模拟环境中蓝色冷光）
+        GradientDrawable coolGlow = new GradientDrawable(
+                GradientDrawable.Orientation.BR_TL,
+                new int[]{
+                        coolColor,                      // 动态获取，适配深色模式
+                        Color.TRANSPARENT,
+                        Color.TRANSPARENT
+                });
+        coolGlow.setGradientType(GradientDrawable.RADIAL_GRADIENT);
+        coolGlow.setGradientCenter(0.15f, 0.85f);
+        coolGlow.setGradientRadius(dp(400));
+
+        return new LayerDrawable(new Drawable[]{base, warmGlow, coolGlow});
     }
 
     /// <summary>
@@ -2494,6 +2742,111 @@ public final class MainActivity extends Activity {
         } catch (Resources.NotFoundException e) {
             return fallbackColor;
         }
+    }
+
+    // ===== 液态玻璃动效系统 =====
+
+    /// <summary>
+    /// 通用弹入动画：缩放 + 淡入。适用于卡片、弹窗等。
+    /// 使用 OvershootInterpolator 模拟弹簧过冲效果。
+    /// </summary>
+    private void animatePopIn(View view) {
+        view.setAlpha(0f);
+        view.setScaleX(0.92f);
+        view.setScaleY(0.92f);
+        view.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(250)
+                .setInterpolator(new OvershootInterpolator(0.4f))
+                .start();
+    }
+
+    /// <summary>
+    /// 通用弹入 + 平移：从下方 24dp 弹入。适用于页面内容。
+    /// </summary>
+    private void animateSlideUp(View view) {
+        view.setAlpha(0f);
+        view.setTranslationY(dp(24));
+        view.animate()
+                .alpha(1f)
+                .translationY(0)
+                .setDuration(300)
+                .setInterpolator(new DecelerateInterpolator(1.2f))
+                .start();
+    }
+
+    /// <summary>
+    /// 点击反馈：短暂缩小再恢复，模拟玻璃被按压。
+    /// </summary>
+    private void animatePressFeedback(View view) {
+        view.animate()
+                .scaleX(0.96f)
+                .scaleY(0.96f)
+                .setDuration(80)
+                .withEndAction(() -> view.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(150)
+                        .setInterpolator(new OvershootInterpolator(0.4f))
+                        .start())
+                .start();
+    }
+
+    /// <summary>
+    /// 错位弹入：对 ViewGroup 的子元素依次执行弹入动画。
+    /// staggerMs = 每个子元素之间的延迟毫秒数（推荐 40-60）。
+    /// 每个子元素从起始透明度 0 和缩放 0.95 开始。
+    /// </summary>
+    private void animateStaggeredPopIn(ViewGroup container, int staggerMs) {
+        for (int i = 0; i < container.getChildCount(); i++) {
+            View child = container.getChildAt(i);
+            child.setAlpha(0f);
+            child.setScaleX(0.95f);
+            child.setScaleY(0.95f);
+            child.animate()
+                    .alpha(1f)
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(200)
+                    .setStartDelay(i * staggerMs)
+                    .setInterpolator(new OvershootInterpolator(0.35f))
+                    .start();
+        }
+    }
+
+    /// <summary>
+    /// 弹窗进入动画：缩放+淡入，从 0.85 倍到 1.0 倍，带弹簧效果。
+    /// 注意：将 dialog 引用改为局部变量接收后才能调用此方法。
+    /// </summary>
+    private void animateDialogEntrance(AlertDialog dialog) {
+        if (dialog.getWindow() == null) return;
+        View decor = dialog.getWindow().getDecorView();
+        decor.setAlpha(0f);
+        decor.setScaleX(0.85f);
+        decor.setScaleY(0.85f);
+        decor.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(250)
+                .setInterpolator(new OvershootInterpolator(0.5f))
+                .start();
+    }
+
+    // ---------- 旧样式工具 ----------
+
+    /// <summary>
+    /// 玻璃胶囊背景：半透白底 + 白色边框。用于标签、小按钮等。
+    /// </summary>
+    private GradientDrawable glassCapsuleDrawable(int fillColor) {
+        GradientDrawable gd = new GradientDrawable();
+        gd.setShape(GradientDrawable.RECTANGLE);
+        gd.setCornerRadius(dp(8));
+        gd.setColor(fillColor);
+        gd.setStroke(dp(1), Color.parseColor("#B8FFFFFF"));
+        return gd;
     }
 
     private GradientDrawable circleDrawable(int color, int strokeWidth) {
@@ -2533,9 +2886,15 @@ public final class MainActivity extends Activity {
         input.setHint(hint);
         input.setInputType(inputType);
         input.setTextColor(TEXT_PRIMARY);
-        input.setHintTextColor(TEXT_SECONDARY);
-        input.setPadding(0, dp(14), 0, dp(14));
-        input.setBackground(null);
+        input.setHintTextColor(Color.parseColor("#80526176"));
+        // 玻璃内嵌输入框（内陷样式）
+        GradientDrawable glassInputBg = new GradientDrawable();
+        glassInputBg.setShape(GradientDrawable.RECTANGLE);
+        glassInputBg.setCornerRadius(dp(10));
+        glassInputBg.setColor(Color.parseColor("#A6FFFFFF"));
+        glassInputBg.setStroke(dp(1), Color.parseColor("#D0FFFFFF"));
+        input.setBackground(glassInputBg);
+        input.setPadding(dp(12), dp(10), dp(12), dp(10));
         root.addView(input, blockParams());
         return input;
     }

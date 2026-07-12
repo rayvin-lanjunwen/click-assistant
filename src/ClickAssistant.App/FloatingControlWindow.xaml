@@ -15,9 +15,13 @@
     <Window.Resources>
         <!-- 颜色与共享转换器已迁移到 App.xaml -->
 
-        <DropShadowEffect x:Key="FloatingGlassShadow"
-                          BlurRadius="28" ShadowDepth="8" Direction="270"
-                          Color="#253248" Opacity="0.22" />
+        <!-- 共享缓动函数（独立窗口无法访问 MainWindow 的资源） -->
+        <BackEase x:Key="EaseOutBack" EasingMode="EaseOut" Amplitude="0.3" />
+
+        <!-- 液态玻璃三阶阴影 - L3 深层：悬浮窗 -->
+        <DropShadowEffect x:Key="ShadowLg"
+                          BlurRadius="32" ShadowDepth="14" Direction="270"
+                          Color="#26334A" Opacity="0.18" />
 
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
@@ -67,7 +71,7 @@
         <Border Padding="12" CornerRadius="16"
                 Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                 Visibility="{Binding IsFloatingCollapsedVisible, Converter={StaticResource BoolToVisibility}}"
-                Effect="{DynamicResource FloatingGlassShadow}">
+                Effect="{DynamicResource ShadowLg}">
             <DockPanel LastChildFill="True">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <Button Command="{Binding StopCommand}" Content="⏹"
@@ -91,7 +95,26 @@
         <Border Padding="16" CornerRadius="16"
                 Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                 Visibility="{Binding IsFloatingExpandedVisible, Converter={StaticResource BoolToVisibility}}"
-                Effect="{DynamicResource FloatingGlassShadow}">
+                Effect="{DynamicResource ShadowLg}"
+                RenderTransformOrigin="0.5,0">
+            <Border.RenderTransform>
+                <ScaleTransform />
+            </Border.RenderTransform>
+            <Border.Triggers>
+                <EventTrigger RoutedEvent="Border.Loaded">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="RenderTransform.ScaleY"
+                                             From="0" To="1"
+                                             Duration="0:0:0.2"
+                                             EasingFunction="{StaticResource EaseOutBack}" />
+                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                             From="0" To="1"
+                                             Duration="0:0:0.15" />
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Border.Triggers>
             <StackPanel>
                 <DockPanel>
                     <Button DockPanel.Dock="Right"

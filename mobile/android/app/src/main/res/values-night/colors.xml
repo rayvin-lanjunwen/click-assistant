@@ -51,6 +51,11 @@
     <color name="nav_bar">#0F111A</color>
     <color name="window_bg">#151A24</color>
 
+    <!-- 背景光晕与玻璃泄漏（深色模式更明显） -->
+    <color name="bg_glow_warm">#30FFD080</color>   <!-- 右上暖光 19%，偏黄鹿皮色适配暗背景 -->
+    <color name="bg_glow_cool">#284080FF</color>   <!-- 左下蓝光 16%，暗色中更有氛围感 -->
+    <color name="glass_bleed">#303978F6</color>    <!-- 玻璃底部品牌蓝泄漏 19% -->
+
     <!-- 白色（暗色模式中用于极少场景） -->
     <color name="white">#FFFFFF</color>
 </resources>

@@ -51,6 +51,11 @@
     <color name="nav_bar">#EEF4F7</color>
     <color name="window_bg">#EEF4F7</color>
 
+    <!-- 背景光晕与玻璃泄漏 -->
+    <color name="bg_glow_warm">#2DFFF0E0</color>   <!-- 右上暖光 18% -->
+    <color name="bg_glow_cool">#18E0F0FF</color>   <!-- 左下冷光 10% -->
+    <color name="glass_bleed">#123978F6</color>    <!-- 玻璃底部品牌蓝泄漏 7% -->
+
     <!-- 白色 -->
     <color name="white">#FFFFFF</color>
 </resources>

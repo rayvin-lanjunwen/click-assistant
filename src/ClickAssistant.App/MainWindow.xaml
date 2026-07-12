@@ -1,6 +1,7 @@
-<Window x:Class="ClickAssistant.App.MainWindow"
+﻿<Window x:Class="ClickAssistant.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:ClickAssistant.App"
         xmlns:converters="clr-namespace:ClickAssistant.App.Converters"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -16,6 +17,12 @@
         <!-- 颜色与共享转换器已迁移到 App.xaml 的 Application.Resources，
              所有窗口（包括独立窗口）均可见。-->
 
+        <!-- ===== 共享动画缓动函数 ===== -->
+        <QuadraticEase x:Key="EaseOutQuad" EasingMode="EaseOut" />
+        <QuadraticEase x:Key="EaseInOutQuad" EasingMode="EaseInOut" />
+        <BackEase x:Key="EaseOutBack" EasingMode="EaseOut" Amplitude="0.3" />
+        <ElasticEase x:Key="EaseOutElastic" EasingMode="EaseOut" Oscillations="1" Springiness="3" />
+
         <!-- 基础 TextBlock -->
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
@@ -23,34 +30,82 @@
             <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
         </Style>
 
-        <DropShadowEffect x:Key="GlassShadowEffect"
-                          BlurRadius="24" ShadowDepth="8" Direction="270"
+        <!-- ===== 液态玻璃三阶阴影系统 ===== -->
+        <!-- L1 表层：小控件、Badge、Switch -->
+        <DropShadowEffect x:Key="ShadowSm"
+                          BlurRadius="8" ShadowDepth="3" Direction="270"
+                          Color="#26334A" Opacity="0.08" />
+
+        <!-- L2 中景：普通卡片（增强版，替代原 GlassShadowEffect） -->
+        <DropShadowEffect x:Key="ShadowMd"
+                          BlurRadius="16" ShadowDepth="6" Direction="270"
                           Color="#26334A" Opacity="0.13" />
 
-        <!-- 卡片面板 -->
-        <Style x:Key="CardStyle" TargetType="Border">
+        <!-- L3 深层：导航栏、弹窗、悬浮窗 -->
+        <DropShadowEffect x:Key="ShadowLg"
+                          BlurRadius="32" ShadowDepth="14" Direction="270"
+                          Color="#26334A" Opacity="0.18" />
+
+        <!-- 卡片面板（液态玻璃 + Specular 高光层 + 三阶阴影） -->
+        <Style x:Key="CardStyle" TargetType="local:GlassCard">
             <Setter Property="Background" Value="{DynamicResource BgCardBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="16" />
             <Setter Property="Padding" Value="20" />
-            <Setter Property="Effect" Value="{DynamicResource GlassShadowEffect}" />
+            <Setter Property="Effect" Value="{DynamicResource ShadowMd}" />
             <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="local:GlassCard">
+                        <Grid>
+                            <!-- ① 阴影层：通过 TemplateBinding Effect 控制，
+                                 SubtleCardStyle（Effect=null）自动无阴影 -->
+                            <Border Margin="0,6,0,0"
+                                    CornerRadius="{TemplateBinding CornerRadius}"
+                                    Background="Transparent"
+                                    Effect="{TemplateBinding Effect}" />
+
+                            <!-- ② 玻璃基底 + 内容 -->
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="{TemplateBinding CornerRadius}"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter />
+                            </Border>
+
+                            <!-- ③ 内高光层：左上亮边，模拟玻璃反射 -->
+                            <Border CornerRadius="{TemplateBinding CornerRadius}"
+                                    BorderBrush="#60FFFFFF"
+                                    BorderThickness="1,1,0,0"
+                                    IsHitTestVisible="False" />
+
+                            <!-- ④ 底部品牌蓝光晕泄漏：模拟环境光在天蓝玻璃底部的折射 -->
+                            <Border CornerRadius="{TemplateBinding CornerRadius}"
+                                    VerticalAlignment="Bottom"
+                                    Height="6"
+                                    Background="{DynamicResource GlassBleedBrush}"
+                                    IsHitTestVisible="False" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
-        <Style x:Key="SubtleCardStyle" TargetType="Border" BasedOn="{StaticResource CardStyle}">
+        <Style x:Key="SubtleCardStyle" TargetType="local:GlassCard" BasedOn="{StaticResource CardStyle}">
             <Setter Property="Background" Value="{DynamicResource GlassSubtleBrush}" />
             <Setter Property="Padding" Value="16" />
             <Setter Property="Effect" Value="{x:Null}" />
         </Style>
 
-        <Style x:Key="HighlightCardStyle" TargetType="Border" BasedOn="{StaticResource CardStyle}">
+        <Style x:Key="HighlightCardStyle" TargetType="local:GlassCard" BasedOn="{StaticResource CardStyle}">
             <Setter Property="Background" Value="#C9E4EEFF" />
             <Setter Property="BorderBrush" Value="#D6FFFFFF" />
             <Setter Property="Padding" Value="16" />
         </Style>
 
-        <!-- 按钮 - 主按钮 -->
+        <!-- 按钮 - 主按钮（液态玻璃光泽扫过效果） -->
         <Style x:Key="PrimaryButtonStyle" TargetType="Button">
             <Setter Property="MinHeight" Value="40" />
             <Setter Property="Padding" Value="20,9" />
@@ -64,20 +119,76 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="10"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
+                        <Grid>
+                            <!-- 按钮背景 -->
+                            <Border x:Name="RootBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="10"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <!-- 光泽层（hover 时滑入循环） -->
+                            <Border x:Name="ShineBorder"
+                                    CornerRadius="10"
+                                    IsHitTestVisible="False"
+                                    Opacity="0">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Offset="-0.3" Color="Transparent" />
+                                        <GradientStop Offset="0.5" Color="#60FFFFFF" />
+                                        <GradientStop Offset="1.3" Color="Transparent" />
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <!-- 光泽划过循环 -->
+                                            <ThicknessAnimation Storyboard.TargetName="ShineBorder"
+                                                                Storyboard.TargetProperty="Margin"
+                                                                From="-200,0,200,0" To="200,0,-200,0"
+                                                                Duration="0:0:0.6"
+                                                                AutoReverse="False"
+                                                                RepeatBehavior="Forever"
+                                                                EasingFunction="{StaticResource EaseInOutQuad}" />
+                                            <DoubleAnimation Storyboard.TargetName="ShineBorder"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             From="0" To="1"
+                                                             Duration="0:0:0.15" />
+                                            <DoubleAnimation Storyboard.TargetName="RootBorder"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="0.85"
+                                                             Duration="0:0:0.15"
+                                                             EasingFunction="{StaticResource EaseOutQuad}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="ShineBorder"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="0"
+                                                             Duration="0:0:0.2" />
+                                            <DoubleAnimation Storyboard.TargetName="RootBorder"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="1"
+                                                             Duration="0:0:0.2"
+                                                             EasingFunction="{StaticResource EaseOutQuad}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
             <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Opacity" Value="0.9" />
-                </Trigger>
                 <Trigger Property="IsEnabled" Value="False">
                     <Setter Property="Opacity" Value="0.5" />
                 </Trigger>
@@ -147,13 +258,40 @@
             </Setter>
         </Style>
 
-        <!-- 选择卡片按钮 -->
+        <!-- 选择卡片按钮（hover 上浮 4px） -->
         <Style x:Key="ChoiceButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
             <Setter Property="MinHeight" Value="140" />
             <Setter Property="Margin" Value="0" />
             <Setter Property="Padding" Value="20" />
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <TranslateTransform />
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Trigger.EnterActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Y"
+                                                 To="-4" Duration="0:0:0.2"
+                                                 EasingFunction="{StaticResource EaseOutQuad}" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.EnterActions>
+                    <Trigger.ExitActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Y"
+                                                 To="0" Duration="0:0:0.2"
+                                                 EasingFunction="{StaticResource EaseOutQuad}" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.ExitActions>
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
         <!-- 导航按钮 -->
@@ -171,7 +309,8 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
+                        <Border x:Name="NavBorder"
+                                Background="{TemplateBinding Background}"
                                 CornerRadius="11"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" />
@@ -181,7 +320,26 @@
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#8FFFFFFF" />
+                    <Trigger.EnterActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <ColorAnimation Duration="0:0:0.15"
+                                                Storyboard.TargetProperty="Background.Color"
+                                                To="#8FFFFFFF"
+                                                EasingFunction="{StaticResource EaseOutQuad}" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.EnterActions>
+                    <Trigger.ExitActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <ColorAnimation Duration="0:0:0.15"
+                                                Storyboard.TargetProperty="Background.Color"
+                                                To="Transparent"
+                                                EasingFunction="{StaticResource EaseOutQuad}" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.ExitActions>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -192,7 +350,7 @@
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
-        <!-- TabControl -->
+        <!-- TabControl 玻璃胶囊选项卡 -->
         <Style TargetType="TabControl">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
@@ -204,15 +362,58 @@
             <Setter Property="Padding" Value="16,8" />
             <Setter Property="Margin" Value="0,0,4,0" />
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderThickness="0,0,0,2"
+                        <Border x:Name="TabBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
                                 Padding="{TemplateBinding Padding}"
-                                CornerRadius="4,4,0,0">
+                                CornerRadius="10,10,0,0">
                             <ContentPresenter ContentSource="Header" />
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <ColorAnimation Storyboard.TargetName="TabBorder"
+                                                            Storyboard.TargetProperty="Background.Color"
+                                                            To="#D9FFFFFF"
+                                                            Duration="0:0:0.15"
+                                                            EasingFunction="{StaticResource EaseOutQuad}" />
+                                            <ColorAnimation Storyboard.TargetName="TabBorder"
+                                                            Storyboard.TargetProperty="BorderBrush.Color"
+                                                            To="#B8FFFFFF"
+                                                            Duration="0:0:0.15"
+                                                            EasingFunction="{StaticResource EaseOutQuad}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <ColorAnimation Storyboard.TargetName="TabBorder"
+                                                            Storyboard.TargetProperty="Background.Color"
+                                                            To="Transparent"
+                                                            Duration="0:0:0.15"
+                                                            EasingFunction="{StaticResource EaseOutQuad}" />
+                                            <ColorAnimation Storyboard.TargetName="TabBorder"
+                                                            Storyboard.TargetProperty="BorderBrush.Color"
+                                                            To="Transparent"
+                                                            Duration="0:0:0.15"
+                                                            EasingFunction="{StaticResource EaseOutQuad}" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                                <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -348,7 +549,9 @@
         <Border Grid.Column="0" Background="{DynamicResource GlassNavigationBrush}"
                 BorderBrush="#8FFFFFFF" BorderThickness="0,0,1,0">
             <Grid>
-                <Grid.RowDefinitions>
+                <!-- 原有导航内容 Grid -->
+                <Grid>
+                    <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
@@ -370,7 +573,8 @@
 
                 <!-- 导航项 -->
                 <StackPanel Grid.Row="1">
-                    <Button Command="{Binding ShowHomeCommand}"
+                    <Button x:Name="NavHomeButton"
+                            Command="{Binding ShowHomeCommand}"
                             Content="首页">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
@@ -384,7 +588,8 @@
                             </Style>
                         </Button.Style>
                     </Button>
-                    <Button Command="{Binding ShowNewTaskTypeCommand}"
+                    <Button x:Name="NavNewTaskButton"
+                            Command="{Binding ShowNewTaskTypeCommand}"
                             Content="新建任务">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
@@ -398,7 +603,8 @@
                             </Style>
                         </Button.Style>
                     </Button>
-                    <Button Command="{Binding ShowTaskLibraryCommand}"
+                    <Button x:Name="NavTaskLibraryButton"
+                            Command="{Binding ShowTaskLibraryCommand}"
                             Content="任务库">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
@@ -412,7 +618,8 @@
                             </Style>
                         </Button.Style>
                     </Button>
-                    <Button Command="{Binding ShowExecutionLogsCommand}"
+                    <Button x:Name="NavLogsButton"
+                            Command="{Binding ShowExecutionLogsCommand}"
                             Content="执行日志">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
@@ -454,17 +661,29 @@
                                 Click="HandleThemeToggleClick" />
                     </StackPanel>
                 </Border>
+                </Grid>
+                <!-- 品牌蓝氛围光：底部渐变，模拟环境光在天蓝玻璃上的折射 -->
+                <Border VerticalAlignment="Bottom" Height="120"
+                        IsHitTestVisible="False">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Offset="0" Color="Transparent" />
+                            <GradientStop Offset="1" Color="#183978F6" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
             </Grid>
         </Border>
 
         <!-- ===== 右侧内容区域 ===== -->
-        <ScrollViewer Grid.Column="1" Padding="28,24,28,28">
+        <ScrollViewer x:Name="ContentScrollViewer" Grid.Column="1" Padding="28,24,28,28">
             <Grid>
                 <!-- ********** 首页 ********** -->
-                <Grid Visibility="{Binding IsHomePageVisible, Converter={StaticResource BoolToVisibility}}">
+                <Grid x:Name="HomePageGrid"
+                      Visibility="{Binding IsHomePageVisible, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Width="560">
                         <!-- Hero 区域 -->
-                        <Border Margin="0,0,0,20" Style="{StaticResource CardStyle}" Padding="28">
+                        <local:GlassCard Margin="0,0,0,20" Style="{StaticResource CardStyle}" Padding="28">
                             <StackPanel HorizontalAlignment="Center">
                                 <Image Source="Resources/Images/logo_app.png"
                                        Width="56" Height="56"
@@ -484,7 +703,7 @@
                                             Style="{StaticResource SecondaryButtonStyle}" />
                                 </WrapPanel>
                             </StackPanel>
-                        </Border>
+                        </local:GlassCard>
 
                         <!-- 最近任务 -->
                         <TextBlock FontSize="18" FontWeight="Bold" Margin="0,8,0,12"
@@ -536,7 +755,8 @@
                 </Grid>
 
                 <!-- ********** 新建任务类型选择 ********** -->
-                <Grid Visibility="{Binding IsNewTaskTypePageVisible, Converter={StaticResource BoolToVisibility}}">
+                <Grid x:Name="NewTaskTypeGrid"
+                      Visibility="{Binding IsNewTaskTypePageVisible, Converter={StaticResource BoolToVisibility}}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="20" />
@@ -654,7 +874,8 @@
                 </Grid>
 
                 <!-- ********** 任务库页 ********** -->
-                <Grid Visibility="{Binding IsTaskLibraryPageVisible, Converter={StaticResource BoolToVisibility}}">
+                <Grid x:Name="TaskLibraryGrid"
+                      Visibility="{Binding IsTaskLibraryPageVisible, Converter={StaticResource BoolToVisibility}}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="16" />
@@ -674,7 +895,7 @@
                         </Grid.ColumnDefinitions>
 
                         <!-- 左栏：任务列表 -->
-                        <Border Grid.Column="0" Style="{StaticResource CardStyle}">
+                        <local:GlassCard Grid.Column="0" Style="{StaticResource CardStyle}">
                             <DockPanel LastChildFill="True">
                                 <StackPanel DockPanel.Dock="Top" Margin="0,0,0,14">
                                     <TextBlock Style="{StaticResource SectionTitleStyle}" Text="已保存任务" />
@@ -712,10 +933,10 @@
                                     </ListBox.ItemTemplate>
                                 </ListBox>
                             </DockPanel>
-                        </Border>
+                        </local:GlassCard>
 
                         <!-- 右栏：任务详情 -->
-                        <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+                        <local:GlassCard Grid.Column="2" Style="{StaticResource CardStyle}">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
@@ -821,6 +1042,30 @@
                                                         <Style TargetType="ListBoxItem">
                                                             <Setter Property="AllowDrop" Value="True" />
                                                             <Setter Property="Padding" Value="6" />
+                                                            <Style.Triggers>
+                                                                <Trigger Property="IsSelected" Value="True">
+                                                                    <Trigger.EnterActions>
+                                                                        <BeginStoryboard>
+                                                                            <Storyboard>
+                                                                                <ColorAnimation Storyboard.TargetProperty="Background.Color"
+                                                                                                To="#DDEAFF"
+                                                                                                Duration="0:0:0.15"
+                                                                                                EasingFunction="{StaticResource EaseOutQuad}" />
+                                                                            </Storyboard>
+                                                                        </BeginStoryboard>
+                                                                    </Trigger.EnterActions>
+                                                                    <Trigger.ExitActions>
+                                                                        <BeginStoryboard>
+                                                                            <Storyboard>
+                                                                                <ColorAnimation Storyboard.TargetProperty="Background.Color"
+                                                                                                To="Transparent"
+                                                                                                Duration="0:0:0.2"
+                                                                                                EasingFunction="{StaticResource EaseOutQuad}" />
+                                                                            </Storyboard>
+                                                                        </BeginStoryboard>
+                                                                    </Trigger.ExitActions>
+                                                                </Trigger>
+                                                            </Style.Triggers>
                                                         </Style>
                                                     </ListBox.ItemContainerStyle>
                                                     <ListBox.ItemTemplate>
@@ -1101,12 +1346,13 @@
                                     </WrapPanel>
                                 </Border>
                             </Grid>
-                        </Border>
+                        </local:GlassCard>
                     </Grid>
                 </Grid>
 
                 <!-- ********** 执行日志页 ********** -->
-                <Grid Visibility="{Binding IsExecutionLogsPageVisible, Converter={StaticResource BoolToVisibility}}">
+                <Grid x:Name="LogsGrid"
+                      Visibility="{Binding IsExecutionLogsPageVisible, Converter={StaticResource BoolToVisibility}}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="16" />
@@ -1124,20 +1370,20 @@
                             <ColumnDefinition Width="16" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" Style="{StaticResource CardStyle}">
+                        <local:GlassCard Grid.Column="0" Style="{StaticResource CardStyle}">
                             <DockPanel LastChildFill="True">
                                 <TextBlock DockPanel.Dock="Top" Margin="0,0,0,12"
                                            Style="{StaticResource SectionTitleStyle}" Text="历史执行记录" />
                                 <ListBox MinHeight="440" ItemsSource="{Binding RecentLogs}" />
                             </DockPanel>
-                        </Border>
-                        <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+                        </local:GlassCard>
+                        <local:GlassCard Grid.Column="2" Style="{StaticResource CardStyle}">
                             <DockPanel LastChildFill="True">
                                 <TextBlock DockPanel.Dock="Top" Margin="0,0,0,12"
                                            Style="{StaticResource SectionTitleStyle}" Text="当前任务运行日志" />
                                 <ListBox MinHeight="440" ItemsSource="{Binding RuntimeLogs}" />
                             </DockPanel>
-                        </Border>
+                        </local:GlassCard>
                     </Grid>
                 </Grid>
 
@@ -1157,7 +1403,7 @@
                                    Text="配置固定坐标、点击次数、开始延迟和点击间隔。运行中请用悬浮窗暂停或停止。" />
                     </StackPanel>
 
-                    <Border Grid.Row="2" Style="{StaticResource CardStyle}">
+                    <local:GlassCard Grid.Row="2" Style="{StaticResource CardStyle}">
                         <Grid IsEnabled="{Binding IsTaskEditorEnabled}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="280" />
@@ -1293,9 +1539,9 @@
                                 </StackPanel>
                             </Border>
                         </Grid>
-                    </Border>
+                    </local:GlassCard>
 
-                    <Border Grid.Row="4" Style="{StaticResource CardStyle}">
+                    <local:GlassCard Grid.Row="4" Style="{StaticResource CardStyle}">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -1329,7 +1575,7 @@
                                 </WrapPanel>
                             </StackPanel>
                         </Grid>
-                    </Border>
+                    </local:GlassCard>
                 </Grid>
             </Grid>
         </ScrollViewer>

@@ -1,6 +1,6 @@
 # Click Assistant 液态玻璃设计规范
 
-文档版本：v2.0.0  
+文档版本：v2.5.0  
 最后更新：2026-07-12
 
 本文档定义 Android 与 WPF 共用的液态玻璃视觉语言。设计目标是在不改变核心任务流程的前提下，建立清晰、克制、可读且跨端一致的操作界面。v2.0.0 新增深色主题适配、完整字体排版体系、响应式断点逻辑、组件五态规范和图片素材规格引用。
@@ -82,13 +82,32 @@
 | 深色微妙玻璃 | `0% #0CFFFFFF`, `100% #06FFFFFF` | 深色次级卡片 |
 | 深色主按钮 | `0% #5B9BFF`, `62% #3978F6`, `100% #6B78E8` | 深色主操作按钮 |
 
-### 2.5 阴影参数
+### 2.5 三阶阴影系统
 
-| 层级 | 浅色阴影（color, blur, offset, opacity） | 深色阴影（color, blur, offset, opacity） | 用途 |
+| 层级 | 代号 | 浅色阴影（color, blur, offset, opacity） | 深色阴影（color, blur, offset, opacity） | 用途 |
+| --- | --- | --- | --- | --- |
+| 表层 (L1) | ShadowSm / SHADOW_L1 | `#26334A`, 8px, 3px, 8% | `#000000`, 12px, 4px, 25% | 小控件、Badge、Switch |
+| 中景 (L2) | ShadowMd / SHADOW_L2 | `#26334A`, 16px, 6px, 13% | `#000000`, 28px, 8px, 40% | 标准玻璃卡片 |
+| 深层 (L3) | ShadowLg / SHADOW_L3 | `#26334A`, 32px, 14px, 18% | `#000000`, 32px, 14px, 50% | 导航栏、弹窗、FAB、悬浮窗 |
+
+**物理模拟原理**：L1（3dp 高度）对应薄玻璃片贴近桌面，阴影小而实；L2（6dp）对应标准玻璃卡片悬浮；L3（14dp）对应厚玻璃板远离背景，阴影深且分散。
+
+### 2.6 Specular 高光层
+
+| 平台 | 实现方式 | 浅色模式 | 深色模式 |
 | --- | --- | --- | --- |
-| 轻阴影 | `#26334A`, 8px, 4px, 6% | `#000000`, 12px, 4px, 25% | 次级卡片 |
-| 标准阴影 | `#26334A`, 24px, 8px, 13% | `#000000`, 28px, 8px, 40% | 主卡片 |
-| 强阴影 | `#253248`, 28px, 8px, 22% | `#000000`, 32px, 10px, 50% | 悬浮窗 |
+| Android | `LayerDrawable` 叠加 4 停 TL_BR 渐变 | `#60FFFFFF` → `#20FFFFFF` → 透明 → 透明 | 系统自动（`ContextCompat.getColor`） |
+| WPF | CardStyle ControlTemplate 内层 Border | `#60FFFFFF` 1px Left+Top 描边 | 同上 |
+
+高光层位于玻璃基底之上，模拟玻璃表面左上角捕获环境光源的反射效果。高光为中性白色（不与品牌色混合），品牌色通过基底渐变体现。
+
+### 2.7 背景环境光晕
+
+页面背景在基础三色线性渐变之上叠加两处径向光晕：
+- **右上暖光**（`#25FFF0E0`，15% 不透明度，半径 500dp）：模拟窗外暖色环境光散射。
+- **左下冷光**（`#18E0F0FF`，10% 不透明度，半径 400dp）：模拟屏幕环境中蓝色冷光补光。
+
+Android 端通过 `GradientDrawable.RADIAL_GRADIENT` + `setGradientCenter` 实现，WPF 端仅导航栏底部叠加品牌蓝氛围光（`#183978F6` 底部渐变）。
 
 ## 3. 字体排版体系
 
@@ -269,6 +288,7 @@
 | 玻璃描边 | `#B8FFFFFF` (72%) | `#1EFFFFFF` (12%) |
 | 内高光 | `rgba(255,255,255,0.6)` | `rgba(255,255,255,0.08)` |
 | 卡片阴影 | `rgba(38,51,74,0.13)` | `rgba(0,0,0,0.40)` |
+| 悬浮阴影 | `rgba(38,51,74,0.18)` | `rgba(0,0,0,0.50)` |
 | 主文字 | `#17233A` | `#E2E8F0` |
 | 次文字 | `#526176` | `#94A3B8` |
 | 弱化文字 | `#8290A3` | `#64748B` |
@@ -306,22 +326,120 @@
 | WPF | `<Image Source="Resources/Images/icon_tap.png" Width="48" Height="48" />` | XAML Image 控件 |
 | Android | `imageView.setImageResource(R.drawable.icon_tap)` | ImageView + R.drawable 引用 |
 
-## 10. 动画与过渡
+## 10. 动效系统 (Phase C)
 
-### 10.1 动画参数
+### 10.1 动效核心理念
 
-| 动画 | 时长 | 缓动曲线 | 适用范围 |
+Apple Liquid Glass 的"液态"感来自：
+1. **Staggered 错位** — 多个元素不是同时出现，而是依次流入（每项差 40-60ms）
+2. **Spring 弹性** — 弹入是"过冲一点再回弹"，不是线性淡入（OvershootInterpolator 0.35-0.5）
+3. **Contextual 呼应** — 点击一个元素，它和周围的元素同时有反应
+
+### 10.2 动画类型与参数
+
+| 动画类型 | 方法 | 属性 | 时长 | 延迟 | 插值器 | 适用范围 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 页面弹入 | `animateSlideUp()` | alpha 0→1, translationY 24dp→0 | 300ms | 0 | DecelerateInterpolator(1.2f) | 页面切换 showPage() |
+| 弹窗进入 | `animateDialogEntrance()` | alpha 0→1, scaleX/Y 0.85→1 | 250ms | 0 | OvershootInterpolator(0.5f) | 所有 AlertDialog |
+| 按压反馈 | `animatePressFeedback()` | scaleX/Y 0.96→1 | 80ms + 150ms | 0 | OvershootInterpolator(0.4f) | 卡片/按钮点击 |
+| 错位弹入 | `animateStaggeredPopIn()` | alpha 0→1, scaleX/Y 0.95→1 | 200ms/item | i×staggerMs | OvershootInterpolator(0.35f) | 网格/列表/步骤/日志 |
+| 通用弹入 | `animatePopIn()` | alpha 0→1, scaleX/Y 0.92→1 | 250ms | 0 | OvershootInterpolator(0.4f) | 通用卡片 |
+| 抽屉滑入 | expand() 改进 | alpha 0→1, translationX -40dp→0 | 200ms | 0 | DecelerateInterpolator | FloatingTriggerButton |
+| 导航轻弹 | updateBottomNav() | scaleX/Y 1.05→1 | 80ms + 120ms | 0 | — | 底部导航选中项 |
+
+### 10.3 错位间隔（staggerMs）
+
+| 场景 | staggerMs | 说明 |
+| --- | --- | --- |
+| 首页 2×2 网格 | 60ms | 4 张卡片，总序列 0-180ms |
+| 任务库列表 | 50ms | 按筛选结果数量动态延时 |
+| 步骤编辑器 | 40ms | 步骤数量较少，密集弹入 |
+| 日志列表 | 30ms | 条目多，快速流式弹入 |
+
+### 10.4 实现方式
+
+- **纯 Java ViewPropertyAnimator** — 使用 `view.animate()` 链式调用，零 Kotlin/Compose 依赖
+- **硬件加速属性** — 仅使用 alpha、scaleX/Y、translationX/Y，不触发 layout 重排
+- **非阻塞设计** — 动画只是视觉反馈，所有点击立即响应，动画并行播放
+- **兼容性** — Android API 16+（ViewPropertyAnimator 自 API 12 可用）
+
+### 10.5 执行时序示例
+
+```
+用户点击"任务库"导航按钮
+  ├─ 0ms     → showPage(LIBRARY)
+  │           → loadTasks() 读数据
+  │           → refreshLibrary() 建卡片
+  │           → animateSlideUp(contentView)       ← 页面整体弹入
+  ├─ 50ms    → 第 1 张卡片错位弹入
+  ├─ 100ms   → 第 2 张卡片错位弹入
+  └─ 300ms   → 所有动画完成
+
+用户点击一张任务卡片
+  ├─ 0ms     → animatePressFeedback(card)         ← 缩小到 0.96×
+  ├─ 80ms    → card 回弹到 1.0×
+  └─ 80ms+   → showPage(EDITOR) → animateSlideUp + animateStaggeredPopIn(steps)
+```
+
+### 10.6 已有动画 (v0.17.0 前)
+
+| 动画 | 位置 | 说明 |
+| --- | --- | --- |
+| FloatingTriggerButton 展开/收起 alpha | FloatingTriggerButton.java | Phase C 已增强为 translationX 滑入 |
+
+### 10.7 WPF 桌面端动效 (Phase D)
+
+#### 10.7.1 Storyboard 动画类型
+
+| 动画类型 | 触发方式 | 属性 | 时长 | 缓动 | 位置 |
+| --- | --- | --- | --- | --- | --- |
+| 页面内容淡入 | IsVisibleChanged (code-behind) | Opacity 0→1 | 200ms | Quadratic EaseOut | 4 个页面 Grid |
+| 页面上移弹入 | IsVisibleChanged (code-behind) | Margin (0,20,0,0)→0 | 250ms | Quadratic EaseOut | 4 个页面 Grid |
+| 导航按钮高亮过渡 | PageVis via code-behind | Foreground/Background Color | 150ms | Quadratic EaseOut | 4 个 NavButton |
+| 导航按钮 hover | Trigger.EnterActions | Background Color Transparent→#8FFFFFFF | 150ms | EaseOutQuad | NavButtonStyle |
+| 主按钮光泽扫过 | Trigger.EnterActions | ShineBorder Margin 循环 + Opacity | 600ms/循环 | EaseInOutQuad | PrimaryButtonStyle |
+| 主按钮悬浮暗化 | Trigger.EnterActions | RootBorder Opacity 1→0.85 | 150ms | EaseOutQuad | PrimaryButtonStyle |
+| 选择卡片上浮 | Trigger.EnterActions | RenderTransform.Y 0→-4px | 200ms | EaseOutQuad | ChoiceButtonStyle |
+| 步骤选中高亮 | Trigger.EnterActions | Background Color →#DDEAFF | 150ms | EaseOutQuad | StepListBox |
+| 悬浮窗弹性展开 | EventTrigger(Loaded) | ScaleY 0→1 + Opacity | 200ms | EaseOutBack | FloatingControlWindow |
+
+#### 10.7.2 共享缓动函数
+
+| 资源 Key | 类型 | 参数 | 用途 |
 | --- | --- | --- | --- |
-| 卡片入场 | 300ms (WPF) / 400ms (Android) | ease-out / DecelerateInterpolator | 页面首次加载卡片 |
-| 按钮按下 | 100ms 缩放 / 200ms 恢复 | ease-out | 所有按钮 |
-| 页面切换 | 200ms 淡入淡出 | ease-out | 导航切换 |
-| 悬浮窗展开 | 250ms | ease-out | 悬浮控制窗 |
+| EaseOutQuad | QuadraticEase | EaseOut | 通用淡入淡出/上浮 |
+| EaseInOutQuad | QuadraticEase | EaseInOut | 光泽扫过循环 |
+| EaseOutBack | BackEase | EaseOut, Amplitude=0.3 | 弹窗/展开（过冲回弹） |
+| EaseOutElastic | ElasticEase | EaseOut, Oscillations=1, Springiness=3 | 弹簧效果（预留） |
 
-### 10.2 实施约束
+#### 10.7.3 导航过渡时序示例
 
-- 所有动画使用硬件加速属性（opacity、translation、scale），避免触发 layout 重排。
-- 动画帧率在低性能设备上不低于 30fps。
-- 无用户交互时不执行动画（空闲节电）。
+```
+用户点击"任务库"导航按钮
+  ├─ 0ms     → IsTaskLibraryPageVisible = true
+  │           → 首页 Grid 隐藏（Visibility.Collapsed）
+  │           → 任务库 Grid 显示（Visibility.Visible）
+  │           → IsVisibleChanged 触发
+  │
+  ├─ 0ms     → HandlePageVisibilityChanged:
+  │           ├─ 任务库 Grid Opacity=0, Margin=(0,20,0,0)
+  │           ├─ Storyboard: Opacity 0→1 (200ms EaseOut)
+  │           ├─ Storyboard: Margin (0,20,0,0)→0 (250ms EaseOut)
+  │           └─ AnimateNavButtonActive()
+  │               ├─ "首页" 按钮 Foreground → TextSecondaryColor (150ms)
+  │               ├─ "首页" 按钮 Background → Transparent (150ms)
+  │               ├─ "任务库" 按钮 Foreground → PrimaryColor (150ms)
+  │               └─ "任务库" 按钮 Background → PrimaryLightColor (150ms)
+  │
+  └─ 250ms  → 所有动画完成
+```
+
+#### 10.7.4 实现方式
+
+- **XAML Storyboard** — Trigger.EnterActions/ExitActions + BeginStoryboard 用于 hover/选中态
+- **Code-behind Storyboard** — IsVisibleChanged 事件处理器用于页面切换（因为 DataTrigger 不支持 EnterActions）
+- **ColorAnimation** — 需要 `Color` 资源（非 Brush），在 App.xaml 中分别定义
+- **硬件加速** — 所有动画使用 RenderTransform（Translate/Scale）和 Opacity，不触发 Layout 重排
 
 ## 11. 可用性与无障碍
 
@@ -349,5 +467,10 @@
 
 | 版本 | 日期 | 变更 |
 | --- | --- | --- |
+| v2.5.0 | 2026-07-12 | Phase E：逐元素精修 — 品牌渐变标题（LinearGradient + 阴影）、玻璃胶囊标签/按钮、玻璃内嵌输入框、玻璃圆形图标/徽章、虚线边框玻璃卡片、TabItem 玻璃胶囊选项卡等 20 处视觉元素深度玻璃化规范。 |
+| v2.4.0 | 2026-07-12 | Phase D：WPF 桌面端动效 — 7 种 Storyboard 动画（页面淡入/上移/导航颜色/光泽扫过/卡片上浮/步骤高亮/悬浮窗弹性展开），4 个共享缓动函数，App.xaml 增补 Color 纯色资源支持 ColorAnimation，IsVisibleChanged code-behind 过渡方案。 |
+| v2.3.0 | 2026-07-12 | Phase C：移动端动效系统 — 5 种动画类型（SlideUp/PressFeedback/StaggeredPopIn/DialogEntrance/PopIn）、错位间隔规范、FloatingTriggerButton 滑入改进、导航轻弹，全部基于纯 Java ViewPropertyAnimator 实现。 |
+| v2.2.0 | 2026-07-12 | Phase B：新增光晕泄漏规范（`glass_bleed` 浅色 7% / 深色 19%），背景光晕改为动态颜色资源（`bg_glow_warm`/`bg_glow_cool`），WPF CardStyle 第④层升级为 `GlassBleedBrush` 品牌蓝渐变。 |
+| v2.1.0 | 2026-07-12 | 阴影系统升级为三阶（L1 8px/3px/8%, L2 16px/6px/13%, L3 32px/14px/18%），新增 Specular 高光层规范、背景环境光晕设计，CardStyle 增加 4 层 ControlTemplate。 |
 | v2.0.0 | 2026-07-12 | 新增深色主题设计令牌、完整字体排版体系、响应式断点逻辑、组件五态规范、图片素材体系和浅深色适配规则。 |
 | v1.0.0 | 2026-07-12 | 初始版本，定义基本设计原则、共享令牌、组件规则和平台实现方式。 |

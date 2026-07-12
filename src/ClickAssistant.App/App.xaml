@@ -12,6 +12,10 @@
             <SolidColorBrush x:Key="PrimaryBrush" Color="#3978F6" />
             <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#245CC7" />
             <SolidColorBrush x:Key="PrimaryLightBrush" Color="#DDEAFF" />
+            <!-- ColorAnimation 使用的纯色资源 -->
+            <Color x:Key="PrimaryColor">#3978F6</Color>
+            <Color x:Key="PrimaryLightColor">#DDEAFF</Color>
+            <Color x:Key="TextSecondaryColor">#526176</Color>
             <SolidColorBrush x:Key="SecondaryBrush" Color="#0F9FA4" />
             <SolidColorBrush x:Key="SecondaryLightBrush" Color="#D8F3F1" />
             <SolidColorBrush x:Key="TextPrimaryBrush" Color="#17233A" />
@@ -41,6 +45,11 @@
             </LinearGradientBrush>
             <SolidColorBrush x:Key="BorderBrush" Color="#B8FFFFFF" />
             <SolidColorBrush x:Key="BorderLightBrush" Color="#80FFFFFF" />
+            <!-- 玻璃底部品牌蓝光晕泄漏（浅色模式 7% 微弱可见） -->
+            <LinearGradientBrush x:Key="GlassBleedBrush" StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Offset="0" Color="Transparent" />
+                <GradientStop Offset="1" Color="#123978F6" />
+            </LinearGradientBrush>
             <SolidColorBrush x:Key="SuccessBrush" Color="#169B72" />
             <SolidColorBrush x:Key="SuccessLightBrush" Color="#D8F4E8" />
             <SolidColorBrush x:Key="WarningBrush" Color="#E98732" />
@@ -58,6 +67,9 @@
                 <SolidColorBrush x:Key="PrimaryBrush" Color="#3978F6" />
                 <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#5B9BFF" />
                 <SolidColorBrush x:Key="PrimaryLightBrush" Color="#1E3A6B" />
+                <Color x:Key="PrimaryColor">#3978F6</Color>
+                <Color x:Key="PrimaryLightColor">#1E3A6B</Color>
+                <Color x:Key="TextSecondaryColor">#94A3B8</Color>
                 <SolidColorBrush x:Key="SecondaryBrush" Color="#0F9FA4" />
                 <SolidColorBrush x:Key="SecondaryLightBrush" Color="#123A3C" />
                 <SolidColorBrush x:Key="TextPrimaryBrush" Color="#E2E8F0" />
@@ -87,6 +99,11 @@
                 </LinearGradientBrush>
                 <SolidColorBrush x:Key="BorderBrush" Color="#1EFFFFFF" />
                 <SolidColorBrush x:Key="BorderLightBrush" Color="#0CFFFFFF" />
+                <!-- 玻璃底部品牌蓝光晕泄漏（深色模式 19% 清晰可见） -->
+                <LinearGradientBrush x:Key="GlassBleedBrush" StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Offset="0" Color="Transparent" />
+                    <GradientStop Offset="1" Color="#303978F6" />
+                </LinearGradientBrush>
                 <SolidColorBrush x:Key="SuccessBrush" Color="#169B72" />
                 <SolidColorBrush x:Key="SuccessLightBrush" Color="#14352A" />
                 <SolidColorBrush x:Key="WarningBrush" Color="#E98732" />

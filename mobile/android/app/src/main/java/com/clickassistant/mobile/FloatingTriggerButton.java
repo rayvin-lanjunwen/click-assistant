@@ -9,6 +9,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -190,8 +191,13 @@ public final class FloatingTriggerButton {
 
         GradientDrawable btnBg = new GradientDrawable();
         btnBg.setCornerRadius(dp(8));
-        btnBg.setColor(primary ? Color.argb(20, Color.red(color), Color.green(color), Color.blue(color)) : Color.TRANSPARENT);
+        btnBg.setColor(primary
+                ? Color.argb(40, Color.red(color), Color.green(color), Color.blue(color))
+                : Color.parseColor("#B8FFFFFF"));
+        btnBg.setStroke(dp(1), Color.parseColor("#80FFFFFF"));
         btn.setBackground(btnBg);
+        btn.setElevation(dp(1));
+        btn.setClipToOutline(true);
 
         btn.setOnClickListener(v -> {
             if (action != null) action.run();
@@ -207,16 +213,28 @@ public final class FloatingTriggerButton {
         if (expandedPanel == null || collapseArrow == null) return;
         expandedPanel.setVisibility(View.VISIBLE);
         expandedPanel.setAlpha(0f);
-        expandedPanel.animate().alpha(1f).setDuration(200).start();
+        expandedPanel.setTranslationX(dp(-40));
+        expandedPanel.animate()
+                .alpha(1f)
+                .translationX(0f)
+                .setDuration(200)
+                .setInterpolator(new DecelerateInterpolator())
+                .start();
         collapseArrow.setText("◀");
         expanded = true;
     }
 
     private void collapse() {
         if (expandedPanel == null || collapseArrow == null) return;
-        expandedPanel.animate().alpha(0f).setDuration(150).withEndAction(() -> {
-            expandedPanel.setVisibility(View.GONE);
-        }).start();
+        expandedPanel.animate()
+                .alpha(0f)
+                .translationX(dp(-40))
+                .setDuration(150)
+                .withEndAction(() -> {
+                    expandedPanel.setVisibility(View.GONE);
+                    expandedPanel.setTranslationX(0f);
+                })
+                .start();
         collapseArrow.setText("▶");
         expanded = false;
     }

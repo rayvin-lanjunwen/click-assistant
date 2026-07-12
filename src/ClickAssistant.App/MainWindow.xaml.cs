@@ -1,6 +1,9 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.ComponentModel;
 using ClickAssistant.App.Services;
 using ClickAssistant.App.ViewModels;
@@ -80,6 +83,10 @@ public partial class MainWindow : Window
             appSettingsRepository = settingsRepository;
 
             DataContext = viewModel;
+
+            // 页面切换动效：淡入 + 上移 + 导航按钮颜色过渡
+            SetupPageTransitionAnimations();
+
             floatingWindow = new FloatingControlWindow
             {
                 DataContext = viewModel,
@@ -110,6 +117,104 @@ public partial class MainWindow : Window
             Close();
         }
     }
+
+    // ===== 页面切换动效系统 (Phase D) =====
+
+    /// <summary>
+    /// 设置页面内容切换动画：监听各页面 Grid 的 IsVisibleChanged 事件。
+    /// </summary>
+    private void SetupPageTransitionAnimations()
+    {
+        HomePageGrid.IsVisibleChanged += HandlePageVisibilityChanged;
+        NewTaskTypeGrid.IsVisibleChanged += HandlePageVisibilityChanged;
+        TaskLibraryGrid.IsVisibleChanged += HandlePageVisibilityChanged;
+        LogsGrid.IsVisibleChanged += HandlePageVisibilityChanged;
+    }
+
+    /// <summary>
+    /// 页面可见性变化时：淡入 + 上移内容，同时动画化导航按钮颜色。
+    /// </summary>
+    private void HandlePageVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (sender is not Grid grid || e.NewValue is not true) return;
+
+        // 重置初始状态
+        grid.Opacity = 0;
+        grid.Margin = new Thickness(0, 20, 0, 0);
+
+        var sb = new Storyboard();
+
+        // 淡入动画
+        var fadeIn = new DoubleAnimation
+        {
+            From = 0, To = 1,
+            Duration = TimeSpan.FromMilliseconds(200),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+        };
+        Storyboard.SetTargetProperty(fadeIn, new PropertyPath("Opacity"));
+        sb.Children.Add(fadeIn);
+
+        // 上移弹入
+        var slideUp = new ThicknessAnimation
+        {
+            From = new Thickness(0, 20, 0, 0),
+            To = new Thickness(0),
+            Duration = TimeSpan.FromMilliseconds(250),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+        };
+        Storyboard.SetTargetProperty(slideUp, new PropertyPath("Margin"));
+        sb.Children.Add(slideUp);
+
+        sb.Begin(grid);
+
+        // 同步动画化导航按钮高亮状态
+        AnimateNavButtonActive(grid);
+    }
+
+    /// <summary>
+    /// 页面切换时同步动画化导航按钮的前景色和背景色。
+    /// </summary>
+    private void AnimateNavButtonActive(Grid pageGrid)
+    {
+        var activeColor = (Color)FindResource("PrimaryColor");
+        var activeBgColor = (Color)FindResource("PrimaryLightColor");
+        var inactiveFgColor = (Color)FindResource("TextSecondaryColor");
+
+        var buttons = new[] { NavHomeButton, NavNewTaskButton, NavTaskLibraryButton, NavLogsButton };
+        var grids = new[] { HomePageGrid, NewTaskTypeGrid, TaskLibraryGrid, LogsGrid };
+
+        for (int i = 0; i < buttons.Length; i++)
+        {
+            bool isActive = grids[i] == pageGrid;
+            var btn = buttons[i];
+
+            var sb = new Storyboard();
+
+            var fgAnim = new ColorAnimation
+            {
+                To = isActive ? activeColor : inactiveFgColor,
+                Duration = TimeSpan.FromMilliseconds(150),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            };
+            Storyboard.SetTargetProperty(fgAnim, new PropertyPath("Foreground.Color"));
+            sb.Children.Add(fgAnim);
+
+            var bgAnim = new ColorAnimation
+            {
+                To = isActive ? activeBgColor : Colors.Transparent,
+                Duration = TimeSpan.FromMilliseconds(150),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            };
+            Storyboard.SetTargetProperty(bgAnim, new PropertyPath("Background.Color"));
+            sb.Children.Add(bgAnim);
+
+            sb.Begin(btn);
+
+            btn.FontWeight = isActive ? FontWeights.SemiBold : FontWeights.Normal;
+        }
+    }
+
+    // ===== 主题切换 =====
 
     /// <summary>
     /// 主题切换按钮点击：切换深浅色模式并更新按钮文案。
