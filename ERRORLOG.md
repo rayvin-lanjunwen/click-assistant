@@ -16,6 +16,15 @@
   4. 同步清理测试 fixture `CreateLegacySchemaAsync`。
 - **测试验证**：25/25 测试全部通过。
 
+#### 13. Android NullPointerException — taskNameInput 等 EditText 未初始化
+- **现象**：用户从首页点击"最近任务"快速执行、或从执行日志中点击"重新执行此任务"时，移动端闪退。系统显示"因应用自身空指针异常，造成闪退"，logcat 显示 `NullPointerException at MainActivity.saveTaskFromInputs` 附近。
+- **根本原因**：`saveTaskFromInputs()` 直接调用 `taskNameInput.getText()` 等成员变量，但这些 EditText 控件仅在 `buildTaskEditorPage()` 中初始化。`executeRecentTask()` → `startTask()` → `saveTaskFromInputs(false)` 调用链在用户**从未打开编辑器**时，控件全部为 null，立即 NPE。
+- **修复**：
+  1. `saveTaskFromInputs()` 入口增加所有 EditText 的 null 检查；若未初始化则视为"无需保存输入"，直接返回 true。
+  2. `startCoordinatePickForStep()` 的同名调用增加 `taskNameInput != null` 保护。
+  3. `updateBottomNav()` 改为四个 nav item 联合 null 检查。
+- **验证**：重新编译 APK 成功。
+
 ### 编译错误
 
 #### 10. CS0234 — ClickAssistant.Application 命名空间与 System.Windows.Application 冲突

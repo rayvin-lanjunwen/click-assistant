@@ -346,7 +346,10 @@ public final class MainActivity extends Activity {
     }
 
     private void updateBottomNav() {
-        if (homeNavItem == null) return;
+        if (homeNavItem == null || libraryNavItem == null
+                || logsNavItem == null || profileNavItem == null) {
+            return;
+        }
         homeNavItem.setTextColor(currentPage == Page.HOME ? PRIMARY : TEXT_SECONDARY);
         libraryNavItem.setTextColor(currentPage == Page.LIBRARY ? PRIMARY : TEXT_SECONDARY);
         logsNavItem.setTextColor(currentPage == Page.LOGS ? PRIMARY : TEXT_SECONDARY);
@@ -1963,6 +1966,12 @@ public final class MainActivity extends Activity {
 
     private boolean saveTaskFromInputs(boolean showToast) {
         if (selectedTask == null) return false;
+        // 仅在编辑器页真正构建过控件时才读取输入；否则跳过"读取→写回"步骤，
+        // 防止从任务库/最近任务等入口直接调用 startTask() 时因 EditText 为 null 闪退。
+        if (taskNameInput == null || taskDescInput == null || taskEnabledBox == null
+                || repeatCountInput == null || startDelayInput == null) {
+            return true;
+        }
         try {
             selectedTask.setName(taskNameInput.getText().toString().trim());
             selectedTask.setDescription(taskDescInput.getText().toString().trim());
@@ -2251,7 +2260,9 @@ public final class MainActivity extends Activity {
 
         // 先保存任务
         try {
-            selectedTask.setName(taskNameInput.getText().toString().trim());
+            if (taskNameInput != null) {
+                selectedTask.setName(taskNameInput.getText().toString().trim());
+            }
             selectedTask.validateForSave();
             TaskStore.upsertTask(this, selectedTask);
         } catch (IllegalArgumentException ex) {

@@ -4,6 +4,7 @@
 
 ## 2026-07-12
 
+- 2026-07-12 02:30 修复移动端 NullPointerException 闪退：MainActivity.saveTaskFromInputs() 增加 EditText null 检查（taskNameInput/taskDescInput/taskEnabledBox/repeatCountInput/startDelayInput 任意为 null 时跳过写回）；startCoordinatePickForStep() 的 taskNameInput 调用增加保护；updateBottomNav() 补全四个 nav item 联合 null 检查；重新打包签名版 APK（17.3 MB）；记录到 ERRORLOG.md #13。
 - 2026-07-12 02:15 修复桌面端 SQLite Error 19：DatabaseMigrator v1.3.0 迁移 DROP COLUMN after_delay_ms；v1.0.0 初始建表移除该列；新增 TryParseAlterTableDropColumn 实现 DROP COLUMN 幂等（已存在则跳过）；25/25 测试通过；同步清理 DatabaseMigratorTests 测试 fixture；记录到 ERRORLOG.md #12。
 - 2026-07-12 02:00 项目文件审查与清理：修复 CHANGELOG.md v0.15.0 与 v0.14.0 重复条目（移除 14 条重复记录）；更新 .gitignore 排除 .workbuddy/、generated-images/、test-results/、**/build-log.txt；更新 STYLEGUIDE.md 最后更新日期至 2026-07-12；README.md 补充 ERRORLOG.md 和 ASSETS_SPECIFICATION.md 引用、修正 Android 版本号 0.6.0→0.6.1；WORKLOG.md 补充本次清理记录。
 - 2026-07-12 01:40 双端编译打包：WPF 发布为自包含 .exe（dist/ClickAssistant-win-x64/ + ZIP 包 77 MB）、Android 构建 release APK（dist/ClickAssistant-android-0.6.1.apk 17 MB，未签名）。修复编译错误：MainWindow.xaml.cs 中 ClickAssistant.Application 命名空间与 System.Windows.Application 冲突（改用全限定名称）、Android styles.xml 与 themes.xml 重复 AppTheme。
